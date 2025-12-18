@@ -103,8 +103,8 @@ print_usage() {
 
 示例:
   # GitHub 一键部署（HTTPS）
-  curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/main/vote_site/deploy.sh | \\
-    bash -s -- install --from-github https://github.com/<owner>/<repo>.git --domain example.com
+  curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \\
+    bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
 
   # 本地压缩包部署（离线）
   ./deploy.sh install --from-archive stg_website.tar.gz --ip

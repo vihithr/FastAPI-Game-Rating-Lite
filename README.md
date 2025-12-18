@@ -46,55 +46,30 @@
   - 内存：**≥ 256MB（推荐 512MB）**  
   - 磁盘：**≥ 512MB 可用空间（推荐 1GB 以上）**  
 
-### 2. 在线一键部署（推荐，从 GitHub 拉取）
+### 2. 在线一键部署（推荐，从本仓库拉取）
 
-请将 `<owner>/<repo>` 替换为你的 GitHub 仓库路径（例如 `yourname/FastAPI-Game-Rating-Lite`）：
+本项目已经托管在 GitHub 仓库 [`vihithr/FastAPI-Game-Rating-Lite`](https://github.com/vihithr/FastAPI-Game-Rating-Lite.git)，你只需要根据自己是否有域名选择下面其中一种命令即可。
 
 ```bash
 # HTTPS 模式（有域名，自动申请 HTTPS 证书）
-curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/main/vote_site/deploy.sh | \
-  sudo bash -s -- install --from-github https://github.com/<owner>/<repo>.git --domain example.com
+curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
+  sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
 
 # IP 模式（无域名 / 内网环境，仅 HTTP）
-curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/main/vote_site/deploy.sh | \
-  sudo bash -s -- install --from-github https://github.com/<owner>/<repo>.git --ip
+curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
+  sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
 ```
 
-常用可选参数：
+常用可选参数（可与上面的命令组合使用）：
 
 - `--branch <name>`：指定分支，默认为 `main`  
 - `--force`：跳过卸载 / 静态清理时的二次确认（请谨慎使用）  
 
-### 3. 离线 / 本地压缩包部署
+### 3. 离线 / 本地部署（可选）
 
-#### 3.1 本地打包并上传
+如果你的服务器无法直接访问 GitHub，或者需要通过压缩包离线部署，请参考 `DEPLOYMENT.md` 中的“离线 / 本地部署”章节。  
 
-```bash
-# 本地打包（排除不必要的文件）
-tar --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
-    -czf vote_site.tar.gz vote_site/
-
-# 上传到服务器
-scp vote_site.tar.gz user@your-server:/tmp/
-```
-
-#### 3.2 服务器上解压并部署
-
-```bash
-ssh user@your-server
-cd /tmp
-tar -xzf vote_site.tar.gz
-cd vote_site
-chmod +x deploy.sh
-
-# 使用当前目录作为代码源
-sudo ./deploy.sh install --from-local
-
-# 或直接指定压缩包路径
-sudo ./deploy.sh install --from-archive /tmp/vote_site.tar.gz
-```
-
-部署脚本会自动完成：
+部署脚本在安装时会自动完成：
 
 - 检查系统依赖（Python、邮件服务等）  
 - 创建专用用户 `stg_website`（非 root，权限隔离）  

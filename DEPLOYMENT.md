@@ -31,11 +31,30 @@
 
 ## 快速开始
 
-### 一键部署（推荐）
+### 在线一键部署（推荐，从 GitHub 拉取）
 
-`vote_site` 是一个**完全独立的部署包**，包含所有必要的应用代码和配置文件。
+本项目已托管在 GitHub 仓库 [`vihithr/FastAPI-Game-Rating-Lite`](https://github.com/vihithr/FastAPI-Game-Rating-Lite.git)，推荐直接在服务器上通过 `curl` 调用部署脚本完成安装。
 
-1. **上传部署包到服务器**
+```bash
+# HTTPS 模式（有域名，自动申请 HTTPS 证书）
+curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
+  sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
+
+# IP 模式（无域名 / 内网环境，仅 HTTP）
+curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
+  sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
+```
+
+常用可选参数：
+
+- `--branch <name>`：指定分支（默认 `main`）  
+- `--force`：卸载和静态清理时跳过二次确认（请谨慎使用）  
+
+### 离线 / 本地压缩包部署（无法访问 GitHub 时使用）
+
+如果你的服务器无法访问 GitHub，可以先在本地打包、上传到服务器，再在服务器上解压并运行脚本。
+
+1. **在本地打包并上传**
 
    ```bash
    # 在本地打包（排除不必要的文件）
@@ -55,10 +74,16 @@
    tar -xzf vote_site.tar.gz
    cd vote_site
    chmod +x deploy.sh
-   sudo ./deploy.sh
+   sudo ./deploy.sh install --from-local
    ```
 
-   部署脚本会自动完成：
+   或者直接使用压缩包作为代码源：
+
+   ```bash
+   sudo ./deploy.sh install --from-archive /tmp/vote_site.tar.gz --ip
+   ```
+
+   无论使用哪种方式，部署脚本都会自动完成：
    - ✅ 检查系统依赖（Python、Caddy）
    - ✅ 创建专用用户 `stg_website`（非root，权限隔离）
    - ✅ 复制文件到 `/opt/stg_website`
