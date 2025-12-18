@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{% if active_tags %}标签: {{ active_tags|join(', ') }} - {% endif %}{% if current_company %}公司: {{ current_company }} - {% endif %}浏览作品 - STG社区评价{% endblock %}
+{% block title %}{% if active_tags %}标签: {{ active_tags|join(', ') }} - {% endif %}{% if current_company %}公司: {{ current_company }} - {% endif %}浏览作品 - {{ site_config.title }}{% endblock %}
 
 {% block content %}
 <style>

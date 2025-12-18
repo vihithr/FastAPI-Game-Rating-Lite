@@ -1,0 +1,67 @@
+{
+  "site": {
+    "name": "STG社区评价",
+    "brand": "STG Ratings",
+    "title": "STG社区评价",
+    "subtitle": "一个由社区驱动的STG游戏评价平台",
+    "app_title": "STG Community Ratings"
+  },
+  "ratings": {
+    "quality": {
+      "dimensions": [
+        {"name": "趣味性", "field": "fun"},
+        {"name": "核心设计", "field": "core"},
+        {"name": "深度", "field": "depth"},
+        {"name": "演出", "field": "performance"},
+        {"name": "剧情", "field": "story"}
+      ]
+    },
+    "difficulty": {
+      "dimensions": [
+        {"name": "避弹", "field": "dodge"},
+        {"name": "策略", "field": "strategy"},
+        {"name": "执行", "field": "execution"}
+      ]
+    }
+  },
+  "difficulty_realm": {
+    "max_score": 60,
+    "realms": [
+      {"threshold": 0, "name": "N/A"},
+      {"threshold": 5, "name": "见习一"},
+      {"threshold": 10, "name": "见习二"},
+      {"threshold": 15, "name": "新手一"},
+      {"threshold": 20, "name": "新手二"},
+      {"threshold": 25, "name": "入门一"},
+      {"threshold": 30, "name": "入门二"},
+      {"threshold": 35, "name": "进阶一"},
+      {"threshold": 40, "name": "进阶二"},
+      {"threshold": 45, "name": "上级一"},
+      {"threshold": 50, "name": "上级二"},
+      {"threshold": 55, "name": "上级三"},
+      {"threshold": null, "name": "论外"}
+    ]
+  },
+  "stats": {
+    "difficulty_stats": {
+      "columns": {
+        "game": "游戏",
+        "difficulty_level": "难度等级",
+        "ship_type": "机体/角色",
+        "dodge": "避弹",
+        "strategy": "策略",
+        "execution": "执行",
+        "overall_avg": "平均分",
+        "realm": "段位",
+        "rating_count": "评分数"
+      }
+    }
+  },
+  "email": {
+    "password_reset": {
+      "subject_template": "{site_name} - 密码重置通知",
+      "title_template": "{site_name} 密码重置"
+    }
+  }
+}
+

@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from .. import models, database, auth
 from app.config.templates import templates
 from app.config.constants import BASE_DIR, MAX_TAGS_DISPLAY
+from app.config.site_config import get_stats_columns
 from app.utils.ratings import get_game_evaluation
 from pathlib import Path
 import secrets
@@ -314,6 +315,9 @@ def difficulty_stats(
     all_tags = sorted({tag for entry in stats_data for tag in entry["tags"]})
     all_companies = sorted({entry["game_company"] for entry in stats_data})
     
+    # 从配置获取统计列名
+    stats_columns = get_stats_columns()
+    
     return templates.TemplateResponse("difficulty_stats.html", {
         "request": request,
         "stats_data": stats_data,
@@ -321,7 +325,8 @@ def difficulty_stats(
         "all_difficulty_levels": all_difficulty_levels,
         "all_ship_types": all_ship_types,
         "all_tags": all_tags,
-        "all_companies": all_companies
+        "all_companies": all_companies,
+        "stats_columns": stats_columns
     })
 
 @router.get("/game/{game_id}", response_class=HTMLResponse)

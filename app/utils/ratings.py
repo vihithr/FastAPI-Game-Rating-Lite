@@ -5,45 +5,79 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session  # type: ignore
 from itertools import groupby
 from .. import models
+from ..config.site_config import (
+    get_quality_dimensions,
+    get_difficulty_dimensions,
+    get_difficulty_realms,
+    get_difficulty_max_score
+)
 
-# 类别映射常量
-QUALITY_CATEGORIES = ["趣味性", "核心设计", "深度", "演出", "剧情"]
-QUALITY_FIELDS = ["fun", "core", "depth", "performance", "story"]
 
-DIFFICULTY_CATEGORIES = ["避弹", "策略", "执行"]
-DIFFICULTY_FIELDS = ["dodge", "strategy", "execution"]
+def _get_quality_categories() -> List[str]:
+    """从配置获取品质评分类别名称列表"""
+    dimensions = get_quality_dimensions()
+    return [dim["name"] for dim in dimensions]
+
+
+def _get_quality_fields() -> List[str]:
+    """从配置获取品质评分字段名列表"""
+    dimensions = get_quality_dimensions()
+    return [dim["field"] for dim in dimensions]
+
+
+def _get_difficulty_categories() -> List[str]:
+    """从配置获取难度评分类别名称列表"""
+    dimensions = get_difficulty_dimensions()
+    return [dim["name"] for dim in dimensions]
+
+
+def _get_difficulty_fields() -> List[str]:
+    """从配置获取难度评分字段名列表"""
+    dimensions = get_difficulty_dimensions()
+    return [dim["field"] for dim in dimensions]
+
+
+# 类别映射常量（从配置动态生成）
+QUALITY_CATEGORIES = _get_quality_categories()
+QUALITY_FIELDS = _get_quality_fields()
+DIFFICULTY_CATEGORIES = _get_difficulty_categories()
+DIFFICULTY_FIELDS = _get_difficulty_fields()
 
 QUALITY_CATEGORY_MAP = dict(zip(QUALITY_CATEGORIES, QUALITY_FIELDS))
 DIFFICULTY_CATEGORY_MAP = dict(zip(DIFFICULTY_CATEGORIES, DIFFICULTY_FIELDS))
 
 
 def get_difficulty_realm(score: float) -> str:
-    """根据难度均分返回段位描述字符串"""
+    """根据难度均分返回段位描述字符串（从配置读取）"""
+    realms = get_difficulty_realms()
+    max_score = get_difficulty_max_score()
+    
     if score <= 0:
-        return "N/A"
-    if score <= 5:
-        return f"见习一 ({score:.1f}/60)"
-    if score <= 10:
-        return f"见习二 ({score:.1f}/60)"
-    if score <= 15:
-        return f"新手一 ({score:.1f}/60)"
-    if score <= 20:
-        return f"新手二 ({score:.1f}/60)"
-    if score <= 25:
-        return f"入门一 ({score:.1f}/60)"
-    if score <= 30:
-        return f"入门二 ({score:.1f}/60)"
-    if score <= 35:
-        return f"进阶一 ({score:.1f}/60)"
-    if score <= 40:
-        return f"进阶二 ({score:.1f}/60)"
-    if score <= 45:
-        return f"上级一 ({score:.1f}/60)"
-    if score <= 50:
-        return f"上级二 ({score:.1f}/60)"
-    if score <= 55:
-        return f"上级三 ({score:.1f}/60)"
-    return f"论外 ({score:.1f}/60)"
+        # 查找threshold为0的段位
+        for realm in realms:
+            if realm.get("threshold") == 0:
+                return f"{realm['name']} ({score:.1f}/{max_score})"
+        return f"N/A ({score:.1f}/{max_score})"
+    
+    # 按threshold从大到小排序（排除None）
+    sorted_realms = sorted(
+        [r for r in realms if r.get("threshold") is not None],
+        key=lambda x: x["threshold"],
+        reverse=True
+    )
+    
+    # 查找匹配的段位
+    for realm in sorted_realms:
+        threshold = realm.get("threshold")
+        if threshold is not None and score > threshold:
+            return f"{realm['name']} ({score:.1f}/{max_score})"
+    
+    # 如果所有段位都不匹配，返回最后一个（通常是"论外"）
+    if realms:
+        last_realm = realms[-1]
+        return f"{last_realm['name']} ({score:.1f}/{max_score})"
+    
+    return f"N/A ({score:.1f}/{max_score})"
 
 
 def get_updated_difficulty_scores_for_context(

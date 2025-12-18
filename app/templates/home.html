@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}主页 - STG社区评价{% endblock %}
+{% block title %}主页 - {{ site_config.title }}{% endblock %}
 
 {% block content %}
 <style>
@@ -122,8 +122,8 @@
 <!-- Hero 区域 -->
 <div class="hero-section">
     <hgroup>
-        <h1>STG 社区评价</h1>
-        <h2>一个由社区驱动的STG游戏评价平台</h2>
+        <h1>{{ site_config.name }}</h1>
+        <h2>{{ site_config.subtitle }}</h2>
     </hgroup>
 </div>
 
