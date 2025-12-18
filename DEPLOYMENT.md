@@ -31,26 +31,60 @@
 
 ## 快速开始
 
-### 在线一键部署（推荐，从 GitHub 拉取）
+### 方式一：使用 Release 源码包（推荐、服务器无需 git）
 
-本项目已托管在 GitHub 仓库 [`vihithr/FastAPI-Game-Rating-Lite`](https://github.com/vihithr/FastAPI-Game-Rating-Lite.git)，推荐直接在服务器上通过 `curl` 调用部署脚本完成安装。
+本项目提供了 GitHub Release 源码包 [`v0.1.0`](https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz)，适合大多数生产环境部署。
+
+#### 1. 以 root 登录，有域名（HTTPS 模式）
 
 ```bash
-# HTTPS 模式（有域名，自动申请 HTTPS 证书）
-curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
-  sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
+cd /root/rating  # 或任意工作目录
 
-# IP 模式（无域名 / 内网环境，仅 HTTP）
-curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
-  sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
+# 1）下载 v0.1.0 源码包
+curl -L -o stg_website_v0.1.0.tar.gz \
+  https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz
+
+# 2）通过一键脚本从压缩包安装（会启动交互式向导）
+bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-archive /root/rating/stg_website_v0.1.0.tar.gz --domain example.com
 ```
 
-常用可选参数：
+> 将 `example.com` 替换为你的实际域名。如果你是普通用户而非 root，请在最后一行前加上 `sudo`。
+
+#### 2. 以 root 登录，无域名（IP 模式，仅 HTTP）
+
+```bash
+cd /root/rating
+
+curl -L -o stg_website_v0.1.0.tar.gz \
+  https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz
+
+bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-archive /root/rating/stg_website_v0.1.0.tar.gz --ip
+```
+
+### 方式二：始终使用最新 main 分支源码（需要服务器安装 git）
+
+如果希望每次部署都拉取 `main` 分支最新代码，可以使用 `--from-github` 模式（服务器必须安装 `git`）：
+
+```bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --branch main --domain example.com
+```
+
+无域名 / 内网环境可以改用 IP 模式：
+
+```bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --branch main --ip
+```
+
+常用可选参数（可与上述命令组合使用）：
 
 - `--branch <name>`：指定分支（默认 `main`）  
 - `--force`：卸载和静态清理时跳过二次确认（请谨慎使用）  
 
-### 离线 / 本地压缩包部署（无法访问 GitHub 时使用）
+### 方式三：离线 / 本地压缩包部署（无法访问 GitHub 时使用）
 
 如果你的服务器无法访问 GitHub，可以先在本地打包、上传到服务器，再在服务器上解压并运行脚本。
 

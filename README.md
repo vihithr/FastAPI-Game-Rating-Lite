@@ -48,79 +48,27 @@
 
 ### 2. 在线一键部署（推荐，从本仓库拉取）
 
-本项目已经托管在 GitHub 仓库 [`vihithr/FastAPI-Game-Rating-Lite`](https://github.com/vihithr/FastAPI-Game-Rating-Lite.git)，根据你的登录方式分两种常见场景（默认使用 **GitHub Release v0.1.0 源码包**，服务器上无需安装 git）：
+完整的部署说明和所有模式（从 GitHub 克隆、Release 源码包、离线本地包等）已迁移到 `DEPLOYMENT.md`。  
+这里只保留一个**最推荐、可直接复制的生产环境 Quick Start**。
 
-#### 2.1 常见场景：以普通用户登录，使用 `sudo`（推荐，基于 Release v0.1.0 源码包）
-
-**有域名（HTTPS 模式，自动申请证书）**：
-
-```bash
-cd /root/rating  # 或任意工作目录
-
-# 下载 v0.1.0 源码包
-curl -L -o stg_website_v0.1.0.tar.gz \
-  https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz
-
-# 通过一键脚本从压缩包安装
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-  install --from-archive /root/rating/stg_website_v0.1.0.tar.gz --domain example.com
-```
-
-**无域名（IP 模式，仅 HTTP，用于内网 / 临时环境）**：
+**场景：新服务器，直接以 `root` 登录，有域名，使用 Release `v0.1.0` 源码包 + HTTPS：**
 
 ```bash
 cd /root/rating  # 或任意工作目录
 
+# 下载 v0.1.0 源码包（GitHub 自动生成，无需在服务器安装 git）
 curl -L -o stg_website_v0.1.0.tar.gz \
   https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz
 
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-  install --from-archive /root/rating/stg_website_v0.1.0.tar.gz --ip
-```
-
-> 说明：这里使用的是 GitHub 自动生成的 Release 源码包 [`v0.1.0`](https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz)，服务器 **不需要安装 git**。`bash <(curl ...)` 方式保证脚本是交互式的，你可以在安装过程中选择数据库类型和域名 / IP 模式。
-
-#### 2.2 直接以 `root` 登录（无 `sudo` 或最小系统环境）
-
-如果你登录的就是 `root@server`，或者系统里没有安装 `sudo`，请使用下列命令（**去掉 sudo**）：
-
-**有域名（HTTPS 模式）**：
-
-```bash
-cd /root/rating  # 或任意工作目录
-
-curl -L -o stg_website_v0.1.0.tar.gz \
-  https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz
-
+# 通过一键脚本从压缩包安装（会进入交互式向导）
 bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
   install --from-archive /root/rating/stg_website_v0.1.0.tar.gz --domain example.com
 ```
 
-**无域名（IP 模式）**：
-
-```bash
-cd /root/rating  # 或任意工作目录
-
-curl -L -o stg_website_v0.1.0.tar.gz \
-  https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz
-
-bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-  install --from-archive /root/rating/stg_website_v0.1.0.tar.gz --ip
-```
-
-#### 2.3 进阶：从 GitHub 仓库直接克隆（需要服务器安装 git）
-
-如果你的服务器上已经安装了 `git`，也可以继续使用 `--from-github` 方式，总是拉取指定分支的最新代码：
-
-```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --branch main --domain example.com
-```
-
-常用可选参数（可与上面的命令组合使用）：
-
-- `--branch <name>`：指定分支，默认为 `main`  
-- `--force`：跳过卸载 / 静态清理时的二次确认（请谨慎使用）  
+- 将上面命令中的 `example.com` 替换为你的实际域名。  
+- 如果你不是以 `root` 登录，请在最后一行前加上 `sudo` 运行。  
+- 若没有域名、只想用 IP 访问，可把 `--domain example.com` 改成 `--ip`。  
+- 更多部署模式与参数说明请查看 `DEPLOYMENT.md` 中的“快速开始”与“手动部署步骤”章节。  
 
 ### 3. 离线 / 本地部署（可选）
 
