@@ -10,8 +10,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. 全局变量和初始化数据 ---
     const evaluationData = JSON.parse(evaluationDataEl.textContent);
     const sessionData = JSON.parse(document.getElementById('session-data').textContent);
+    const configData = JSON.parse(document.getElementById('config-data')?.textContent || '{}');
     const gameId = document.getElementById('comment-form')?.dataset.gameId;
     let qualityChart, difficultyChart;
+    
+    // 从配置读取评分范围
+    const difficultyMin = configData.difficulty_min || 1;
+    const difficultyMax = configData.difficulty_max || 60;
+    const difficultyMaxScore = configData.difficulty_max_score || 60;
+    const qualityMin = configData.quality_min || 1;
+    const qualityMax = configData.quality_max || 10;
     
     // 用户评分数据（从模板传入或API获取）
     const userRatingsDataEl = document.getElementById('user-ratings-data');
@@ -164,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 maintainAspectRatio: false,
                 scales: {
                     r: {
-                        beginAtZero: true, max: 60,
+                        beginAtZero: true, max: difficultyMax,
                         grid: { color: gridColor },
                         angleLines: { color: gridColor, borderDash: [4, 4] },
                         // --- V3 OPTIMIZATION: Restore and style corner labels ---
@@ -251,7 +259,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		// 获取显示境界的元素
 		const realmDisplay = document.getElementById('overall-difficulty-realm');
 
-		const defaultScores = [{"category": "避弹", "raw_value": 0, "value": "N/A"}, {"category": "策略", "raw_value": 0, "value": "N/A"}, {"category": "执行", "raw_value": 0, "value": "N/A"}];
+		// 从配置读取难度维度
+		const configData = JSON.parse(document.getElementById('config-data')?.textContent || '{}');
+		const difficultyDims = configData.difficulty_dimensions || [];
+		const defaultScores = difficultyDims.map(dim => ({
+			"category": dim.name,
+			"raw_value": 0,
+			"value": "N/A"
+		}));
 		
 		// 更新雷达图
         createOrUpdateDifficultyChart(contextData ? contextData.categories : defaultScores);
@@ -466,29 +481,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 difficultyRatingStatus.style.display = 'inline-block';
             }
             
-            // 填充滑块值
-            if (rating.dodge !== null && rating.dodge !== undefined) {
-                const dodgeSlider = document.getElementById('rating-difficulty-避弹');
-                const dodgeValue = document.getElementById('difficulty-value-避弹');
-                if (dodgeSlider && dodgeValue) {
-                    dodgeSlider.value = rating.dodge;
-                    dodgeValue.value = rating.dodge;
-                }
-            }
-            if (rating.strategy !== null && rating.strategy !== undefined) {
-                const strategySlider = document.getElementById('rating-difficulty-策略');
-                const strategyValue = document.getElementById('difficulty-value-策略');
-                if (strategySlider && strategyValue) {
-                    strategySlider.value = rating.strategy;
-                    strategyValue.value = rating.strategy;
-                }
-            }
-            if (rating.execution !== null && rating.execution !== undefined) {
-                const executionSlider = document.getElementById('rating-difficulty-执行');
-                const executionValue = document.getElementById('difficulty-value-执行');
-                if (executionSlider && executionValue) {
-                    executionSlider.value = rating.execution;
-                    executionValue.value = rating.execution;
+            // 填充滑块值（从配置读取维度）
+            const difficultyDims = configData.difficulty_dimensions || [];
+            for (const dim of difficultyDims) {
+                const field = dim.field;
+                const name = dim.name;
+                if (rating[field] !== null && rating[field] !== undefined) {
+                    const slider = document.getElementById(`rating-difficulty-${name}`);
+                    const valueInput = document.getElementById(`difficulty-value-${name}`);
+                    if (slider && valueInput) {
+                        slider.value = rating[field];
+                        valueInput.value = rating[field];
+                    }
                 }
             }
         } else {
@@ -600,14 +604,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // 更新用户评分数据
         if (!userRatings.difficulty) userRatings.difficulty = {};
         const contextKey = result.updated_context_key;
-        // 从表单获取提交的值
-        const dodge = document.getElementById('rating-difficulty-避弹')?.value;
-        const strategy = document.getElementById('rating-difficulty-策略')?.value;
-        const execution = document.getElementById('rating-difficulty-执行')?.value;
-        userRatings.difficulty[contextKey] = {
-            dodge: dodge ? parseInt(dodge) : null,
-            strategy: strategy ? parseInt(strategy) : null,
-            execution: execution ? parseInt(execution) : null,
+        // 从表单获取提交的值（从配置读取维度）
+        const difficultyDims = configData.difficulty_dimensions || [];
+        const ratingData = {};
+        for (const dim of difficultyDims) {
+            const field = dim.field;
+            const name = dim.name;
+            const value = document.getElementById(`rating-difficulty-${name}`)?.value;
+            ratingData[field] = value ? parseInt(value) : null;
+        }
+        userRatings.difficulty[contextKey] = ratingData;
             difficulty_level_id: formDiffId?.value ? parseInt(formDiffId.value) : null,
             ship_type_id: formShipId?.value ? parseInt(formShipId.value) : null
         };
@@ -927,21 +933,38 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		});
 	}
-	// +++ 新增：JS版本的境界计算函数 +++
+	// +++ 新增：JS版本的境界计算函数（从配置读取） +++
 	function getDifficultyRealmJS(score) {
-		if (score <= 0) return "N/A";
-		if (score <= 5) return "见习一";
-		if (score <= 10) return "见习二";
-		if (score <= 15) return "新手一";
-		if (score <= 20) return "新手二";
-		if (score <= 25) return "入门一";
-		if (score <= 30) return "入门二";
-		if (score <= 35) return "进阶一";
-		if (score <= 40) return "进阶二";
-		if (score <= 45) return "上级一";
-		if (score <= 50) return "上级二";
-		if (score <= 55) return "上级三";
-		return "论外";
+		const realms = configData.difficulty_realms || [];
+		if (!realms.length) {
+			// 如果没有配置，返回N/A
+			return "N/A";
+		}
+		
+		if (score <= 0) {
+			// 查找threshold为0的段位
+			const zeroRealm = realms.find(r => r.threshold === 0);
+			return zeroRealm ? zeroRealm.name : "N/A";
+		}
+		
+		// 按threshold从大到小排序（排除null）
+		const sortedRealms = realms
+			.filter(r => r.threshold !== null && r.threshold !== undefined)
+			.sort((a, b) => b.threshold - a.threshold);
+		
+		// 查找匹配的段位
+		for (const realm of sortedRealms) {
+			if (score > realm.threshold) {
+				return realm.name;
+			}
+		}
+		
+		// 如果所有段位都不匹配，返回最后一个（通常是threshold为null的段位）
+		if (realms.length > 0) {
+			return realms[realms.length - 1].name;
+		}
+		
+		return "N/A";
 	}
     // 确保图标被渲染
     if (window.lucide) {

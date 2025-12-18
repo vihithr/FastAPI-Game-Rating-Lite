@@ -2,7 +2,7 @@
 
 **FastAPI-Game-Rating-Lite** 是一个基于 FastAPI 的轻量级游戏评分 / 社区站点模板，当前主要面向 STG（纵版/弹幕射击）玩家。本目录是该站点的 **独立部署版本**，包含运行线上实例所需的全部代码和运维脚本，适合作为一个完整的 GitHub 开源项目使用。
 
-本项目底层部署技术由 [FastAPI-Caddy-Systemd-OneKey] 提供支持。
+本项目底层部署技术由 [FastAPI-Caddy-Systemd-OneKey](https://github.com/vihithr/FastAPI-Caddy-Systemd-OneKey) 提供支持。
 
 - **后端框架**: Python 3 / FastAPI + SQLAlchemy（SQLite 默认）  
 - **前端**: 服务器端模板渲染（Jinja2），配合少量原生 JS/CSS  

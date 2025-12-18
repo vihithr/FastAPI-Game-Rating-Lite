@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 maintainAspectRatio: false,
                 scales: {
                     r: {
-                        beginAtZero: true, max: 10,
+                        beginAtZero: true, max: 10, // 品质评分最大值，可从配置读取
                         grid: { color: gridColor },
                         angleLines: { color: gridColor, borderDash: [4, 4] },
                         // --- V3 OPTIMIZATION: Restore and style corner labels ---

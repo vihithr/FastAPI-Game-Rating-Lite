@@ -2,7 +2,7 @@
 <html lang="zh-CN" data-theme=""> <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}STG社区评价{% endblock %}</title>
+    <title>{% block title %}{{ site_config.title }}{% endblock %}</title>
     <script>
         // 在首帧渲染前设置主题，避免暗→亮闪烁
         (function() {
@@ -33,7 +33,7 @@
             <button id="nav-toggle" class="nav-toggle" aria-label="打开导航" aria-expanded="false" aria-controls="site-nav">
                 <i data-lucide="menu"></i>
             </button>
-            <a href="/" class="contrast brand-link"><strong>STG Ratings</strong></a>
+            <a href="/" class="contrast brand-link"><strong>{{ site_config.brand }}</strong></a>
         </div>
 		<nav id="site-nav" class="site-nav">
 		  <ul class="nav-primary">

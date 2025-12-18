@@ -7,6 +7,7 @@ from starlette.middleware.sessions import SessionMiddleware
 import secrets
 import os
 from app.config.constants import BASE_DIR
+from app.config.site_config import get_site_config
 from jose import jwt
 
 # 创建所有数据库表
@@ -45,7 +46,10 @@ def init_bounty_categories():
 # 初始化悬赏板块
 init_bounty_categories()
 
-app = FastAPI(title="STG Community Ratings")
+# 从配置读取应用标题
+site_config = get_site_config()
+app_title = site_config.get("app_title", "STG Community Ratings")
+app = FastAPI(title=app_title)
 
 @app.get("/health")
 async def health_check():

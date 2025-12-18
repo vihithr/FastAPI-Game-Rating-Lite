@@ -153,7 +153,7 @@
 <div class="grid">
     <article>
         <header>
-            <h3><i data-lucide="gem"></i> 品质评分历史 ({{ total_quality_ratings }})</h3>
+            <h3><i data-lucide="{{ quality_icon }}"></i> {{ quality_labels.get('community', '品质评分') }}历史 ({{ total_quality_ratings }})</h3>
         </header>
         
         {% if quality_ratings %}
@@ -197,7 +197,7 @@
                         <div class="score-value">{{ rating.story or 'N/A' }}</div>
                     </div>
                     <div class="score-item">
-                        <div class="score-label">平均分</div>
+                        <div class="score-label">{{ ui_text.get('rating', {}).get('average', '平均分') }}</div>
                         <div class="score-value">
                             {% if rating.fun and rating.core and rating.depth and rating.performance and rating.story %}
                                 {{ "%.2f"|format((rating.fun + rating.core + rating.depth + rating.performance + rating.story) / 5.0) }}
@@ -236,7 +236,7 @@
     
     <article>
         <header>
-            <h3><i data-lucide="swords"></i> 难度评分历史 ({{ total_difficulty_ratings }})</h3>
+            <h3><i data-lucide="{{ difficulty_icon }}"></i> {{ difficulty_labels.get('community', '难度评分') }}历史 ({{ total_difficulty_ratings }})</h3>
         </header>
         
         {% if difficulty_ratings %}
@@ -262,29 +262,24 @@
                     {% if rating.difficulty_level %}
                         难度: {{ rating.difficulty_level.name }}
                     {% else %}
-                        难度: 游戏总体
+                        难度: {{ ui_text.get('difficulty_level', {}).get('overall', '游戏总体') }}
                     {% endif %}
                     {% if rating.ship_type %}
                         | 机体: {{ rating.ship_type.name }}
                     {% else %}
-                        | 机体: 全机体/角色
+                        | 机体: {{ ui_text.get('ship_type', {}).get('overall', '全机体/角色') }}
                     {% endif %}
                 </div>
                 <div class="rating-scores">
+                    {% for dim in difficulty_dimensions %}
+                    {% set field = dim.field %}
                     <div class="score-item">
-                        <div class="score-label">避弹</div>
-                        <div class="score-value">{{ rating.dodge or 'N/A' }}</div>
+                        <div class="score-label">{{ dim.name }}</div>
+                        <div class="score-value">{{ rating[field] or 'N/A' }}</div>
                     </div>
+                    {% endfor %}
                     <div class="score-item">
-                        <div class="score-label">策略</div>
-                        <div class="score-value">{{ rating.strategy or 'N/A' }}</div>
-                    </div>
-                    <div class="score-item">
-                        <div class="score-label">执行</div>
-                        <div class="score-value">{{ rating.execution or 'N/A' }}</div>
-                    </div>
-                    <div class="score-item">
-                        <div class="score-label">平均分</div>
+                        <div class="score-label">{{ ui_text.get('rating', {}).get('average', '平均分') }}</div>
                         <div class="score-value">
                             {% if rating.dodge and rating.strategy and rating.execution %}
                                 {{ "%.2f"|format((rating.dodge + rating.strategy + rating.execution) / 3.0) }}

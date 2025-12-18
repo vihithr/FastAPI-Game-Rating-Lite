@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{% if is_edit %}编辑资源{% else %}提交资源{% endif %} - STG社区评价{% endblock %}
+{% block title %}{% if is_edit %}编辑资源{% else %}提交资源{% endif %} - {{ site_config.title }}{% endblock %}
 
 {% block content %}
 <section>

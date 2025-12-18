@@ -431,29 +431,29 @@
     <div class="grid">
         <div style="text-align: center;">
             <hgroup>
-                <h4><i data-lucide="gem"></i> 社区总品质</h4>
+                <h4><i data-lucide="{{ quality_icon }}"></i> {{ quality_labels.get('community_total', '社区总品质') }}</h4>
                 <p id="overall-quality-display" style="font-size: 1.5rem; color: var(--pico-primary);">
                     {% if evaluation.overall_quality_score > 0 %}
                         {{ "%.2f"|format(evaluation.overall_quality_score) }}
                     {% else %}
-                        暂无评分
+                        {{ ui_text.get('rating', {}).get('no_rating', '暂无评分') }}
                     {% endif %}
                 </p>
-                <small id="quality-ratings-count">({{ evaluation.quality_ratings_count }} 条评分)</small>
+                <small id="quality-ratings-count">({{ evaluation.quality_ratings_count }} {{ ui_text.get('rating', {}).get('rating_count', '条评分') }})</small>
             </hgroup>
         </div>
         <div style="text-align: center;">
 			<hgroup>
-				<h4><i data-lucide="swords"></i> 社区难度</h4>
+				<h4><i data-lucide="{{ difficulty_icon }}"></i> {{ difficulty_labels.get('community_total', '社区难度') }}</h4>
                 <div class="grid" style="margin-bottom: 0.5rem; align-items: center;">
                     <select id="difficulty-context-selector">
-                        <option value="0">游戏总体</option>
+                        <option value="0">{{ ui_text.get('difficulty_level', {}).get('overall', '游戏总体') }}</option>
                         {% for diff_level in game.difficulty_levels %}
                             <option value="{{ diff_level.id }}">{{ diff_level.name }}</option>
                         {% endfor %}
                     </select>
                     <select id="ship-context-selector">
-                        <option value="0">全机体/角色</option>
+                        <option value="0">{{ ui_text.get('ship_type', {}).get('overall', '全机体/角色') }}</option>
                         {% for ship_type in game.ship_types %}
                             <option value="{{ ship_type.id }}">{{ ship_type.name }}</option>
                         {% endfor %}
@@ -470,17 +470,17 @@
     </div>
 </article>
 <article>
-    <header><strong><i data-lucide="bar-chart-3"></i> 社区综合评价</strong></header>
+    <header><strong><i data-lucide="bar-chart-3"></i> {{ quality_labels.get('overall', '社区综合评价') }}</strong></header>
     <div class="grid">
         <section>
-            <h4><i data-lucide="gem"></i> 品质评分</h4>
+            <h4><i data-lucide="{{ quality_icon }}"></i> {{ quality_labels.get('community', '品质评分') }}</h4>
             <div class="chart-container">
                 <canvas id="qualityChart"></canvas>
             </div>
         </section>
 
         <section>
-            <h4><i data-lucide="swords"></i> 难度评分</h4>
+            <h4><i data-lucide="{{ difficulty_icon }}"></i> {{ difficulty_labels.get('community', '难度评分') }}</h4>
             <div class="chart-container">
                 <canvas id="difficultyChart"></canvas>
             </div>
@@ -490,26 +490,27 @@
 
 <div class="grid">
     <details>
-        <summary role="button" class="contrast"><i data-lucide="gem"></i> 参与品质评分</summary>
+        <summary role="button" class="contrast"><i data-lucide="{{ quality_icon }}"></i> {{ quality_labels.get('participate', '参与品质评分') }}</summary>
         <div class="rating-section">
             {% if request.state.user %}
                 {% if user_ratings.quality %}
-                <p><small class="user-rating-badge">✓ 已评分</small></p>
+                <p><small class="user-rating-badge">✓ {{ ui_text.get('rating', {}).get('rated', '已评分') }}</small></p>
                 {% endif %}
             <form id="quality-rating-form" action="/game/{{ game.id }}/rate_quality" method="post">
                 <fieldset>
-                    {% set quality_map = {"趣味性": "fun", "核心设计": "core", "深度": "depth", "演出": "performance", "剧情": "story"} %}
-                    {% for cat, field in quality_map.items() %}
+                    {% for dim in quality_dimensions %}
+                    {% set cat = dim.name %}
+                    {% set field = dim.field %}
                     <div style="margin-bottom: 1rem;">
                         <label for="rating-quality-{{cat}}">
                             {{ cat }}
                             {% if user_ratings.quality and user_ratings.quality[field] %}
-                            <span class="rating-value-display">(当前: {{ user_ratings.quality[field] }}/10)</span>
+                            <span class="rating-value-display">({{ ui_text.get('rating', {}).get('current', '当前') }}: {{ user_ratings.quality[field] }}/{{ quality_max }})</span>
                             {% endif %}
                         </label>
                         <div class="star-rating-wrapper">
                             <div class="star-rating" data-category="{{ cat }}">
-                                {% for i in range(10, 0, -1) %}
+                                {% for i in range(quality_max, quality_min - 1, -1) %}
                                 <input type="radio" id="star{{i}}-{{cat}}" name="rating_{{cat}}" value="{{i}}" 
                                        {% if user_ratings.quality and user_ratings.quality[field] == i %}checked{% endif %} />
                                 <label for="star{{i}}-{{cat}}" title="{{i}}分">&#9733;</label>
@@ -522,64 +523,65 @@
                 </fieldset>
                 <input type="hidden" name="user_name" value="{{ request.state.user.username }}">
                 <div class="grid" style="margin-top: 0.5rem;">
-                    <button type="submit">{% if user_ratings.quality %}更新{% else %}提交{% endif %}品质评分</button>
+                    <button type="submit">{% if user_ratings.quality %}{{ quality_labels.get('update', '更新') }}{% else %}{{ quality_labels.get('submit', '提交') }}{% endif %}{{ quality_labels.get('community', '品质评分') }}</button>
                     {% if user_ratings.quality %}
                     <button type="button" id="delete-quality-rating-btn" class="secondary outline" style="justify-self: flex-start;">
-                        撤销我的品质评分
+                        {{ quality_labels.get('delete', '撤销我的品质评分') }}
                     </button>
                     {% endif %}
                 </div>
             </form>
             {% else %}	
-                <p>请<a href="/login?redirect=/game/{{ game.id }}">登录</a>后参与评分</p>
+                <p><a href="/login?redirect=/game/{{ game.id }}">{{ ui_text.get('rating', {}).get('login_to_rate', '请登录后参与评分') }}</a></p>
             {% endif %}
         </div>
     </details>
 
     <details>
-        <summary role="button" class="secondary"><i data-lucide="swords"></i> 参与难度评分</summary>
+        <summary role="button" class="secondary"><i data-lucide="{{ difficulty_icon }}"></i> {{ difficulty_labels.get('participate', '参与难度评分') }}</summary>
         <div class="rating-section">
             {% if request.state.user %}
             <form id="difficulty-rating-form" action="/game/{{ game.id }}/rate_difficulty" method="post">
                 <div style="margin-bottom: 1rem;">
-                    <label><strong>评分情境:</strong></label>
+                    <label><strong>{{ difficulty_labels.get('context', '评分情境:') }}</strong></label>
                     <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 0.5rem;">
                         <select id="form-difficulty-selector" name="difficulty_level_id" style="margin-bottom: 0;">
-                            <option value="">游戏总体</option>
+                            <option value="">{{ ui_text.get('difficulty_level', {}).get('overall', '游戏总体') }}</option>
                             {% for diff_level in game.difficulty_levels %}
                             <option value="{{ diff_level.id }}">{{ diff_level.name }}</option>
                             {% endfor %}
                         </select>
                         <select id="form-ship-selector" name="ship_type_id" style="margin-bottom: 0;">
-                            <option value="">全机体/角色</option>
+                            <option value="">{{ ui_text.get('ship_type', {}).get('overall', '全机体/角色') }}</option>
                             {% for ship_type in game.ship_types %}
                             <option value="{{ ship_type.id }}">{{ ship_type.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <p id="form-context-label" style="color: var(--pico-primary-focus); margin-top: 0.5rem; font-size: 0.9rem;">
-                        游戏总体 | 全机体/角色
+                        {{ ui_text.get('difficulty_level', {}).get('overall', '游戏总体') }} | {{ ui_text.get('ship_type', {}).get('overall', '全机体/角色') }}
                     </p>
-                    <span id="difficulty-rating-status" class="user-rating-badge" style="display: none;">✓ 已评分</span>
+                    <span id="difficulty-rating-status" class="user-rating-badge" style="display: none;">✓ {{ ui_text.get('rating', {}).get('rated', '已评分') }}</span>
                 </div>
                 <fieldset>
-                    {% set difficulty_map = {"避弹": "dodge", "策略": "strategy", "执行": "execution"} %}
-                    {% for cat, field in difficulty_map.items() %}
+                    {% for dim in difficulty_dimensions %}
+                    {% set cat = dim.name %}
+                    {% set field = dim.field %}
                     <div class="slider-container">
                         <label for="rating-difficulty-{{cat}}">{{ cat }}</label>
-                        <input type="range" min="1" max="60" value="30" 
+                        <input type="range" min="{{ difficulty_min }}" max="{{ difficulty_max }}" value="{{ (difficulty_min + difficulty_max) // 2 }}" 
                                id="rating-difficulty-{{cat}}" 
                                name="rating_{{cat}}" 
                                class="difficulty-slider"
                                data-category="{{ cat }}">
                         <div class="slider-value">
                             <input type="number" 
-                                   min="1" 
-                                   max="60" 
+                                   min="{{ difficulty_min }}" 
+                                   max="{{ difficulty_max }}" 
                                    id="difficulty-value-{{cat}}" 
                                    class="difficulty-value-input"
                                    data-category="{{ cat }}"
-                                   value="30"
+                                   value="{{ (difficulty_min + difficulty_max) // 2 }}"
                                    style="width: 100%;">
                         </div>
                     </div>
@@ -587,14 +589,14 @@
                 </fieldset>
                 <input type="hidden" name="user_name" value="{{ request.state.user.username }}">
                 <div class="grid" style="margin-top: 0.5rem;">
-                    <button type="submit">提交难度评分</button>
+                    <button type="submit">{{ difficulty_labels.get('submit', '提交难度评分') }}</button>
                     <button type="button" id="delete-difficulty-rating-btn" class="secondary outline" style="justify-self: flex-start;">
-                        撤销当前情境评分
+                        {{ difficulty_labels.get('delete', '撤销当前情境评分') }}
                     </button>
                 </div>
             </form>
             {% else %}	
-                <p>请<a href="/login?redirect=/game/{{ game.id }}">登录</a>后参与评分</p>
+                <p><a href="/login?redirect=/game/{{ game.id }}">{{ ui_text.get('rating', {}).get('login_to_rate', '请登录后参与评分') }}</a></p>
             {% endif %}
         </div>
     </details>
@@ -645,6 +647,18 @@
 
 <script id="evaluation-data" type="application/json">
     {{ evaluation | tojson | safe }}
+</script>
+<script id="config-data" type="application/json">
+    {
+        "quality_dimensions": {{ quality_dimensions | tojson | safe }},
+        "difficulty_dimensions": {{ difficulty_dimensions | tojson | safe }},
+        "difficulty_min": {{ difficulty_min }},
+        "difficulty_max": {{ difficulty_max }},
+        "quality_min": {{ quality_min }},
+        "quality_max": {{ quality_max }},
+        "difficulty_max_score": {{ difficulty_max_score }},
+        "difficulty_realms": {{ difficulty_realms | tojson | safe }}
+    }
 </script>
 <script id="session-data" type="application/json">
     {

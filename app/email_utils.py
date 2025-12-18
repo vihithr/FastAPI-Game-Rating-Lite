@@ -4,6 +4,7 @@ import os
 from redmail import EmailSender
 
 from app.config.constants import SITE_BASE_URL
+from app.config.site_config import get_email_config, get_site_config
 
 # 本地发信：通过 VPS 上的 Postfix/Sendmail，连接 localhost:25，无需认证/加密
 LOCAL_MAIL_HOST = os.getenv("STG_LOCAL_MAIL_HOST", "localhost")
@@ -31,16 +32,26 @@ async def send_password_reset_email(email: str, token: str) -> None:
     """
     base_url = SITE_BASE_URL.rstrip("/")
     reset_url = f"{base_url}/password-reset?token={token}"
-    subject = "STG 社区 - 密码重置通知"
+    
+    # 从配置获取邮件模板和站点名称
+    email_config = get_email_config()
+    site_config = get_site_config()
+    site_name = site_config.get("name", "STG 社区")
+    
+    subject_template = email_config.get("password_reset", {}).get("subject_template", "{site_name} - 密码重置通知")
+    title_template = email_config.get("password_reset", {}).get("title_template", "{site_name} 密码重置")
+    
+    subject = subject_template.format(site_name=site_name)
+    email_title = title_template.format(site_name=site_name)
 
     # 简洁版 HTML，减少花哨布局，降低被拦截概率
     body = f"""
     <html>
       <body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827;background-color:#f9fafb;">
         <div style="max-width:560px;margin:16px auto;padding:16px 20px;background:#ffffff;border:1px solid #e5e7eb;border-radius:6px;">
-          <h2 style="margin:0 0 12px 0;font-size:18px;color:#111827;">STG 社区密码重置</h2>
+          <h2 style="margin:0 0 12px 0;font-size:18px;color:#111827;">{email_title}</h2>
           <p style="margin:0 0 8px 0;line-height:1.6;">
-            您（或他人）请求重置 STG 社区账户密码。如果这不是您的操作，您可以忽略本邮件。
+            您（或他人）请求重置 {site_name} 账户密码。如果这不是您的操作，您可以忽略本邮件。
           </p>
           <p style="margin:12px 0;">
             请点击下面的链接在浏览器中重置密码（链接在一定时间后会失效）：

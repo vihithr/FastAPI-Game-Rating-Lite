@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}添加新作品 - STG社区评价{% endblock %}
+{% block title %}添加新作品 - {{ site_config.title }}{% endblock %}
 
 {% block content %}
 <article>
@@ -58,7 +58,7 @@
         </div>
         <input type="hidden" name="difficulty_levels" id="difficulty_levels-hidden-input">
 
-        <label for="ship_types-input">机体/角色名称 (选填, 输入后按回车或逗号分隔)</label>
+        <label for="ship_types-input">{{ site_config.ui_text.get('ship_type', {}).get('label', '机体/角色') }}名称 (选填, 输入后按回车或逗号分隔)</label>
         <div id="ship_types-container" class="tag-input-container">
             <input type="text" id="ship_types-input" placeholder="例如: Type-A, Type-B, Reimu Hakurei, Marisa Kirisame">
         </div>

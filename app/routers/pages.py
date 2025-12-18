@@ -6,6 +6,12 @@ from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from .. import models, database, auth
 from app.config.templates import templates
 from app.config.constants import BASE_DIR, MAX_TAGS_DISPLAY
+from app.config.site_config import (
+    get_stats_columns, get_quality_dimensions, get_difficulty_dimensions,
+    get_quality_labels, get_difficulty_labels, get_quality_icon, get_difficulty_icon,
+    get_ui_text, get_quality_min, get_quality_max, get_difficulty_min, get_difficulty_max,
+    get_difficulty_realms, get_difficulty_max_score
+)
 from app.utils.ratings import get_game_evaluation
 from pathlib import Path
 import secrets
@@ -240,6 +246,7 @@ def difficulty_stats(
 ):
     """难度评分统计页面"""
     from app.utils.ratings import get_difficulty_realm
+    ui_text = get_ui_text()
     
     # 获取所有游戏及其难度评分
     games = db.query(models.Game).options(
@@ -263,26 +270,34 @@ def difficulty_stats(
             if not ratings:
                 continue
             
-            # 计算平均分
-            dodge_scores = [r.dodge for r in ratings if r.dodge is not None]
-            strategy_scores = [r.strategy for r in ratings if r.strategy is not None]
-            execution_scores = [r.execution for r in ratings if r.execution is not None]
+            # 计算平均分（从配置动态读取维度字段）
+            from app.config.site_config import get_difficulty_dimensions
+            difficulty_dims = get_difficulty_dimensions()
             
-            dodge_avg = sum(dodge_scores) / len(dodge_scores) if dodge_scores else 0
-            strategy_avg = sum(strategy_scores) / len(strategy_scores) if strategy_scores else 0
-            execution_avg = sum(execution_scores) / len(execution_scores) if execution_scores else 0
+            dim_scores = {}
+            dim_avgs = {}
+            for dim in difficulty_dims:
+                field = dim["field"]
+                scores = [getattr(r, field) for r in ratings if getattr(r, field) is not None]
+                dim_scores[field] = scores
+                dim_avgs[field] = sum(scores) / len(scores) if scores else 0
             
-            valid_dims = sum(1 for scores in [dodge_scores, strategy_scores, execution_scores] if scores)
-            overall_avg = (dodge_avg + strategy_avg + execution_avg) / valid_dims if valid_dims > 0 else 0
+            valid_dims = sum(1 for scores in dim_scores.values() if scores)
+            overall_avg = sum(dim_avgs.values()) / valid_dims if valid_dims > 0 else 0
             
-            # 获取难度等级和机体名称
-            difficulty_level_name = "游戏总体"
+            # 为了向后兼容，保留原有的字段名（如果配置中有这些字段）
+            dodge_avg = dim_avgs.get("dodge", 0)
+            strategy_avg = dim_avgs.get("strategy", 0)
+            execution_avg = dim_avgs.get("execution", 0)
+            
+            # 获取难度等级和机体名称（从配置读取）
+            difficulty_level_name = ui_text.get("difficulty_level", {}).get("overall", "游戏总体")
             if diff_id:
                 diff_level = next((dl for dl in game.difficulty_levels if dl.id == diff_id), None)
                 if diff_level:
                     difficulty_level_name = diff_level.name
             
-            ship_type_name = "全机体/角色"
+            ship_type_name = ui_text.get("ship_type", {}).get("overall", "全机体/角色")
             if ship_id:
                 ship = next((s for s in game.ship_types if s.id == ship_id), None)
                 if ship:
@@ -300,6 +315,8 @@ def difficulty_stats(
                 "dodge_avg": round(dodge_avg, 2),
                 "strategy_avg": round(strategy_avg, 2),
                 "execution_avg": round(execution_avg, 2),
+                # 添加所有维度的平均值（动态，用于向后兼容）
+                **{f"{dim['field']}_avg": round(dim_avgs.get(dim['field'], 0), 2) for dim in difficulty_dims},
                 "overall_avg": round(overall_avg, 2),
                 "realm": get_difficulty_realm(overall_avg),
                 "rating_count": len(ratings)
@@ -314,6 +331,9 @@ def difficulty_stats(
     all_tags = sorted({tag for entry in stats_data for tag in entry["tags"]})
     all_companies = sorted({entry["game_company"] for entry in stats_data})
     
+    # 从配置获取统计列名和UI文本
+    stats_columns = get_stats_columns()
+    
     return templates.TemplateResponse("difficulty_stats.html", {
         "request": request,
         "stats_data": stats_data,
@@ -321,7 +341,9 @@ def difficulty_stats(
         "all_difficulty_levels": all_difficulty_levels,
         "all_ship_types": all_ship_types,
         "all_tags": all_tags,
-        "all_companies": all_companies
+        "all_companies": all_companies,
+        "stats_columns": stats_columns,
+        "ui_text": ui_text
     })
 
 @router.get("/game/{game_id}", response_class=HTMLResponse)
@@ -378,11 +400,40 @@ def read_game(request: Request, game_id: int, db: Session = Depends(database.get
                     'ship_type_id': rating.ship_type_id
                 }
     
+    # 获取配置数据传递给模板
+    quality_dimensions = get_quality_dimensions()
+    difficulty_dimensions = get_difficulty_dimensions()
+    quality_labels = get_quality_labels()
+    difficulty_labels = get_difficulty_labels()
+    quality_icon = get_quality_icon()
+    difficulty_icon = get_difficulty_icon()
+    ui_text = get_ui_text()
+    quality_min = get_quality_min()
+    quality_max = get_quality_max()
+    difficulty_min = get_difficulty_min()
+    difficulty_max = get_difficulty_max()
+    from app.config.site_config import get_difficulty_realms, get_difficulty_max_score
+    difficulty_realms = get_difficulty_realms()
+    difficulty_max_score = get_difficulty_max_score()
+    
     return templates.TemplateResponse("game_details.html", {
         "request": request, 
         "game": game, 
         "evaluation": evaluation,
-        "user_ratings": user_ratings
+        "user_ratings": user_ratings,
+        "quality_dimensions": quality_dimensions,
+        "difficulty_dimensions": difficulty_dimensions,
+        "quality_labels": quality_labels,
+        "difficulty_labels": difficulty_labels,
+        "quality_icon": quality_icon,
+        "difficulty_icon": difficulty_icon,
+        "ui_text": ui_text,
+        "quality_min": quality_min,
+        "quality_max": quality_max,
+        "difficulty_min": difficulty_min,
+        "difficulty_max": difficulty_max,
+        "difficulty_realms": difficulty_realms,
+        "difficulty_max_score": difficulty_max_score
     })
 
 @router.get("/add-game", response_class=HTMLResponse)
@@ -601,6 +652,13 @@ def user_profile(
         if valid_count > 0:
             avg_difficulty_score = round(total_difficulty / valid_count, 2)
     
+    # 获取配置数据传递给模板
+    quality_dimensions = get_quality_dimensions()
+    difficulty_dimensions = get_difficulty_dimensions()
+    ui_text = get_ui_text()
+    quality_icon = get_quality_icon()
+    difficulty_icon = get_difficulty_icon()
+    
     return templates.TemplateResponse("user_profile.html", {
         "request": request,
         "profile_user": user,
@@ -615,5 +673,10 @@ def user_profile(
         "quality_per_page": quality_per_page,
         "difficulty_per_page": difficulty_per_page,
         "quality_total_pages": quality_total_pages,
-        "difficulty_total_pages": difficulty_total_pages
+        "difficulty_total_pages": difficulty_total_pages,
+        "quality_dimensions": quality_dimensions,
+        "difficulty_dimensions": difficulty_dimensions,
+        "ui_text": ui_text,
+        "quality_icon": quality_icon,
+        "difficulty_icon": difficulty_icon
     })

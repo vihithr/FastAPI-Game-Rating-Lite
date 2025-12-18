@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}难度评分统计 - STG社区评价{% endblock %}
+{% block title %}难度评分统计 - {{ site_config.title }}{% endblock %}
 
 {% block content %}
 <style>
@@ -117,7 +117,7 @@
             <label for="filter-difficulty">难度等级</label>
             <select id="filter-difficulty">
                 <option value="">全部难度</option>
-                <option value="0">游戏总体</option>
+                <option value="0">{{ ui_text.get('difficulty_level', {}).get('overall', '游戏总体') }}</option>
                 {% for diff in all_difficulty_levels %}
                 <option value="{{ diff.id }}">{{ diff.name }}</option>
                 {% endfor %}
@@ -127,7 +127,7 @@
             <label for="filter-ship">机体/角色</label>
             <select id="filter-ship">
                 <option value="">全部机体</option>
-                <option value="0">全机体/角色</option>
+                <option value="0">{{ ui_text.get('ship_type', {}).get('overall', '全机体/角色') }}</option>
                 {% for ship in all_ship_types %}
                 <option value="{{ ship.id }}">{{ ship.name }}</option>
                 {% endfor %}
@@ -149,15 +149,15 @@
         <table id="stats-table">
             <thead>
                 <tr>
-                    <th class="sortable" data-sort="game_title">游戏</th>
-                    <th class="sortable" data-sort="difficulty_level_name">难度等级</th>
-                    <th class="sortable" data-sort="ship_type_name">机体/角色</th>
-                    <th class="sortable" data-sort="dodge_avg">避弹</th>
-                    <th class="sortable" data-sort="strategy_avg">策略</th>
-                    <th class="sortable" data-sort="execution_avg">执行</th>
-                    <th class="sortable" data-sort="overall_avg">平均分</th>
-                    <th class="sortable" data-sort="realm">段位</th>
-                    <th class="sortable" data-sort="rating_count">评分数</th>
+                    <th class="sortable" data-sort="game_title">{{ stats_columns.get('game', '游戏') }}</th>
+                    <th class="sortable" data-sort="difficulty_level_name">{{ stats_columns.get('difficulty_level', '难度等级') }}</th>
+                    <th class="sortable" data-sort="ship_type_name">{{ stats_columns.get('ship_type', '机体/角色') }}</th>
+                    <th class="sortable" data-sort="dodge_avg">{{ stats_columns.get('dodge', '避弹') }}</th>
+                    <th class="sortable" data-sort="strategy_avg">{{ stats_columns.get('strategy', '策略') }}</th>
+                    <th class="sortable" data-sort="execution_avg">{{ stats_columns.get('execution', '执行') }}</th>
+                    <th class="sortable" data-sort="overall_avg">{{ stats_columns.get('overall_avg', '平均分') }}</th>
+                    <th class="sortable" data-sort="realm">{{ stats_columns.get('realm', '段位') }}</th>
+                    <th class="sortable" data-sort="rating_count">{{ stats_columns.get('rating_count', '评分数') }}</th>
                     <th>操作</th>
                 </tr>
             </thead>
@@ -188,7 +188,13 @@
 </div>
 
 <script id="stats-data" type="application/json">
-    {{ stats_data | tojson | safe }}
+{{ stats_data | tojson | safe }}
+</script>
+
+<script id="config-data" type="application/json">
+{
+    "ui_text": {{ ui_text | tojson | safe }}
+}
 </script>
 
 <script>
@@ -197,6 +203,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.getElementById('stats-tbody');
     const resultCount = document.getElementById('result-count');
     const noDataMessage = document.getElementById('no-data-message');
+    
+    // 读取配置数据
+    const configData = JSON.parse(document.getElementById('config-data')?.textContent || '{}');
+    const uiText = configData.ui_text || {};
+    const difficultyLevelOverall = uiText.difficulty_level?.overall || '游戏总体';
+    const shipTypeOverall = uiText.ship_type?.overall || '全机体/角色';
     
     let currentSort = { field: null, direction: 'asc' };
     let filteredData = [...statsData];
@@ -282,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const diffs = Array.from(diffIds).sort((a, b) => a - b).map(id => ({
             value: id,
-            label: difficultyNames[id] || '游戏总体'
+            label: difficultyNames[id] || difficultyLevelOverall
         }));
         // 保证总体选项在前
         diffs.sort((a, b) => {
@@ -305,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const ships = Array.from(shipIds).sort((a, b) => a - b).map(id => ({
             value: id,
-            label: shipNames[id] || '全机体/角色'
+            label: shipNames[id] || shipTypeOverall
         }));
         ships.sort((a, b) => {
             if (a.value === 0) return -1;
