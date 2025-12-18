@@ -29,6 +29,26 @@
 - **内存**: **512MB RAM 或更多**
 - **磁盘**: SSD 推荐，至少 **1GB 可用空间**（便于后续文章、封面等内容增长）
 
+### 实测资源占用示例（Vultr 512MB Debian 12）
+
+以下数据来自一台全新部署后的 Vultr 实例（约 512MB 内存，无 Swap），仅运行本项目和基础系统服务。
+
+- **整体内存情况**（`free -m`）：
+  - 总内存：约 **452MB**
+  - 已用：约 **289MB**
+  - buff/cache：约 **173MB**
+  - 可用（available）：约 **163MB**
+
+- **主要进程占用**（`top` / `htop`）：
+  - `stg_website.service`（Gunicorn + FastAPI 应用）：约 **80–90MB RES**（3 个 worker，总常驻约 160MB 左右）
+  - `caddy` 反向代理：约 **25–30MB RES**
+  - 其他系统服务（`systemd`、`sshd`、`postfix` 等）：合计几十 MB
+
+在 512MB 内存的机器上，站点可以稳定运行，并留有一定空间用于系统缓冲和轻度访问压力。如需更大的连接数或更高并发，建议：
+
+- 将内存提升到 **1GB**，或  
+- 在 `.env` / `gunicorn_config.py` 中适当调整 Gunicorn worker 数量。  
+
 ## 快速开始
 
 ### 方式一：使用 Release 源码包（一行命令完成下载 + 安装，推荐）
