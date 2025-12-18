@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }}{% endblock %}
+
+{% block content %}
+<article>
+    <header>
+        <h1>{{ article.title }}</h1>
+        <small style="color: var(--pico-muted-color);">
+            作者 {% if article.author %}<a href="/user/{{ article.author.id }}">{{ article.author.username }}</a>{% else %}管理员{% endif %} ·
+            发布于 {{ article.created_at.strftime('%Y-%m-%d %H:%M') }}
+        </small>
+    </header>
+    <hr>
+    <div>
+        {{ article.content_html | safe }}
+    </div>
+
+    {% if article.static_path %}
+    <div style="margin-top: 1rem;">
+        <strong>静态资料：</strong>
+        <a href="/article/{{ article.slug }}/static" target="_blank">进入静态入口</a>
+        <small style="color: var(--pico-muted-color);">自动尝试 index.html / index.htm，若无则浏览静态目录。</small>
+    </div>
+    {% endif %}
+
+    {% if request.state.user and request.state.user.is_admin %}
+    <div style="margin-top: 1rem;" class="grid">
+        <a href="/admin/articles/{{ article.id }}/edit" role="button" class="secondary outline">编辑</a>
+        <form action="/admin/articles/{{ article.id }}/delete" method="post" onsubmit="return confirm('确定删除该文章？');">
+            <button type="submit" class="secondary">删除</button>
+        </form>
+    </div>
+    {% endif %}
+</article>
+{% endblock %}
+

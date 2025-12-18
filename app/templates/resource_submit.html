@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}编辑资源{% else %}提交资源{% endif %} - STG社区评价{% endblock %}
+
+{% block content %}
+<section>
+  <h2>{% if is_edit %}编辑资源{% else %}提交新资源{% endif %}</h2>
+
+  <p>请粘贴网盘链接、提取码、解压密码等信息到「提交内容」中，注意不要泄露个人隐私。</p>
+
+  <form method="post" enctype="multipart/form-data">
+    <label>
+      资源标题 *
+      <input type="text" name="title" value="{{ (resource.title if resource else '') }}" required>
+    </label>
+
+    <label>
+      分类（任意字符串，建议从下列枚举中选择） *
+      <input list="resource-categories" name="category" value="{{ (resource.category if resource else '') }}" required>
+      <datalist id="resource-categories">
+        {% for cat in suggested_categories %}
+          <option value="{{ cat }}"></option>
+        {% endfor %}
+      </datalist>
+    </label>
+
+    <label>
+      标签（空格或逗号分隔，用于搜索） *
+      <input type="text" name="tags" value="{{ tags_str if tags_str is defined else '' }}" placeholder="例如：东方 MAME 录屏" required>
+    </label>
+
+    <label>
+      提交内容（网盘链接 / 提取码 / 解压密码 / 说明） *
+      <textarea name="content" rows="6" required>{{ (resource.content if resource else '') }}</textarea>
+    </label>
+
+    <label>
+      资源介绍（可选）
+      <textarea name="intro" rows="4">{{ (resource.intro if resource and resource.intro else '') }}</textarea>
+    </label>
+
+    <label>
+      封面图（可选，&lt; 1MB，JPG/PNG/WEBP/GIF）
+      <input type="file" name="cover" accept="image/jpeg,image/png,image/gif,image/webp">
+    </label>
+
+    <div style="display:flex; justify-content:flex-end; gap:.75rem;">
+      <a href="/resources" role="button" class="secondary">返回列表</a>
+      <button type="submit">{% if is_edit %}保存修改{% else %}提交{% endif %}</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
+
+

@@ -1,0 +1,36 @@
+[Unit]
+Description=STG Community Website (FastAPI)
+After=network.target postgresql.service
+
+[Service]
+Type=notify
+User=stg_website
+Group=stg_website
+WorkingDirectory=/opt/stg_website
+Environment="PATH=/opt/stg_website/venv/bin"
+EnvironmentFile=-/opt/stg_website/.env
+ExecStart=/opt/stg_website/venv/bin/gunicorn \
+    --config /opt/stg_website/gunicorn_config.py \
+    app.main:app
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=10
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/stg_website
+
+# Resource limits
+LimitNOFILE=65536
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stg_website
+
+[Install]
+WantedBy=multi-user.target
+

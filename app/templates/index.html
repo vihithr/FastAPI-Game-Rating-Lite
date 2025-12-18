@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STG社区评价</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>
+</head>
+<body>
+    <main class="container">
+        <hgroup>
+            <h1>STG 社区评价</h1>
+            <h2>一个由社区驱动的STG游戏评价平台</h2>
+        </hgroup>
+        
+        <div class="grid">
+            <article class="two-thirds">
+                <header>
+                    <input type="search" id="search-box" name="search" placeholder="筛选游戏...">
+                </header>
+                <div id="game-list">
+                    {% for game in games %}
+                        <a href="/game/{{ game.id }}" role="button" class="secondary outline game-link" data-search-term="{{ game.title.lower() }} {{ game.aliases.lower() }}">
+                            {{ game.title }} <small>({{ game.company }})</small>
+                        </a>
+                    {% else %}
+                        <p>还没有任何作品，快添加一个吧！</p>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <article class="one-third">
+                <h3><i data-lucide="plus-circle" style="vertical-align: middle; width: 1em;"></i> 添加新作品</h3>
+                <form action="/add_game" method="post">
+                    <label for="company">公司</label>
+                    <input type="text" name="company" id="company" placeholder="例如: Cave" required>
+                    
+                    <label for="title">作品名</label>
+                    <input type="text" name="title" id="title" placeholder="例如: 怒首领蜂" required>
+
+                    <label for="aliases">别名 (用空格分隔)</label>
+                    <input type="text" name="aliases" id="aliases" placeholder="例如: do Pachi">
+                    
+                    <button type="submit">确认添加</button>
+                </form>
+            </article>
+        </div>
+    </main>
+    <script>
+        lucide.createIcons();
+
+        // [全新] 游戏列表即时筛选脚本
+        const searchBox = document.getElementById('search-box');
+        const gameLinks = document.querySelectorAll('.game-link');
+
+        searchBox.addEventListener('input', function(event) {
+            const searchTerm = event.target.value.toLowerCase();
+
+            gameLinks.forEach(function(link) {
+                const linkSearchData = link.dataset.searchTerm;
+                if (linkSearchData.includes(searchTerm)) {
+                    link.style.display = 'block'; // 匹配则显示
+                } else {
+                    link.style.display = 'none'; // 不匹配则隐藏
+                }
+            });
+        });
+    </script>
+</body>
+</html>

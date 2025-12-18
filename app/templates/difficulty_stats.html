@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}难度评分统计 - STG社区评价{% endblock %}
+
+{% block content %}
+<style>
+    .stats-container {
+        margin: 2rem 0;
+    }
+    .filters {
+        background: var(--pico-card-background-color);
+        border-radius: var(--pico-border-radius);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .filters .grid {
+        gap: 1rem;
+    }
+    .stats-table {
+        width: 100%;
+        overflow-x: auto;
+    }
+    .stats-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .stats-table th {
+        background: var(--pico-card-background-color);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        cursor: pointer;
+        user-select: none;
+    }
+    .stats-table th:hover {
+        background: var(--pico-primary-background);
+    }
+    .stats-table th.sortable::after {
+        content: " ↕";
+        opacity: 0.5;
+        font-size: 0.8em;
+    }
+    .stats-table th.sort-asc::after {
+        content: " ↑";
+        opacity: 1;
+    }
+    .stats-table th.sort-desc::after {
+        content: " ↓";
+        opacity: 1;
+    }
+    .stats-table td, .stats-table th {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--pico-muted-border-color);
+    }
+    .stats-table tr:hover {
+        background: var(--pico-card-background-color);
+    }
+    .realm-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        background: var(--pico-primary-background);
+        color: var(--pico-primary-inverse);
+        border-radius: var(--pico-border-radius);
+        font-size: 0.9rem;
+        font-weight: bold;
+    }
+    .score-cell {
+        text-align: center;
+        font-weight: 500;
+    }
+    .no-data {
+        text-align: center;
+        padding: 2rem;
+        color: var(--pico-muted-color);
+    }
+</style>
+
+<article>
+    <header>
+        <h1><i data-lucide="bar-chart-3"></i> 难度评分统计</h1>
+        <p>查看所有游戏所有机体的难度分级和评分</p>
+    </header>
+</article>
+
+<div class="filters">
+    <h3>筛选条件</h3>
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div>
+            <label for="filter-tag">标签</label>
+            <select id="filter-tag">
+                <option value="">全部标签</option>
+                {% for tag in all_tags %}
+                <option value="{{ tag }}">{{ tag }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="filter-company">公司</label>
+            <select id="filter-company">
+                <option value="">全部公司</option>
+                {% for company in all_companies %}
+                <option value="{{ company }}">{{ company }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="filter-game">游戏</label>
+            <select id="filter-game">
+                <option value="">全部游戏</option>
+                {% for game in all_games %}
+                <option value="{{ game.id }}">{{ game.title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="filter-difficulty">难度等级</label>
+            <select id="filter-difficulty">
+                <option value="">全部难度</option>
+                <option value="0">游戏总体</option>
+                {% for diff in all_difficulty_levels %}
+                <option value="{{ diff.id }}">{{ diff.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="filter-ship">机体/角色</label>
+            <select id="filter-ship">
+                <option value="">全部机体</option>
+                <option value="0">全机体/角色</option>
+                {% for ship in all_ship_types %}
+                <option value="{{ ship.id }}">{{ ship.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="filter-min-rating">最少评分数量</label>
+            <input type="number" id="filter-min-rating" min="0" value="0" placeholder="0">
+        </div>
+    </div>
+    <div style="margin-top: 1rem;">
+        <button id="reset-filters" class="secondary outline">重置筛选</button>
+        <span id="result-count" style="margin-left: 1rem; color: var(--pico-muted-color);"></span>
+    </div>
+</div>
+
+<div class="stats-container">
+    <div class="stats-table">
+        <table id="stats-table">
+            <thead>
+                <tr>
+                    <th class="sortable" data-sort="game_title">游戏</th>
+                    <th class="sortable" data-sort="difficulty_level_name">难度等级</th>
+                    <th class="sortable" data-sort="ship_type_name">机体/角色</th>
+                    <th class="sortable" data-sort="dodge_avg">避弹</th>
+                    <th class="sortable" data-sort="strategy_avg">策略</th>
+                    <th class="sortable" data-sort="execution_avg">执行</th>
+                    <th class="sortable" data-sort="overall_avg">平均分</th>
+                    <th class="sortable" data-sort="realm">段位</th>
+                    <th class="sortable" data-sort="rating_count">评分数</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="stats-tbody">
+                {% for stat in stats_data %}
+                <tr data-game-id="{{ stat.game_id }}"
+                    data-difficulty-id="{{ stat.difficulty_level_id }}"
+                    data-ship-id="{{ stat.ship_type_id }}"
+                    data-rating-count="{{ stat.rating_count }}">
+                    <td><strong>{{ stat.game_title }}</strong><br><small>{{ stat.game_company }}</small></td>
+                    <td>{{ stat.difficulty_level_name }}</td>
+                    <td>{{ stat.ship_type_name }}</td>
+                    <td class="score-cell">{{ stat.dodge_avg }}</td>
+                    <td class="score-cell">{{ stat.strategy_avg }}</td>
+                    <td class="score-cell">{{ stat.execution_avg }}</td>
+                    <td class="score-cell"><strong>{{ stat.overall_avg }}</strong></td>
+                    <td><span class="realm-badge">{{ stat.realm.split(' ')[0] }}</span></td>
+                    <td class="score-cell">{{ stat.rating_count }}</td>
+                    <td><a href="/game/{{ stat.game_id }}" class="contrast">查看详情</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div id="no-data-message" class="no-data" style="display: none;">
+        <p>没有找到符合条件的数据</p>
+    </div>
+</div>
+
+<script id="stats-data" type="application/json">
+    {{ stats_data | tojson | safe }}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const statsData = JSON.parse(document.getElementById('stats-data').textContent);
+    const tbody = document.getElementById('stats-tbody');
+    const resultCount = document.getElementById('result-count');
+    const noDataMessage = document.getElementById('no-data-message');
+    
+    let currentSort = { field: null, direction: 'asc' };
+    let filteredData = [...statsData];
+    
+    // 筛选功能
+    const filterTag = document.getElementById('filter-tag');
+    const filterCompany = document.getElementById('filter-company');
+    const filterGame = document.getElementById('filter-game');
+    const filterDifficulty = document.getElementById('filter-difficulty');
+    const filterShip = document.getElementById('filter-ship');
+    const filterMinRating = document.getElementById('filter-min-rating');
+    const resetFilters = document.getElementById('reset-filters');
+
+    // 建立基础索引，便于级联筛选
+    const gameIndex = {};
+    const difficultyNames = {};
+    const shipNames = {};
+    statsData.forEach(stat => {
+        // 记录游戏 -> 标签/公司/可用情境
+        if (!gameIndex[stat.game_id]) {
+            gameIndex[stat.game_id] = {
+                id: stat.game_id,
+                title: stat.game_title,
+                company: stat.game_company,
+                tags: stat.tags || [],
+                difficulties: new Set(),
+                ships: new Set()
+            };
+        }
+        gameIndex[stat.game_id].difficulties.add(stat.difficulty_level_id);
+        gameIndex[stat.game_id].ships.add(stat.ship_type_id);
+
+        // 记录名称映射
+        difficultyNames[stat.difficulty_level_id] = stat.difficulty_level_name;
+        shipNames[stat.ship_type_id] = stat.ship_type_name;
+    });
+
+    function populateSelect(selectEl, options, placeholder) {
+        const currentValue = selectEl.value;
+        selectEl.innerHTML = '';
+        if (placeholder) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = placeholder;
+            selectEl.appendChild(opt);
+        }
+        options.forEach(optData => {
+            const opt = document.createElement('option');
+            opt.value = String(optData.value);
+            opt.textContent = optData.label;
+            selectEl.appendChild(opt);
+        });
+        // 如果原值仍然存在则保持，否则重置为空
+        const hasValue = options.some(o => String(o.value) === currentValue);
+        selectEl.value = hasValue ? currentValue : '';
+    }
+
+    function currentGameCandidates() {
+        const tag = filterTag.value;
+        const company = filterCompany.value;
+        return Object.values(gameIndex).filter(g => {
+            const matchTag = !tag || g.tags.includes(tag);
+            const matchCompany = !company || g.company === company;
+            return matchTag && matchCompany;
+        });
+    }
+
+    function updateGameOptions() {
+        const candidates = currentGameCandidates();
+        const gameOptions = candidates.map(g => ({ value: g.id, label: g.title }));
+        populateSelect(filterGame, gameOptions, '全部游戏');
+    }
+
+    function updateDifficultyOptions() {
+        const candidates = currentGameCandidates();
+        const gameId = filterGame.value;
+        let diffIds = new Set();
+        if (gameId) {
+            const g = gameIndex[parseInt(gameId, 10)];
+            if (g) diffIds = g.difficulties;
+        } else {
+            candidates.forEach(g => g.difficulties.forEach(id => diffIds.add(id)));
+        }
+        const diffs = Array.from(diffIds).sort((a, b) => a - b).map(id => ({
+            value: id,
+            label: difficultyNames[id] || '游戏总体'
+        }));
+        // 保证总体选项在前
+        diffs.sort((a, b) => {
+            if (a.value === 0) return -1;
+            if (b.value === 0) return 1;
+            return a.label.localeCompare(b.label, 'zh-CN');
+        });
+        populateSelect(filterDifficulty, diffs, '全部难度');
+    }
+
+    function updateShipOptions() {
+        const candidates = currentGameCandidates();
+        const gameId = filterGame.value;
+        let shipIds = new Set();
+        if (gameId) {
+            const g = gameIndex[parseInt(gameId, 10)];
+            if (g) shipIds = g.ships;
+        } else {
+            candidates.forEach(g => g.ships.forEach(id => shipIds.add(id)));
+        }
+        const ships = Array.from(shipIds).sort((a, b) => a - b).map(id => ({
+            value: id,
+            label: shipNames[id] || '全机体/角色'
+        }));
+        ships.sort((a, b) => {
+            if (a.value === 0) return -1;
+            if (b.value === 0) return 1;
+            return a.label.localeCompare(b.label, 'zh-CN');
+        });
+        populateSelect(filterShip, ships, '全部机体');
+    }
+    
+    function applyFilters() {
+        const gameId = filterGame.value;
+        const difficultyId = filterDifficulty.value;
+        const shipId = filterShip.value;
+        const minRating = parseInt(filterMinRating.value) || 0;
+        const tag = filterTag.value;
+        const company = filterCompany.value;
+        
+        filteredData = statsData.filter(stat => {
+            if (tag && !(stat.tags || []).includes(tag)) return false;
+            if (company && stat.game_company !== company) return false;
+            if (gameId && stat.game_id.toString() !== gameId) return false;
+            if (difficultyId !== '' && stat.difficulty_level_id.toString() !== difficultyId) return false;
+            if (shipId !== '' && stat.ship_type_id.toString() !== shipId) return false;
+            if (stat.rating_count < minRating) return false;
+            return true;
+        });
+        
+        renderTable();
+        updateResultCount();
+    }
+    
+    function updateResultCount() {
+        resultCount.textContent = `共找到 ${filteredData.length} 条记录`;
+    }
+    
+    function renderTable() {
+        if (filteredData.length === 0) {
+            tbody.innerHTML = '';
+            noDataMessage.style.display = 'block';
+            return;
+        }
+        
+        noDataMessage.style.display = 'none';
+        
+        // 应用排序
+        if (currentSort.field) {
+            filteredData.sort((a, b) => {
+                let aVal = a[currentSort.field];
+                let bVal = b[currentSort.field];
+                
+                // 处理数字和字符串
+                if (typeof aVal === 'number' && typeof bVal === 'number') {
+                    return currentSort.direction === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+                
+                aVal = String(aVal || '');
+                bVal = String(bVal || '');
+                
+                if (currentSort.direction === 'asc') {
+                    return aVal.localeCompare(bVal, 'zh-CN');
+                } else {
+                    return bVal.localeCompare(aVal, 'zh-CN');
+                }
+            });
+        }
+        
+        tbody.innerHTML = filteredData.map(stat => {
+            const realmShort = stat.realm.split(' ')[0];
+            return `
+                <tr data-game-id="${stat.game_id}"
+                    data-difficulty-id="${stat.difficulty_level_id}"
+                    data-ship-id="${stat.ship_type_id}"
+                    data-rating-count="${stat.rating_count}">
+                    <td><strong>${escapeHtml(stat.game_title)}</strong><br><small>${escapeHtml(stat.game_company)}</small></td>
+                    <td>${escapeHtml(stat.difficulty_level_name)}</td>
+                    <td>${escapeHtml(stat.ship_type_name)}</td>
+                    <td class="score-cell">${stat.dodge_avg}</td>
+                    <td class="score-cell">${stat.strategy_avg}</td>
+                    <td class="score-cell">${stat.execution_avg}</td>
+                    <td class="score-cell"><strong>${stat.overall_avg}</strong></td>
+                    <td><span class="realm-badge">${escapeHtml(realmShort)}</span></td>
+                    <td class="score-cell">${stat.rating_count}</td>
+                    <td><a href="/game/${stat.game_id}" class="contrast">查看详情</a></td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // 排序功能
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', () => {
+            const field = header.dataset.sort;
+            
+            // 更新排序状态
+            if (currentSort.field === field) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.field = field;
+                currentSort.direction = 'asc';
+            }
+            
+            // 更新表头样式
+            document.querySelectorAll('.sortable').forEach(h => {
+                h.classList.remove('sort-asc', 'sort-desc');
+            });
+            header.classList.add(`sort-${currentSort.direction}`);
+            
+            renderTable();
+        });
+    });
+    
+    // 筛选事件
+    function onBaseFilterChange() {
+        updateGameOptions();
+        updateDifficultyOptions();
+        updateShipOptions();
+        applyFilters();
+    }
+
+    filterTag.addEventListener('change', onBaseFilterChange);
+    filterCompany.addEventListener('change', onBaseFilterChange);
+    filterGame.addEventListener('change', () => {
+        updateDifficultyOptions();
+        updateShipOptions();
+        applyFilters();
+    });
+    filterDifficulty.addEventListener('change', applyFilters);
+    filterShip.addEventListener('change', applyFilters);
+    filterMinRating.addEventListener('input', applyFilters);
+    
+    resetFilters.addEventListener('click', () => {
+        filterTag.value = '';
+        filterCompany.value = '';
+        filterGame.value = '';
+        filterDifficulty.value = '';
+        filterShip.value = '';
+        filterMinRating.value = '0';
+        updateGameOptions();
+        updateDifficultyOptions();
+        updateShipOptions();
+        applyFilters();
+    });
+    
+    // 初始化
+    updateGameOptions();
+    updateDifficultyOptions();
+    updateShipOptions();
+    updateResultCount();
+    
+    // 确保图标被渲染
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+});
+</script>
+{% endblock %}

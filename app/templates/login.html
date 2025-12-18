@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - STG社区评价{% endblock %}
+
+{% block content %}
+<article>
+    <header>
+        <h2><i data-lucide="log-in"></i> 登录</h2>
+    </header>
+    <form action="/login" method="post" id="login-form">
+        <label for="username">
+            用户名
+            <input type="text" id="username" name="username" placeholder="用户名" required>
+        </label>
+        <label for="password">
+            密码
+            <input type="password" id="password" name="password" placeholder="密码" required>
+        </label>
+        <button type="submit">登录</button>
+    </form>
+    <footer style="text-align: center;">
+        还没有账户? <a href="/register">立即注册</a>
+        <br>
+        忘记密码? <a href="/password-reset-request">点击这里重置</a>
+    </footer>
+</article>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('login-form');
+        if (form) {
+            form.addEventListener('submit', function() {
+                form.classList.add('loading');
+            });
+        }
+    });
+</script>
+{% endblock %}

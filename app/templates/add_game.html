@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}添加新作品 - STG社区评价{% endblock %}
+
+{% block content %}
+<article>
+    <header>
+        <h2><i data-lucide="plus-circle"></i> 添加新作品</h2>
+    </header>
+    {% if not request.state.user %}
+        <div class="alert">
+            <p>您需要<a href="/login?redirect=/add-game">登录</a>后才能添加新作品。</p>
+            <a href="/login?redirect=/add-game" role="button">立即登录</a>
+        </div>
+    {% else %}
+    <form action="/add-game" method="post" id="add-game-form" enctype="multipart/form-data">
+        <div class="grid">
+            <label for="company">
+                公司/社团 (必填)
+                <input type="text" name="company" id="company" placeholder="例如: Cave, ZUN Soft" required>
+            </label>
+            <label for="title">
+                作品名 (必填)
+                <input type="text" name="title" id="title" placeholder="例如: 怒首领蜂, 东方红魔乡" required>
+            </label>
+        </div>
+        
+        <label for="tags-input">游戏标签 (选填, 输入后按回车或逗号分隔)</label>
+        <div id="tags-container" class="tag-input-container">
+            <input type="text" id="tags-input" placeholder="例如: 弹幕, STG, 纵版, CAVE系...">
+        </div>
+        <input type="hidden" name="tags" id="tags-hidden-input">
+
+        <label for="translations-input">其他译名/标题 (选填, 输入后按回车或逗号分隔)</label>
+        <div id="translations-container" class="tag-input-container">
+            <input type="text" id="translations-input" placeholder="例如: Touhou Koumakyou, The Embodiment of Scarlet Devil">
+        </div>
+        <input type="hidden" name="translations" id="translations-hidden-input">
+
+        <label for="aliases-input">常用别名 (选填, 输入后按回车或逗号分隔)</label>
+        <div id="aliases-container" class="tag-input-container">
+            <input type="text" id="aliases-input" placeholder="例如: DDP, EoSD">
+        </div>
+        <input type="hidden" name="aliases" id="aliases-hidden-input">
+        
+        <label for="description">游戏介绍 (选填)</label>
+        <textarea name="description" id="description" rows="4" placeholder="关于游戏背景、系统特色的简要介绍..."></textarea>
+
+        <label for="image_file">游戏封面 (选填，不大于1MB)
+            <input type="file" name="image_file" id="image_file" accept="image/jpeg, image/png, image/gif, image/webp">
+        </label>
+        
+        <hr>
+
+        <label for="difficulty_levels-input">难度分级名称 (选填, 输入后按回车或逗号分隔)</label>
+        <div id="difficulty_levels-container" class="tag-input-container">
+            <input type="text" id="difficulty_levels-input" placeholder="例如: Easy, Normal, Hard, Lunatic">
+        </div>
+        <input type="hidden" name="difficulty_levels" id="difficulty_levels-hidden-input">
+
+        <label for="ship_types-input">机体/角色名称 (选填, 输入后按回车或逗号分隔)</label>
+        <div id="ship_types-container" class="tag-input-container">
+            <input type="text" id="ship_types-input" placeholder="例如: Type-A, Type-B, Reimu Hakurei, Marisa Kirisame">
+        </div>
+        <input type="hidden" name="ship_types" id="ship_types-hidden-input">
+
+        <button type="submit">确认添加</button>
+    </form>
+    {% endif %}
+</article>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    lucide.createIcons();
+    
+    // --- 新的标签输入框逻辑 ---
+    function setupTagInput(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        const textInput = container.querySelector('input[type="text"]');
+        const hiddenInputId = containerId.replace('-container', '-hidden-input');
+        const hiddenInput = document.getElementById(hiddenInputId);
+        
+        let tags = [];
+
+        function renderTags() {
+            container.querySelectorAll('.tag-item').forEach(tagEl => tagEl.remove());
+            tags.slice().reverse().forEach(tag => {
+                const tagElement = document.createElement('span');
+                tagElement.className = 'tag-item';
+                tagElement.textContent = tag;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'tag-remove-btn';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.type = 'button';
+                removeBtn.onclick = () => {
+                    tags = tags.filter(t => t !== tag);
+                    updateHiddenInput();
+                    renderTags();
+                };
+                
+                tagElement.appendChild(removeBtn);
+                container.insertBefore(tagElement, textInput);
+            });
+        }
+
+        function updateHiddenInput() {
+            // 使用一个安全的、几乎不可能在输入中出现的分隔符
+            hiddenInput.value = tags.join('|~|');
+        }
+
+        function addTag(tag) {
+            tag = tag.trim();
+            if (tag.length > 1 && !tags.includes(tag)) {
+                tags.push(tag);
+                updateHiddenInput();
+                renderTags();
+            }
+            textInput.value = '';
+        }
+
+        textInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                addTag(textInput.value);
+            }
+        });
+
+        textInput.addEventListener('blur', () => {
+            addTag(textInput.value);
+        });
+    }
+
+    // 初始化页面上所有的标签输入框
+    setupTagInput('tags-container');
+    setupTagInput('translations-container');
+    setupTagInput('aliases-container');
+    setupTagInput('difficulty_levels-container');
+    setupTagInput('ship_types-container');
+    
+    // --- 表单提交JS (保持不变) ---
+    document.getElementById('add-game-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const submitButton = form.querySelector('button[type="submit"]');
+        form.classList.add('loading');
+        submitButton.setAttribute('aria-busy', 'true');
+        submitButton.disabled = true;
+
+        try {
+            const formData = new FormData(form);
+            
+            const imageFile = formData.get('image_file');
+            if (imageFile && imageFile.size > 1 * 1024 * 1024) {
+                alert('图片文件大小不能超过 1MB');
+                throw new Error('File too large');
+            }
+
+            const response = await fetch('/add-game', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.redirected) {
+                window.location.href = response.url;
+                return;
+            }
+
+            if (!response.ok) {
+                let errorMessage = '提交失败，未知错误';
+                try {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const result = await response.json();
+                        errorMessage = result.detail || errorMessage;
+                    } else {
+                        // 如果不是JSON响应，尝试读取文本
+                        const text = await response.text();
+                        errorMessage = `服务器错误 (${response.status}): ${text.substring(0, 100)}`;
+                    }
+                } catch (parseError) {
+                    errorMessage = `服务器错误 (${response.status}): 无法解析错误信息`;
+                }
+                throw new Error(errorMessage);
+            }
+            
+        } catch (error) {
+            console.error('Error:', error);
+            if (error.message !== 'File too large') {
+                alert(error.message);
+            }
+        } finally {
+            form.classList.remove('loading');
+            submitButton.removeAttribute('aria-busy');
+            submitButton.disabled = false;
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block title %}{% if active_tags %}标签: {{ active_tags|join(', ') }} - {% endif %}{% if current_company %}公司: {{ current_company }} - {% endif %}浏览作品 - STG社区评价{% endblock %}
+
+{% block content %}
+<style>
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+    }
+    .pagination-info {
+        font-size: 0.85rem;
+        color: var(--pico-muted-color);
+        margin: 0 0.5rem;
+    }
+    .actions-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+    .active-filters-display {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .active-filters-display small {
+        color: var(--pico-muted-color);
+        font-size: 0.85rem;
+    }
+    .active-filter-badge {
+        display: inline-block;
+        padding: 0.25rem 0.6rem;
+        background-color: var(--pico-primary);
+        color: var(--pico-primary-inverse);
+        border-radius: var(--pico-border-radius);
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .chip-grid a[role="button"] {
+        transition: all 0.2s ease;
+    }
+    .chip-grid a[role="button"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .chip-grid a[role="button"].active {
+        background-color: var(--pico-primary);
+        color: var(--pico-primary-inverse);
+        border-color: var(--pico-primary);
+        font-weight: 600;
+    }
+</style>
+<h2><i data-lucide="search"></i> 浏览与查找作品</h2>
+
+<div class="grid filters-grid">
+    <div class="grid-span-2 stack-sm">
+        <label for="search-box">筛选游戏 (可按标题, 公司, 别名, 标签搜索)...</label>
+        <input type="search" id="search-box" name="search" placeholder="输入关键词...">
+    </div>
+    <div class="stack-sm">
+        <label for="sort-select">排序方式</label>
+        <select id="sort-select">
+            <option value="title-asc">标题 (A-Z)</option>
+            <option value="title-desc">标题 (Z-A)</option>
+            <option value="company-asc">公司 (A-Z)</option>
+            <option value="company-desc">公司 (Z-A)</option>
+        </select>
+    </div>
+    <div class="stack-sm">
+        <label>视图模式</label>
+        <div id="view-switcher" class="grid view-switcher" role="group">
+            <button data-view="cards" title="卡片视图"><i data-lucide="layout-grid"></i></button>
+            <button data-view="list" title="列表视图"><i data-lucide="list"></i></button>
+            <button data-view="compact" title="紧凑视图"><i data-lucide="grip"></i></button>
+        </div>
+    </div>
+</div>
+
+<details id="tag-filters-wrapper" class="filter-details">
+    <summary class="secondary outline filter-summary">
+        <i data-lucide="tags"></i> 标签筛选
+    </summary>
+    <div id="tag-filters" class="chip-grid">
+        {% for tag_item in all_tags %}
+            {% set tag = tag_item.tag %}
+            {% set count = tag_item.count %}
+            {% set is_active = tag.name in active_tags %}
+            {% if is_active %}
+                {# 如果标签已激活，点击时移除该标签 #}
+                {% set new_tags = active_tags | reject('equalto', tag.name) | list %}
+                {% if new_tags %}
+                    {% set tag_url = '/games?tags=' ~ new_tags|join(',') ~ '&page=1' %}
+                {% else %}
+                    {% set tag_url = '/games?page=1' %}
+                {% endif %}
+                {% if current_company %}
+                    {% set tag_url = tag_url ~ '&company=' ~ current_company %}
+                {% endif %}
+            {% else %}
+                {# 如果标签未激活，点击时添加该标签 #}
+                {% set new_tags = active_tags + [tag.name] %}
+                {% set tag_url = '/games?tags=' ~ new_tags|join(',') ~ '&page=1' %}
+                {% if current_company %}
+                    {% set tag_url = tag_url ~ '&company=' ~ current_company %}
+                {% endif %}
+            {% endif %}
+            <a href="{{ tag_url }}" class="outline secondary filter-tag {% if is_active %}active{% endif %}" data-tag="{{ tag.name }}" title="{{ tag.name }} ({{ count }} 个游戏)" role="button">
+                {{ tag.name }} <small class="chip-meta">({{ count }})</small>
+            </a>
+        {% endfor %}
+    </div>
+</details>
+
+<details id="company-filters-wrapper" class="filter-details">
+    <summary class="secondary outline filter-summary">
+        <i data-lucide="building-2"></i> 公司筛选
+    </summary>
+    <div id="company-filters" class="chip-grid">
+        {% for comp in companies %}
+            {% if comp == current_company %}
+                {# 如果公司已选中，点击时清除公司筛选 #}
+                {% if active_tags %}
+                    {% set company_url = '/games?tags=' ~ active_tags|join(',') ~ '&page=1' %}
+                {% else %}
+                    {% set company_url = '/games?page=1' %}
+                {% endif %}
+            {% else %}
+                {# 如果公司未选中，点击时设置公司筛选 #}
+                {% if active_tags %}
+                    {% set company_url = '/games?tags=' ~ active_tags|join(',') ~ '&company=' ~ comp ~ '&page=1' %}
+                {% else %}
+                    {% set company_url = '/games?company=' ~ comp ~ '&page=1' %}
+                {% endif %}
+            {% endif %}
+            <a href="{{ company_url }}" class="outline secondary filter-company {% if comp == current_company %}active{% endif %}" data-company="{{ comp }}" role="button">
+                {{ comp }}
+            </a>
+        {% endfor %}
+    </div>
+</details>
+
+<div class="actions-row">
+    {% if active_tags or current_company %}
+    <a href="/games?page=1" id="clear-filters" class="contrast clear-filters" role="button">
+        清除所有筛选
+    </a>
+    {% endif %}
+    {% if active_tags %}
+    <div class="active-filters-display">
+        <small>当前标签筛选：</small>
+        {% for tag_name in active_tags %}
+        <span class="active-filter-badge">{{ tag_name }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if current_company %}
+    <div class="active-filters-display">
+        <small>当前公司筛选：</small>
+        <span class="active-filter-badge">{{ current_company }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<div id="game-list" class="game-list-wrap">
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-card">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">加载中...</p>
+        </div>
+    </div>
+    
+    {% for game in games %}
+    <div class="game-link-container" 
+         data-search-term="{{ game.title.lower() }} {{ (game.aliases | map(attribute='name') | join(' ')).lower() }} {{ game.company.lower() }} {{ (game.tags | map(attribute='name') | join(' ')).lower() }}"
+         data-tags="{{ (game.tags | map(attribute='name') | join('|')).lower() }}"
+         data-tags-txt="{{ (game.tags | map(attribute='name') | join(', ')) }}"
+         data-summary="{{ (game.description or '')|replace('\n',' ')|truncate(80, True, '') }}"
+         data-title="{{ game.title.lower() }}"
+         data-company="{{ game.company.lower() }}">
+        <a href="/game/{{ game.id }}" class="game-card">
+            <div class="game-card-img-container">
+                {% if game.image_url %}
+                    <img src="{{ game.image_url }}" alt="{{ game.title }}" class="game-card-img" loading="lazy">
+                {% else %}
+                    <i data-lucide="image-off" class="img-placeholder"></i>
+                {% endif %}
+            </div>
+            <div class="game-card-body">
+                <strong>{{ game.title }}</strong>
+                <small>{{ game.company }}</small>
+                <p class="list-meta" style="display:none; color: var(--pico-muted-color); margin: 0.15rem 0 0;"></p>
+            </div>
+        </a>
+    </div>
+    {% else %}
+    <p>没有找到匹配的作品。 <a href="/games">查看所有作品</a></p>
+    {% endfor %}
+</div>
+
+{% if total_pages > 1 %}
+<nav class="pagination" aria-label="游戏列表分页" style="margin-top: 2rem;">
+    {% set pagination_params = [] %}
+    {% if active_tags %}
+        {% set _ = pagination_params.append('tags=' ~ active_tags|join(',')) %}
+    {% endif %}
+    {% if current_company %}
+        {% set _ = pagination_params.append('company=' ~ current_company) %}
+    {% endif %}
+    {% set query_string = pagination_params|join('&') %}
+    
+    {% if page > 1 %}
+    <a href="/games{% if query_string %}?{{ query_string }}&page={{ page - 1 }}{% else %}?page={{ page - 1 }}{% endif %}" role="button" class="secondary outline">
+        <i data-lucide="chevron-left"></i> 上一页
+    </a>
+    {% endif %}
+    <span class="pagination-info">
+        第 {{ page }} / {{ total_pages }} 页 (共 {{ total_count }} 个游戏)
+    </span>
+    {% if page < total_pages %}
+    <a href="/games{% if query_string %}?{{ query_string }}&page={{ page + 1 }}{% else %}?page={{ page + 1 }}{% endif %}" role="button" class="secondary outline">
+        下一页 <i data-lucide="chevron-right"></i>
+    </a>
+    {% endif %}
+</nav>
+{% endif %}
+
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    lucide.createIcons();
+
+    // --- 元素获取 ---
+    const searchBox = document.getElementById('search-box');
+    const gameList = document.getElementById('game-list');
+    const sortSelect = document.getElementById('sort-select');
+    const clearFiltersBtn = document.getElementById('clear-filters');
+    const viewSwitcher = document.getElementById('view-switcher');
+    const viewButtons = viewSwitcher.querySelectorAll('button');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const tagFilters = document.getElementById('tag-filters');
+    const companyFilters = document.getElementById('company-filters');
+    let gameContainers = Array.from(gameList.querySelectorAll('.game-link-container'));
+    
+    // --- 函数定义 ---
+
+    // 视图切换
+    function updateView(view) {
+        if (!gameList) return;
+        gameList.classList.remove('view-cards', 'view-list', 'view-compact');
+        gameList.classList.add(`view-${view}`);
+        viewButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.view === view));
+
+        // 控制列表模式下显示摘要
+        gameContainers.forEach(container => {
+            const meta = container.querySelector('.list-meta');
+            if (!meta) return;
+            if (view === 'list') {
+                const summary = container.dataset.summary || '';
+                const tagsTxt = container.dataset.tagsTxt || '';
+                meta.style.display = 'block';
+                meta.innerHTML = `${summary ? summary : ''}${tagsTxt ? `<br><small>${tagsTxt}</small>` : ''}`;
+            } else {
+                meta.style.display = 'none';
+            }
+        });
+    }
+
+    // 筛选与排序（只用于前端搜索框筛选和排序）
+    // 标签和公司筛选已通过URL参数在后端完成
+    function applyFiltersAndSort() {
+        if (!gameList) return;
+        const searchTerm = searchBox.value.toLowerCase().trim();
+        
+        gameContainers.forEach(container => {
+            const matchesSearch = container.dataset.searchTerm.includes(searchTerm);
+            container.style.display = matchesSearch ? 'block' : 'none';
+        });
+
+        const sortValue = sortSelect.value;
+        const [sortBy, sortDir] = sortValue.split('-');
+        const sortedContainers = [...gameContainers].sort((a, b) => {
+            const valA = a.dataset[sortBy];
+            const valB = b.dataset[sortBy];
+            if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+        sortedContainers.forEach(container => gameList.appendChild(container));
+    }
+
+    // --- 【优化】从API获取所有游戏并重新渲染 ---
+    async function fetchAndRenderAllGames() {
+        loadingOverlay.style.display = 'flex';
+        try {
+            const response = await fetch('/api/v1/games');
+            if (!response.ok) throw new Error('Network response was not ok');
+            const allGames = await response.json();
+            
+            // 清空现有列表
+            gameList.querySelectorAll('.game-link-container').forEach(el => el.remove());
+
+            // 根据获取的数据重新构建DOM
+            allGames.forEach(game => {
+                const aliases = game.aliases.map(a => a.name).join(' ');
+                const tags = game.tags.map(t => t.name).join(' ');
+                const tagsForFilter = game.tags.map(t => t.name).join('|');
+
+                const container = document.createElement('div');
+                container.className = 'game-link-container';
+                container.dataset.searchTerm = `${game.title.toLowerCase()} ${aliases.toLowerCase()} ${game.company.toLowerCase()} ${tags.toLowerCase()}`;
+                container.dataset.tags = tagsForFilter.toLowerCase();
+                container.dataset.title = game.title.toLowerCase();
+                container.dataset.company = game.company.toLowerCase();
+                container.dataset.summary = game.description ? game.description.slice(0, 60) : '';
+                container.dataset.tagsTxt = tags;
+                
+                const imageUrl = game.image_url ? `<img src="${game.image_url}" alt="${game.title}" class="game-card-img" loading="lazy">` : `<i data-lucide="image-off" class="img-placeholder"></i>`;
+
+                container.innerHTML = `
+                    <a href="/game/${game.id}" class="game-card">
+                        <div class="game-card-img-container">${imageUrl}</div>
+                        <div class="game-card-body">
+                            <strong>${game.title}</strong>
+                            <small>${game.company}</small>
+                            <p class="list-meta" style="display:none;"></p>
+                        </div>
+                    </a>`;
+                gameList.appendChild(container);
+            });
+
+            // 重新获取DOM节点并渲染图标
+            gameContainers = Array.from(gameList.querySelectorAll('.game-link-container'));
+            lucide.createIcons();
+
+        } catch (error) {
+            console.error('Failed to fetch and render games:', error);
+            gameList.innerHTML = '<p>加载游戏列表失败，请稍后重试。</p>';
+        } finally {
+            loadingOverlay.style.display = 'none';
+        }
+    }
+
+    // --- 事件监听器绑定 ---
+    searchBox.addEventListener('input', applyFiltersAndSort);
+    sortSelect.addEventListener('change', applyFiltersAndSort);
+    viewSwitcher.addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (button && button.dataset.view) {
+            const view = button.dataset.view;
+            localStorage.setItem('gameListView', view);
+            updateView(view);
+        }
+    });
+
+    // --- 筛选区域状态管理（localStorage） ---
+    const tagFiltersWrapper = document.getElementById('tag-filters-wrapper');
+    const companyFiltersWrapper = document.getElementById('company-filters-wrapper');
+    
+    // 恢复筛选区域的展开/折叠状态
+    const savedTagFiltersOpen = localStorage.getItem('tagFiltersOpen');
+    const savedCompanyFiltersOpen = localStorage.getItem('companyFiltersOpen');
+    
+    if (savedTagFiltersOpen === 'true') {
+        tagFiltersWrapper.open = true;
+    } else if (savedTagFiltersOpen === 'false') {
+        tagFiltersWrapper.open = false;
+    }
+    // 如果localStorage中没有值，保持默认（折叠）
+    
+    if (savedCompanyFiltersOpen === 'true') {
+        companyFiltersWrapper.open = true;
+    } else if (savedCompanyFiltersOpen === 'false') {
+        companyFiltersWrapper.open = false;
+    }
+    // 如果localStorage中没有值，保持默认（折叠）
+    
+    // 监听筛选区域的展开/折叠事件
+    tagFiltersWrapper.addEventListener('toggle', function() {
+        localStorage.setItem('tagFiltersOpen', this.open);
+    });
+    
+    companyFiltersWrapper.addEventListener('toggle', function() {
+        localStorage.setItem('companyFiltersOpen', this.open);
+    });
+
+    // --- 初始化调用 ---
+    // 【修复】确保视图模式在页面加载时正确应用
+    const savedView = localStorage.getItem('gameListView') || 'cards';
+    updateView(savedView);
+    
+    // 应用前端筛选和排序（搜索框）
+    applyFiltersAndSort();
+});
+</script>
+{% endblock %}

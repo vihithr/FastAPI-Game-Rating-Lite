@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile_user.username }} - 用户主页{% endblock %}
+
+{% block content %}
+<style>
+    .user-header {
+        text-align: center;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        background: var(--pico-card-background-color);
+        border-radius: var(--pico-border-radius);
+    }
+    .user-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .stat-item {
+        text-align: center;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--pico-primary);
+    }
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--pico-muted-color);
+    }
+    .rating-item {
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+        background: var(--pico-card-background-color);
+        border-radius: var(--pico-border-radius);
+        border: 1px solid var(--pico-card-border-color);
+    }
+    .rating-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.4rem;
+        gap: 0.5rem;
+    }
+    .rating-item-title {
+        font-size: 1rem;
+        font-weight: bold;
+        flex: 1;
+        min-width: 0;
+    }
+    .rating-item-meta {
+        font-size: 0.8rem;
+        color: var(--pico-muted-color);
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .rating-item-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.4rem;
+        flex-wrap: wrap;
+    }
+    .rating-item-info small {
+        font-size: 0.75rem;
+        color: var(--pico-muted-color);
+    }
+    .rating-item-info .tag-badge {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.4rem;
+    }
+    .rating-scores {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+        gap: 0.4rem;
+        margin-top: 0.4rem;
+    }
+    .score-item {
+        text-align: center;
+        padding: 0.35rem 0.25rem;
+        background: var(--pico-background-color);
+        border-radius: calc(var(--pico-border-radius) * 0.75);
+    }
+    .score-label {
+        font-size: 0.7rem;
+        color: var(--pico-muted-color);
+        margin-bottom: 0.15rem;
+    }
+    .score-value {
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: var(--pico-primary);
+    }
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+    }
+    .pagination-info {
+        font-size: 0.85rem;
+        color: var(--pico-muted-color);
+        margin: 0 0.5rem;
+    }
+    .difficulty-context {
+        font-size: 0.85rem;
+        color: var(--pico-muted-color);
+        margin-top: 0.25rem;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--pico-muted-color);
+    }
+</style>
+
+<nav>
+    <ul><li><a href="/">&laquo; 返回主页</a></li></ul>
+</nav>
+
+<article class="user-header">
+    <hgroup>
+        <h1>{{ profile_user.username }}</h1>
+        <p>用户ID: {{ profile_user.id }}</p>
+        {% if profile_user.created_at %}
+        <p><small>注册时间: {{ profile_user.created_at.strftime('%Y-%m-%d') }}</small></p>
+        {% endif %}
+    </hgroup>
+    
+    <div class="user-stats">
+        <div class="stat-item">
+            <div class="stat-value">{{ total_quality_ratings }}</div>
+            <div class="stat-label">品质评分</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ total_difficulty_ratings }}</div>
+            <div class="stat-label">难度评分</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ "%.2f"|format(avg_quality_score) if avg_quality_score > 0 else "N/A" }}</div>
+            <div class="stat-label">平均品质分</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ "%.2f"|format(avg_difficulty_score) if avg_difficulty_score > 0 else "N/A" }}</div>
+            <div class="stat-label">平均难度分</div>
+        </div>
+    </div>
+</article>
+
+<div class="grid">
+    <article>
+        <header>
+            <h3><i data-lucide="gem"></i> 品质评分历史 ({{ total_quality_ratings }})</h3>
+        </header>
+        
+        {% if quality_ratings %}
+            {% for rating in quality_ratings %}
+            <div class="rating-item">
+                <div class="rating-item-header">
+                    <a href="/game/{{ rating.game.id }}" class="rating-item-title">
+                        {{ rating.game.title }}
+                    </a>
+                    <span class="rating-item-meta">
+                        {{ rating.created_at.strftime('%Y-%m-%d') if rating.created_at else '未知时间' }}
+                    </span>
+                </div>
+                <div class="rating-item-info">
+                    <small>{{ rating.game.company }}</small>
+                    {% if rating.game.tags %}
+                        {% for tag in rating.game.tags %}
+                        <a href="/games?tag={{ tag.name }}" class="tag-badge">{{ tag.name }}</a>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <div class="rating-scores">
+                    <div class="score-item">
+                        <div class="score-label">趣味性</div>
+                        <div class="score-value">{{ rating.fun or 'N/A' }}</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-label">核心设计</div>
+                        <div class="score-value">{{ rating.core or 'N/A' }}</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-label">深度</div>
+                        <div class="score-value">{{ rating.depth or 'N/A' }}</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-label">演出</div>
+                        <div class="score-value">{{ rating.performance or 'N/A' }}</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-label">剧情</div>
+                        <div class="score-value">{{ rating.story or 'N/A' }}</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-label">平均分</div>
+                        <div class="score-value">
+                            {% if rating.fun and rating.core and rating.depth and rating.performance and rating.story %}
+                                {{ "%.2f"|format((rating.fun + rating.core + rating.depth + rating.performance + rating.story) / 5.0) }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% if quality_total_pages > 1 %}
+            <nav class="pagination" aria-label="品质评分分页">
+                {% if quality_page > 1 %}
+                <a href="/user/{{ profile_user.id }}?quality_page={{ quality_page - 1 }}{% if difficulty_page > 1 %}&difficulty_page={{ difficulty_page }}{% endif %}" role="button" class="secondary outline">
+                    <i data-lucide="chevron-left"></i> 上一页
+                </a>
+                {% endif %}
+                <span class="pagination-info">
+                    第 {{ quality_page }} / {{ quality_total_pages }} 页 (共 {{ total_quality_ratings }} 条)
+                </span>
+                {% if quality_page < quality_total_pages %}
+                <a href="/user/{{ profile_user.id }}?quality_page={{ quality_page + 1 }}{% if difficulty_page > 1 %}&difficulty_page={{ difficulty_page }}{% endif %}" role="button" class="secondary outline">
+                    下一页 <i data-lucide="chevron-right"></i>
+                </a>
+                {% endif %}
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <p>该用户还没有进行任何品质评分</p>
+            </div>
+        {% endif %}
+    </article>
+    
+    <article>
+        <header>
+            <h3><i data-lucide="swords"></i> 难度评分历史 ({{ total_difficulty_ratings }})</h3>
+        </header>
+        
+        {% if difficulty_ratings %}
+            {% for rating in difficulty_ratings %}
+            <div class="rating-item">
+                <div class="rating-item-header">
+                    <a href="/game/{{ rating.game.id }}" class="rating-item-title">
+                        {{ rating.game.title }}
+                    </a>
+                    <span class="rating-item-meta">
+                        {{ rating.created_at.strftime('%Y-%m-%d') if rating.created_at else '未知时间' }}
+                    </span>
+                </div>
+                <div class="rating-item-info">
+                    <small>{{ rating.game.company }}</small>
+                    {% if rating.game.tags %}
+                        {% for tag in rating.game.tags %}
+                        <a href="/games?tag={{ tag.name }}" class="tag-badge">{{ tag.name }}</a>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <div class="difficulty-context">
+                    {% if rating.difficulty_level %}
+                        难度: {{ rating.difficulty_level.name }}
+                    {% else %}
+                        难度: 游戏总体
+                    {% endif %}
+                    {% if rating.ship_type %}
+                        | 机体: {{ rating.ship_type.name }}
+                    {% else %}
+                        | 机体: 全机体/角色
+                    {% endif %}
+                </div>
+                <div class="rating-scores">
+                    <div class="score-item">
+                        <div class="score-label">避弹</div>
+                        <div class="score-value">{{ rating.dodge or 'N/A' }}</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-label">策略</div>
+                        <div class="score-value">{{ rating.strategy or 'N/A' }}</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-label">执行</div>
+                        <div class="score-value">{{ rating.execution or 'N/A' }}</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-label">平均分</div>
+                        <div class="score-value">
+                            {% if rating.dodge and rating.strategy and rating.execution %}
+                                {{ "%.2f"|format((rating.dodge + rating.strategy + rating.execution) / 3.0) }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% if difficulty_total_pages > 1 %}
+            <nav class="pagination" aria-label="难度评分分页">
+                {% if difficulty_page > 1 %}
+                <a href="/user/{{ profile_user.id }}?{% if quality_page > 1 %}quality_page={{ quality_page }}&{% endif %}difficulty_page={{ difficulty_page - 1 }}" role="button" class="secondary outline">
+                    <i data-lucide="chevron-left"></i> 上一页
+                </a>
+                {% endif %}
+                <span class="pagination-info">
+                    第 {{ difficulty_page }} / {{ difficulty_total_pages }} 页 (共 {{ total_difficulty_ratings }} 条)
+                </span>
+                {% if difficulty_page < difficulty_total_pages %}
+                <a href="/user/{{ profile_user.id }}?{% if quality_page > 1 %}quality_page={{ quality_page }}&{% endif %}difficulty_page={{ difficulty_page + 1 }}" role="button" class="secondary outline">
+                    下一页 <i data-lucide="chevron-right"></i>
+                </a>
+                {% endif %}
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <p>该用户还没有进行任何难度评分</p>
+            </div>
+        {% endif %}
+    </article>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

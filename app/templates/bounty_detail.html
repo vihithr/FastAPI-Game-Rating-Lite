@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}{{ bounty.title }} - 悬赏详情{% endblock %}
+
+{% block content %}
+<article>
+    <header style="margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+            <h1 style="margin: 0; flex: 1;">{{ bounty.title }}</h1>
+            {% if bounty.is_completed %}
+            <span style="color: var(--pico-success); font-size: 1rem; font-weight: 600;">
+                <i data-lucide="check-circle"></i> 已完成
+            </span>
+            {% else %}
+            <span style="color: var(--pico-primary); font-size: 1rem; font-weight: 600;">
+                <i data-lucide="clock"></i> 进行中
+            </span>
+            {% endif %}
+        </div>
+        
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem;">
+            <span class="tag-badge">{{ bounty.category.name }}</span>
+            <span style="color: var(--pico-primary); font-weight: 600;">
+                <i data-lucide="gift"></i> 悬赏：{{ bounty.reward }}
+            </span>
+            {% if bounty.game_name %}
+            <span style="color: var(--pico-secondary-foreground);">
+                <i data-lucide="gamepad-2"></i> {{ bounty.game_name }}
+            </span>
+            {% endif %}
+        </div>
+        
+        {% if bounty.bounty_tags %}
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+            {% for tag in bounty.bounty_tags %}
+            <span class="tag-badge">{{ tag.name }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <small style="color: var(--pico-muted-color);">
+            <i data-lucide="user"></i> 发布者：<a href="/user/{{ bounty.creator.id }}">{{ bounty.creator.username }}</a> · 
+            <i data-lucide="calendar"></i> {{ bounty.created_at.strftime('%Y-%m-%d %H:%M') }}
+            {% if bounty.completed_at %}
+            · <i data-lucide="check"></i> 完成于：{{ bounty.completed_at.strftime('%Y-%m-%d %H:%M') }}
+            {% endif %}
+        </small>
+    </header>
+    
+    <div style="margin-bottom: 2rem;">
+        <h3>悬赏内容</h3>
+        <div style="white-space: pre-wrap; line-height: 1.6;">{{ bounty.content }}</div>
+    </div>
+    
+    {% if bounty.contact_info %}
+    <div style="margin-bottom: 2rem; padding: 1rem; background-color: var(--pico-muted-background-color); border-radius: var(--pico-border-radius);">
+        <h4><i data-lucide="mail"></i> 联系方式</h4>
+        <p style="margin: 0; word-break: break-all;">{{ bounty.contact_info }}</p>
+    </div>
+    {% endif %}
+    
+    <!-- 操作按钮 -->
+    {% if can_edit %}
+    <div style="margin-bottom: 2rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="/bounty/{{ bounty.id }}/edit" role="button" class="secondary outline">
+            <i data-lucide="edit"></i> 编辑悬赏
+        </a>
+        {% if not bounty.is_completed %}
+        <form method="post" action="/bounty/{{ bounty.id }}/complete" style="display: inline;">
+            <button type="submit" role="button" class="contrast outline">
+                <i data-lucide="check-circle"></i> 标记为已完成
+            </button>
+        </form>
+        {% endif %}
+        <form method="post" action="/bounty/{{ bounty.id }}/delete" style="display: inline;" onsubmit="return confirm('确定要删除此悬赏吗？此操作不可恢复。');">
+            <button type="submit" role="button" class="secondary outline" style="color: var(--pico-del-color);">
+                <i data-lucide="trash-2"></i> 删除悬赏
+            </button>
+        </form>
+    </div>
+    {% endif %}
+</article>
+
+<!-- 评论区域 -->
+<article>
+    <header>
+        <h3><i data-lucide="message-circle"></i> 评论留言 ({{ bounty.comments|length }})</h3>
+    </header>
+    
+    {% if request.state.user %}
+    <form method="post" action="/bounty/{{ bounty.id }}/comment" style="margin-bottom: 2rem;">
+        <label for="comment-content">发表评论：</label>
+        <textarea id="comment-content" name="content" rows="4" required placeholder="请输入您的评论..."></textarea>
+        <button type="submit" role="button">
+            <i data-lucide="send"></i> 提交评论
+        </button>
+    </form>
+    {% else %}
+    <p><small>请<a href="/login">登录</a>后发表评论</small></p>
+    {% endif %}
+    
+    {% if bounty.comments %}
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+        {% for comment in bounty.comments %}
+        <div style="padding: 1rem; background-color: var(--pico-card-background-color); border: 1px solid var(--pico-card-border-color); border-radius: var(--pico-border-radius);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <strong><a href="/user/{{ comment.author.id }}">{{ comment.author.username }}</a></strong>
+                <small style="color: var(--pico-muted-color);">
+                    {{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </small>
+            </div>
+            <div style="white-space: pre-wrap; line-height: 1.6;">{{ comment.content }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: var(--pico-muted-color);">暂无评论，快来发表第一条评论吧！</p>
+    {% endif %}
+</article>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

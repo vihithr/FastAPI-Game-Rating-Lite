@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}编辑 {{ game.title }} - STG社区评价{% endblock %}
+
+{% block content %}
+<article>
+    <header class="grid">
+        <div class="two-thirds">
+             <hgroup>
+                <h2><i data-lucide="file-pen-line"></i> 编辑游戏资料</h2>
+                <h3>{{ game.title }}</h3>
+            </hgroup>
+        </div>
+        <div class="one-third" style="text-align: right;">
+            <a href="/game/{{ game.id }}" role="button" class="secondary outline">
+                <i data-lucide="x"></i> 取消编辑
+            </a>
+        </div>
+    </header>
+
+    <form action="/game/{{ game.id }}/update" method="post" id="edit-game-form" enctype="multipart/form-data">
+        <div class="grid">
+            <label for="company">
+                公司/社团 (必填)
+                <input type="text" name="company" id="company" value="{{ game.company }}" required>
+            </label>
+            <label for="title">
+                作品名 (必填)
+                <input type="text" name="title" id="title" value="{{ game.title }}" required>
+            </label>
+        </div>
+        
+        <label for="tags-input">游戏标签 (输入后按回车或逗号分隔)</label>
+        <div id="tags-container" class="tag-input-container">
+            <input type="text" id="tags-input" placeholder="例如: 弹幕, STG, 纵版, CAVE系...">
+        </div>
+        <input type="hidden" name="tags" id="tags-hidden-input" data-initial-value="{{ game.tags | map(attribute='name') | join('|~|') }}">
+
+        <label for="translations-input">其他译名/标题 (输入后按回车或逗号分隔)</label>
+        <div id="translations-container" class="tag-input-container">
+            <input type="text" id="translations-input" placeholder="例如: Touhou Koumakyou...">
+        </div>
+        <input type="hidden" name="translations" id="translations-hidden-input" data-initial-value="{{ game.translations | map(attribute='name') | join('|~|') }}">
+
+        <label for="aliases-input">常用别名 (输入后按回车或逗号分隔)</label>
+        <div id="aliases-container" class="tag-input-container">
+            <input type="text" id="aliases-input" placeholder="例如: DDP, EoSD">
+        </div>
+        <input type="hidden" name="aliases" id="aliases-hidden-input" data-initial-value="{{ game.aliases | map(attribute='name') | join('|~|') }}">
+        
+        <label for="description">游戏介绍 (选填)</label>
+        <textarea name="description" id="description" rows="4">{{ game.description or '' }}</textarea>
+
+        <hr>
+        
+        <label for="image_file">更换封面 (选填，不大于1MB，不选则不更换)</label>
+        {% if game.image_url %}
+            <p>当前封面:</p>
+            <img src="{{ game.image_url }}" alt="Current cover" style="max-width: 150px; display: block; margin-bottom: 1rem; border-radius: var(--pico-border-radius);">
+        {% else %}
+            <p>当前无封面。</p>
+        {% endif %}
+        <input type="file" name="image_file" id="image_file" accept="image/jpeg, image/png, image/gif, image/webp">
+
+        <hr>
+
+        <label for="difficulty_levels-input">难度分级名称 (输入后按回车或逗号分隔)</label>
+        <div id="difficulty_levels-container" class="tag-input-container">
+            <input type="text" id="difficulty_levels-input" placeholder="例如: Easy, Normal, Hard, Lunatic">
+        </div>
+        <input type="hidden" name="difficulty_levels" id="difficulty_levels-hidden-input" data-initial-value="{{ game.difficulty_levels | map(attribute='name') | join('|~|') }}">
+
+        <label for="ship_types-input">机体/角色名称 (输入后按回车或逗号分隔)</label>
+        <div id="ship_types-container" class="tag-input-container">
+            <input type="text" id="ship_types-input" placeholder="例如: Type-A, Type-B, Reimu Hakurei, Marisa Kirisame">
+        </div>
+        <input type="hidden" name="ship_types" id="ship_types-hidden-input" data-initial-value="{{ game.ship_types | map(attribute='name') | join('|~|') }}">
+
+
+        <button type="submit">确认保存更改</button>
+    </form>
+</article>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    lucide.createIcons();
+
+    function setupTagInput(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        const textInput = container.querySelector('input[type="text"]');
+        const hiddenInputId = containerId.replace('-container', '-hidden-input');
+        const hiddenInput = document.getElementById(hiddenInputId);
+        
+        let tags = [];
+
+        function renderTags() {
+            container.querySelectorAll('.tag-item').forEach(tagEl => tagEl.remove());
+            tags.slice().reverse().forEach(tag => {
+                const tagElement = document.createElement('span');
+                tagElement.className = 'tag-item';
+                tagElement.textContent = tag;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'tag-remove-btn';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.type = 'button';
+                removeBtn.onclick = () => {
+                    tags = tags.filter(t => t !== tag);
+                    updateHiddenInput();
+                    renderTags();
+                };
+                
+                tagElement.appendChild(removeBtn);
+                container.insertBefore(tagElement, textInput);
+            });
+        }
+
+        function updateHiddenInput() {
+            hiddenInput.value = tags.join('|~|');
+        }
+
+        function addTag(tag) {
+            tag = tag.trim();
+            if (tag.length > 1 && !tags.includes(tag)) {
+                tags.push(tag);
+                updateHiddenInput();
+                renderTags();
+            }
+            textInput.value = '';
+        }
+
+        textInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                addTag(textInput.value);
+            }
+        });
+
+        textInput.addEventListener('blur', () => {
+            addTag(textInput.value);
+        });
+
+        // **关键：从 data-initial-value 属性加载已有数据**
+        const initialValue = hiddenInput.dataset.initialValue;
+        if (initialValue) {
+            tags = initialValue.split('|~|').filter(t => t.length > 0);
+            updateHiddenInput();
+            renderTags();
+        }
+    }
+
+    // 初始化所有标签输入框
+    document.addEventListener('DOMContentLoaded', () => {
+        setupTagInput('tags-container');
+        setupTagInput('translations-container');
+        setupTagInput('aliases-container');
+        setupTagInput('difficulty_levels-container');
+        setupTagInput('ship_types-container');
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}资源索引 - STG社区评价{% endblock %}
+
+{% block content %}
+<section>
+  <h2>资源索引</h2>
+  <p>这里是与作品标签完全隔离的资源分发区，用于整理各种本体、补丁、OST 等下载信息。</p>
+
+  <form method="get" class="grid" style="align-items: flex-end; gap: 0.75rem;">
+    <div>
+      <label for="q">搜索关键词</label>
+      <input type="search" id="q" name="q" placeholder="按标题或标签搜索" value="{{ q }}">
+    </div>
+    <div>
+      <label for="tag">标签筛选</label>
+      <select id="tag" name="tag">
+        <option value="">全部标签</option>
+        {% for item in popular_tags %}
+          <option value="{{ item.tag.name }}" {% if active_tag == item.tag.name %}selected{% endif %}>
+            {{ item.tag.name }} ({{ item.count }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>&nbsp;</label>
+      <button type="submit">筛选</button>
+    </div>
+    <div style="text-align:right;">
+      <label>&nbsp;</label>
+      <a href="/resources/submit" role="button" class="secondary">提交新资源</a>
+    </div>
+  </form>
+
+  <small>共 {{ total_count }} 个资源，当前第 {{ page }} / {{ total_pages }} 页</small>
+
+  <table role="grid">
+    <thead>
+      <tr>
+        <th style="width:5rem;">热度</th>
+        <th>标题</th>
+        <th style="width:8rem;">分类</th>
+        <th style="width:10rem;">标签</th>
+        <th style="width:7rem;">状态</th>
+        <th style="width:9rem;">上传者</th>
+        <th style="width:8rem;">时间</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for res in resources %}
+      <tr>
+        <td>
+          <span class="badge {% if res.heat > 0 %}contrast{% elif res.heat < 0 %}secondary outline{% endif %}">
+            {{ res.heat }}
+          </span>
+        </td>
+        <td>
+          <a href="/resources/{{ res.id }}">{{ res.title }}</a>
+        </td>
+        <td>
+          <small>{{ res.category }}</small>
+        </td>
+        <td>
+          {% for tag in res.tags[:3] %}
+            <a href="/resources?tag={{ tag.name | urlencode }}" class="secondary outline" style="margin-right: .25rem; font-size: .75rem;">
+              {{ tag.name }}
+            </a>
+          {% endfor %}
+          {% if res.tags|length > 3 %}
+            <small>+{{ res.tags|length - 3 }}</small>
+          {% endif %}
+        </td>
+        <td>
+          {% if res.status == "valid" %}
+            <span class="badge">🟢 有效</span>
+          {% else %}
+            <span class="badge secondary outline">🔴 失效</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if res.uploader %}
+            <a href="/user/{{ res.uploader.id }}">{{ res.uploader.username }}</a>
+          {% else %}
+            <small>已删除用户</small>
+          {% endif %}
+        </td>
+        <td>
+          <small>{{ res.created_at.strftime("%Y-%m-%d") if res.created_at else "" }}</small>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7"><small>暂无资源。</small></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if total_pages > 1 %}
+  <nav aria-label="资源分页" style="margin-top: 1rem; display:flex; justify-content:center; gap:.5rem;">
+    {% set base_q = '&q=' + q if q else '' %}
+    {% set base_tag = '&tag=' + active_tag if active_tag else '' %}
+    <a href="/resources?page={{ [1, page-1]|max }}{{ base_q }}{{ base_tag }}" role="button" class="secondary" {% if page == 1 %}aria-disabled="true"{% endif %}>
+      上一页
+    </a>
+    <span style="align-self:center;">第 {{ page }} / {{ total_pages }} 页</span>
+    <a href="/resources?page={{ [total_pages, page+1]|min }}{{ base_q }}{{ base_tag }}" role="button" class="secondary" {% if page >= total_pages %}aria-disabled="true"{% endif %}>
+      下一页
+    </a>
+  </nav>
+  {% endif %}
+</section>
+{% endblock %}
+
+

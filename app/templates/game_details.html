@@ -1,0 +1,763 @@
+{% extends "base.html" %}
+
+{# Block for the page title, which will be inserted into the <title> tag of base.html #}
+{% block title %}{{ game.title }} - 社区评价{% endblock %}
+
+{# Main content block, everything visible on the page goes here #}
+{% block content %}
+<style>
+    /* 页面特有的样式可以保留在这里 */
+    [data-lucide] { vertical-align: middle; width: 1em; height: 1em; margin-right: 0.25em; }
+    
+    /* 磨砂质感背景效果 */
+    .game-details-wrapper {
+        position: relative;
+        min-height: 100vh;
+    }
+    
+    .game-background-layer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+    }
+    
+    /* 确保导航栏在游戏详情页也能正常显示，保持在背景层之上 */
+    /* 导航栏样式已由全局 style.css 统一管理，确保与其他页面视觉效果一致 */
+    header.container {
+        position: relative;
+        z-index: 100;
+    }
+    
+    .game-background-image {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 120%;
+        height: 120%;
+        object-fit: cover;
+        filter: blur(5px) brightness(0.8) saturate(1.2);
+        opacity: 0.6;
+        transition: opacity 0.5s ease-in-out;
+        will-change: transform, opacity;
+        transform-origin: top center;
+        backface-visibility: hidden;
+        /* 初始transform：图片顶部对齐视口顶部，水平居中 */
+        transform: translate3d(-50%, 0%, 0);
+    }
+    
+    /* 磨砂质感叠加层 */
+    .game-background-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%),
+            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        backdrop-filter: blur(1px);
+        -webkit-backdrop-filter: blur(1px);
+    }
+    
+    /* 动态渐变叠加层 - 流动的渐变效果 */
+    .game-background-gradient {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.15) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 60%);
+        animation: gradientFlow 20s ease-in-out infinite;
+        opacity: 0.8;
+        mix-blend-mode: overlay;
+        will-change: transform, opacity;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+    }
+    
+    /* 动态渐变动画 */
+    @keyframes gradientFlow {
+        0%, 100% {
+            background-position: 0% 50%, 100% 50%, 50% 50%;
+            transform: scale(1) rotate(0deg);
+        }
+        33% {
+            background-position: 30% 60%, 70% 40%, 50% 50%;
+            transform: scale(1.05) rotate(2deg);
+        }
+        66% {
+            background-position: 60% 40%, 40% 60%, 50% 50%;
+            transform: scale(0.95) rotate(-2deg);
+        }
+    }
+    
+    /* 光影效果层 */
+    .game-background-glow {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse at top, rgba(99, 102, 241, 0.2) 0%, transparent 50%),
+            radial-gradient(ellipse at bottom right, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
+        animation: glowPulse 8s ease-in-out infinite;
+        opacity: 0.6;
+        pointer-events: none;
+        will-change: transform, opacity;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+    }
+    
+    /* 光影脉冲动画 */
+    @keyframes glowPulse {
+        0%, 100% {
+            opacity: 0.4;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.7;
+            transform: scale(1.1);
+        }
+    }
+    
+    /* 暗色主题下的光影效果 */
+    [data-theme="dark"] .game-background-glow {
+        background: 
+            radial-gradient(ellipse at top, rgba(99, 102, 241, 0.3) 0%, transparent 50%),
+            radial-gradient(ellipse at bottom right, rgba(236, 72, 153, 0.25) 0%, transparent 50%);
+        opacity: 0.5;
+    }
+    
+    /* 暗色主题下的动态渐变调整 */
+    [data-theme="dark"] .game-background-gradient {
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.2) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.2) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 60%);
+        mix-blend-mode: screen;
+    }
+    
+    /* 确保内容区域有足够的对比度 */
+    .game-details-wrapper article {
+        background: var(--pico-card-background-color);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* 深色主题下的调整 - 增强可见度 */
+    [data-theme="dark"] .game-background-image {
+        filter: blur(8px) brightness(1.0) saturate(1.3) contrast(1.0);
+        opacity: 0.75;
+    }
+    
+    [data-theme="dark"] .game-background-overlay {
+        background: 
+            linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%),
+            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+    }
+    
+    /* 减少动画偏好设置 */
+    @media (prefers-reduced-motion: reduce) {
+        .game-background-gradient,
+        .game-background-glow {
+            animation: none;
+        }
+        
+        .game-background-image {
+            transition: opacity 0.5s ease-in-out;
+        }
+    }
+    
+    /* 暗色模式下增强内容卡片的对比度 */
+    [data-theme="dark"] .game-details-wrapper article {
+        background: var(--pico-card-background-color);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+    
+    /* 无封面图时的处理 - 通过类名控制 */
+    .game-background-layer.no-image {
+        display: none;
+    }
+    .chart-container { position: relative; height: 40vh; width: 100%; margin: 1rem 0; }
+    .toast { visibility: hidden; min-width: 250px; background-color: var(--pico-contrast); color: var(--pico-contrast-inverse); text-align: center; border-radius: var(--pico-border-radius); padding: 16px; position: fixed; z-index: 10; left: 50%; transform: translateX(-50%); bottom: 30px; opacity: 0; transition: visibility 0s 0.5s, opacity 0.5s linear; }
+    .toast.show { visibility: visible; opacity: 1; transition: opacity 0.5s linear; }
+    .star-rating { display: inline-flex; flex-direction: row-reverse; justify-content: flex-end; }
+    .star-rating input { display: none; }
+    .star-rating label { color: var(--pico-muted-border-color); cursor: pointer; font-size: 1.5rem; padding: 0 0.1em; transition: color 0.2s; }
+    .star-rating input:checked ~ label, .star-rating:not(:hover) input:checked ~ label { color: var(--pico-primary-hover); }
+    .star-rating:hover label { color: var(--pico-primary-hover); }
+    .star-rating input:hover ~ label { color: var(--pico-primary-hover); }
+    .star-rating:hover label:hover ~ label { color: var(--pico-primary-hover); }
+    .star-rating input:checked + label:hover, .star-rating input:checked ~ label:hover, .star-rating label:hover ~ input:checked ~ label { color: var(--pico-primary-focus); }
+    .comment-actions { font-size: 0.8em; margin-left: 1em; }
+    .danger { 
+        --pico-color: var(--pico-color-red-550); 
+        --pico-background-color: transparent;
+        --pico-border-color: var(--pico-color-red-550);
+    }
+    .danger:hover {
+        --pico-color: var(--pico-color-red-50); 
+        --pico-background-color: var(--pico-color-red-600);
+    }
+    .rating-section { 
+        background: var(--pico-card-background-color); 
+        border-radius: var(--pico-border-radius); 
+        padding: 1.5rem; 
+        margin: 1rem 0;
+    }
+    .rating-section h4 { margin-top: 0; }
+    .star-rating { 
+        display: flex; 
+        flex-direction: row-reverse; 
+        justify-content: flex-start; 
+        gap: 0.1rem;
+        font-size: 1.5rem;
+        flex-wrap: nowrap;
+    }
+    .star-rating input { display: none; }
+    .star-rating label { 
+        color: var(--pico-muted-border-color); 
+        cursor: pointer; 
+        transition: all 0.2s;
+        user-select: none;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+    .star-rating label:hover,
+    .star-rating label:hover ~ label { 
+        color: var(--pico-primary-hover); 
+    }
+    .star-rating input:checked ~ label,
+    .star-rating:not(:hover) input:checked ~ label { 
+        color: var(--pico-primary); 
+    }
+    .rating-value-display {
+        display: inline-block;
+        margin-left: 0.5rem;
+        font-weight: normal;
+        color: var(--pico-primary);
+        font-size: 0.85rem;
+    }
+    .star-rating-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+    .star-rating {
+        display: flex;
+        flex-direction: row-reverse;
+        justify-content: flex-start;
+        gap: 0.15rem;
+        flex-shrink: 0;
+    }
+    .slider-container {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 0.5rem;
+        align-items: center;
+        margin: 0.5rem 0;
+    }
+    .slider-container label {
+        min-width: 4rem;
+        font-weight: 500;
+    }
+    .slider-container input[type="range"] {
+        width: 100%;
+    }
+    .slider-value {
+        min-width: 3.5rem;
+        text-align: center;
+    }
+    .slider-value input[type="number"] {
+        width: 100%;
+        text-align: center;
+        font-weight: bold;
+        color: var(--pico-primary);
+        padding: 0.25rem 0.5rem;
+    }
+    .user-rating-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        background: var(--pico-primary-background);
+        color: var(--pico-primary-inverse);
+        border-radius: var(--pico-border-radius);
+        font-size: 0.9rem;
+        margin-left: 0.5rem;
+    }
+    /* 确保返回按钮能够正确响应主题切换，并增强对比度 */
+    button[data-back-url].secondary {
+        background-color: var(--pico-secondary-background) !important;
+        color: var(--pico-secondary-foreground) !important;
+        border-color: var(--pico-secondary-border) !important;
+    }
+    
+    /* 亮色模式：使用更深的背景色和更浅的文字色以增强对比度 */
+    html[data-theme="light"] button[data-back-url].secondary {
+        background-color: var(--pico-secondary-background) !important;
+        color: var(--pico-color) !important;
+        border-color: var(--pico-secondary-border) !important;
+    }
+    
+    /* 暗色模式：使用更浅的背景色和更深的文字色以增强对比度 */
+    html[data-theme="dark"] button[data-back-url].secondary {
+        background-color: var(--pico-secondary-background) !important;
+        color: var(--pico-color) !important;
+        border-color: var(--pico-secondary-border) !important;
+    }
+    
+    /* 悬停状态 */
+    button[data-back-url].secondary:hover,
+    button[data-back-url].secondary:active,
+    button[data-back-url].secondary:focus {
+        background-color: var(--pico-secondary-hover-background) !important;
+        color: var(--pico-secondary-hover-foreground) !important;
+        border-color: var(--pico-secondary-hover-border) !important;
+    }
+    
+    /* 亮色模式悬停：增强对比度 */
+    html[data-theme="light"] button[data-back-url].secondary:hover,
+    html[data-theme="light"] button[data-back-url].secondary:active,
+    html[data-theme="light"] button[data-back-url].secondary:focus {
+        background-color: var(--pico-primary) !important;
+        color: var(--pico-primary-inverse) !important;
+        border-color: var(--pico-primary) !important;
+    }
+    
+    /* 暗色模式悬停：增强对比度 */
+    html[data-theme="dark"] button[data-back-url].secondary:hover,
+    html[data-theme="dark"] button[data-back-url].secondary:active,
+    html[data-theme="dark"] button[data-back-url].secondary:focus {
+        background-color: var(--pico-primary) !important;
+        color: var(--pico-primary-inverse) !important;
+        border-color: var(--pico-primary) !important;
+    }
+</style>
+
+<div id="toast-notification" class="toast"></div>
+
+{# 磨砂质感背景层 #}
+{% if game.image_url %}
+<div class="game-background-layer">
+    <img src="{{ game.image_url }}" alt="{{ game.title }} background" class="game-background-image" id="game-bg-image">
+    <div class="game-background-gradient"></div>
+    <div class="game-background-glow"></div>
+    <div class="game-background-overlay"></div>
+</div>
+{% endif %}
+
+<div class="game-details-wrapper">
+{# 这个返回链接在 base.html 的导航栏中已经存在，但放在内容区顶部作为面包屑导航也是很好的体验，可以选择保留 #}
+<nav>
+    <ul><li><button type="button" role="button" class="secondary" data-back-url="/games" style="display: inline-flex; align-items: center; gap: 0.25rem;">&laquo; 返回作品列表</button></li></ul>
+</nav>
+
+<article style="padding-bottom: 0;">
+    <div class="grid">
+        <div class="two-thirds">
+             <hgroup style="margin-bottom: 1rem;">
+				<div style="display: flex; align-items: flex-start; justify-content: space-between;">
+					<div>
+						<h1>{{ game.title }}</h1>
+						<h2>{{ game.company }}</h2>
+                        {# --- 修改：循环显示译名 --- #}
+                        {% if game.translations %}
+                        <p style="color: var(--pico-muted-color); margin-bottom: 0;">
+                            {% for t in game.translations %}{{ t.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                        </p>
+                        {% endif %}
+					</div>
+					
+					{% if request.state.user and (request.state.user.is_admin or game.created_by == request.state.user.id) %}
+					<div class="admin-actions">
+						<a href="/game/{{ game.id }}/edit" role="button" class="contrast outline" data-tooltip="编辑游戏资料">
+							<i data-lucide="file-pen-line"></i>
+						</a>
+						{% if request.state.user.is_admin %}
+						<button id="delete-game-button" class="danger outline" data-tooltip="删除此游戏" data-game-id="{{ game.id }}" data-game-title="{{ game.title }}">
+							<i data-lucide="trash-2"></i>
+						</button>
+						{% endif %}
+					</div>
+					{% endif %}
+				</div>
+			</hgroup>
+            
+            {# --- 新增：显示标签和别名 --- #}
+            {% if game.tags %}
+            <div class="tags-display" style="margin-bottom: 1rem;">
+                {% for tag in game.tags %}
+                    <a href="/games?tag={{ tag.name }}" class="tag-badge">{{ tag.name }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if game.description %}
+            <p>{{ game.description }}</p>
+            {% endif %}
+
+            {% if game.aliases %}
+            <p><small><strong>常用别名:</strong> {% for alias in game.aliases %}{{ alias.name }}{% if not loop.last %}, {% endif %}{% endfor %}</small></p>
+            {% endif %}
+
+        </div>
+        <div class="one-third">
+            {% if game.image_url %}
+            <figure style="margin: 0;">
+                <img src="{{ game.image_url }}" alt="{{ game.title }} cover art" style="width:100%; height: auto; object-fit: cover; border-radius: var(--pico-border-radius);">
+            </figure>
+            {% else %}
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; background-color: var(--pico-card-background-color); border-radius: var(--pico-border-radius);">
+                <small>暂无封面</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</article>
+<article>
+    <div class="grid">
+        <div style="text-align: center;">
+            <hgroup>
+                <h4><i data-lucide="gem"></i> 社区总品质</h4>
+                <p id="overall-quality-display" style="font-size: 1.5rem; color: var(--pico-primary);">
+                    {% if evaluation.overall_quality_score > 0 %}
+                        {{ "%.2f"|format(evaluation.overall_quality_score) }}
+                    {% else %}
+                        暂无评分
+                    {% endif %}
+                </p>
+                <small id="quality-ratings-count">({{ evaluation.quality_ratings_count }} 条评分)</small>
+            </hgroup>
+        </div>
+        <div style="text-align: center;">
+			<hgroup>
+				<h4><i data-lucide="swords"></i> 社区难度</h4>
+                <div class="grid" style="margin-bottom: 0.5rem; align-items: center;">
+                    <select id="difficulty-context-selector">
+                        <option value="0">游戏总体</option>
+                        {% for diff_level in game.difficulty_levels %}
+                            <option value="{{ diff_level.id }}">{{ diff_level.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="ship-context-selector">
+                        <option value="0">全机体/角色</option>
+                        {% for ship_type in game.ship_types %}
+                            <option value="{{ ship_type.id }}">{{ ship_type.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <small id="overall-difficulty-realm" style="font-size: 0.8rem; color: var(--pico-muted-color);">
+                        {{ evaluation.overall_difficulty_realm }}
+                    </small>
+                </div>
+				<p id="overall-difficulty-display" style="font-size: 1.5rem; color: var(--pico-primary);">
+					</p>
+                <small id="context-info" style="color: var(--pico-muted-color); min-height: 1.2em;"></small>
+			</hgroup>
+		</div>
+    </div>
+</article>
+<article>
+    <header><strong><i data-lucide="bar-chart-3"></i> 社区综合评价</strong></header>
+    <div class="grid">
+        <section>
+            <h4><i data-lucide="gem"></i> 品质评分</h4>
+            <div class="chart-container">
+                <canvas id="qualityChart"></canvas>
+            </div>
+        </section>
+
+        <section>
+            <h4><i data-lucide="swords"></i> 难度评分</h4>
+            <div class="chart-container">
+                <canvas id="difficultyChart"></canvas>
+            </div>
+        </section>
+    </div>
+</article>
+
+<div class="grid">
+    <details>
+        <summary role="button" class="contrast"><i data-lucide="gem"></i> 参与品质评分</summary>
+        <div class="rating-section">
+            {% if request.state.user %}
+                {% if user_ratings.quality %}
+                <p><small class="user-rating-badge">✓ 已评分</small></p>
+                {% endif %}
+            <form id="quality-rating-form" action="/game/{{ game.id }}/rate_quality" method="post">
+                <fieldset>
+                    {% set quality_map = {"趣味性": "fun", "核心设计": "core", "深度": "depth", "演出": "performance", "剧情": "story"} %}
+                    {% for cat, field in quality_map.items() %}
+                    <div style="margin-bottom: 1rem;">
+                        <label for="rating-quality-{{cat}}">
+                            {{ cat }}
+                            {% if user_ratings.quality and user_ratings.quality[field] %}
+                            <span class="rating-value-display">(当前: {{ user_ratings.quality[field] }}/10)</span>
+                            {% endif %}
+                        </label>
+                        <div class="star-rating-wrapper">
+                            <div class="star-rating" data-category="{{ cat }}">
+                                {% for i in range(10, 0, -1) %}
+                                <input type="radio" id="star{{i}}-{{cat}}" name="rating_{{cat}}" value="{{i}}" 
+                                       {% if user_ratings.quality and user_ratings.quality[field] == i %}checked{% endif %} />
+                                <label for="star{{i}}-{{cat}}" title="{{i}}分">&#9733;</label>
+                                {% endfor %}
+                            </div>
+                            <span class="rating-value-display" id="quality-value-{{cat}}"></span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </fieldset>
+                <input type="hidden" name="user_name" value="{{ request.state.user.username }}">
+                <div class="grid" style="margin-top: 0.5rem;">
+                    <button type="submit">{% if user_ratings.quality %}更新{% else %}提交{% endif %}品质评分</button>
+                    {% if user_ratings.quality %}
+                    <button type="button" id="delete-quality-rating-btn" class="secondary outline" style="justify-self: flex-start;">
+                        撤销我的品质评分
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+            {% else %}	
+                <p>请<a href="/login?redirect=/game/{{ game.id }}">登录</a>后参与评分</p>
+            {% endif %}
+        </div>
+    </details>
+
+    <details>
+        <summary role="button" class="secondary"><i data-lucide="swords"></i> 参与难度评分</summary>
+        <div class="rating-section">
+            {% if request.state.user %}
+            <form id="difficulty-rating-form" action="/game/{{ game.id }}/rate_difficulty" method="post">
+                <div style="margin-bottom: 1rem;">
+                    <label><strong>评分情境:</strong></label>
+                    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                        <select id="form-difficulty-selector" name="difficulty_level_id" style="margin-bottom: 0;">
+                            <option value="">游戏总体</option>
+                            {% for diff_level in game.difficulty_levels %}
+                            <option value="{{ diff_level.id }}">{{ diff_level.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="form-ship-selector" name="ship_type_id" style="margin-bottom: 0;">
+                            <option value="">全机体/角色</option>
+                            {% for ship_type in game.ship_types %}
+                            <option value="{{ ship_type.id }}">{{ ship_type.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <p id="form-context-label" style="color: var(--pico-primary-focus); margin-top: 0.5rem; font-size: 0.9rem;">
+                        游戏总体 | 全机体/角色
+                    </p>
+                    <span id="difficulty-rating-status" class="user-rating-badge" style="display: none;">✓ 已评分</span>
+                </div>
+                <fieldset>
+                    {% set difficulty_map = {"避弹": "dodge", "策略": "strategy", "执行": "execution"} %}
+                    {% for cat, field in difficulty_map.items() %}
+                    <div class="slider-container">
+                        <label for="rating-difficulty-{{cat}}">{{ cat }}</label>
+                        <input type="range" min="1" max="60" value="30" 
+                               id="rating-difficulty-{{cat}}" 
+                               name="rating_{{cat}}" 
+                               class="difficulty-slider"
+                               data-category="{{ cat }}">
+                        <div class="slider-value">
+                            <input type="number" 
+                                   min="1" 
+                                   max="60" 
+                                   id="difficulty-value-{{cat}}" 
+                                   class="difficulty-value-input"
+                                   data-category="{{ cat }}"
+                                   value="30"
+                                   style="width: 100%;">
+                        </div>
+                    </div>
+                    {% endfor %}
+                </fieldset>
+                <input type="hidden" name="user_name" value="{{ request.state.user.username }}">
+                <div class="grid" style="margin-top: 0.5rem;">
+                    <button type="submit">提交难度评分</button>
+                    <button type="button" id="delete-difficulty-rating-btn" class="secondary outline" style="justify-self: flex-start;">
+                        撤销当前情境评分
+                    </button>
+                </div>
+            </form>
+            {% else %}	
+                <p>请<a href="/login?redirect=/game/{{ game.id }}">登录</a>后参与评分</p>
+            {% endif %}
+        </div>
+    </details>
+</div>
+ 
+<article>
+    <header><strong><i data-lucide="users"></i> 玩家评论区</strong></header>
+    <div id="comments-section">
+		{% for comment in evaluation.comments %}
+		<blockquote data-comment-id="{{ comment.id }}">
+			<p>{{ comment.content | e }}</p> {# 使用 |e 过滤器转义HTML，更安全 #}
+			<footer>
+				{# 左侧部分 #}
+				<cite>- {% if comment.user_id %}<a href="/user/{{ comment.user_id }}">{{ comment.user_name }}</a>{% else %}{{ comment.user_name }}{% endif %}</cite>
+				
+				{# 右侧部分：权限判断和操作链接 #}
+				{% if request.state.user and (comment.user_id == request.state.user.id or request.state.user.is_admin) %}
+					<span class="comment-actions">
+						{% if comment.user_id == request.state.user.id %}
+							<a href="#" class="edit-comment" data-comment-id="{{ comment.id }}">编辑</a> | 
+						{% endif %}
+						<a href="#" class="delete-comment" data-comment-id="{{ comment.id }}">删除</a>
+					</span>
+				{% endif %}
+			</footer>
+		</blockquote>
+		{% else %}
+		<p id="no-comments-placeholder">还没有人评论，快来抢占沙发吧！</p>
+		{% endfor %}
+	</div>
+    <form id="comment-form" data-game-id="{{ game.id }}">
+		{% if not request.state.user %}
+		<label for="user_name_comment">昵称 (登录后将自动使用您的用户名)</label>
+		<input type="text" name="user_name" id="user_name_comment" placeholder="输入你的常用昵称">
+		{% endif %}
+
+		<label for="content">添加评论 (最多2000字)</label>
+		<textarea name="content" id="content" rows="3" required maxlength="2000"></textarea>
+		
+		{% if request.state.user %}
+			<button type="submit">发表评论</button>
+		{% else %}
+			<a href="/login?redirect=/game/{{ game.id }}" role="button">登录后发表评论</a>
+		{% endif %}
+	</form>
+</article>
+</div> {# 结束 game-details-wrapper #}
+
+<script id="evaluation-data" type="application/json">
+    {{ evaluation | tojson | safe }}
+</script>
+<script id="session-data" type="application/json">
+    {
+        "user_id": {{ request.state.user.id if request.state.user else 'null' }}
+    }
+</script>
+<script id="user-ratings-data" type="application/json">
+    {{ user_ratings | tojson | safe }}
+</script>
+{# +++ 新增这个 script 标签，将管理员状态传递给JS +++ #}
+{% if request.state.user and request.state.user.is_admin %}
+<script>window.IS_ADMIN = true;</script>
+{% else %}
+<script>window.IS_ADMIN = false;</script>
+{% endif %}
+{% endblock %}
+
+
+{# Scripts block for page-specific JS files #}
+{% block scripts %}
+<script>
+    // 返回按钮点击事件
+    document.addEventListener('DOMContentLoaded', function() {
+        const backButton = document.querySelector('button[data-back-url]');
+        if (backButton) {
+            backButton.addEventListener('click', function() {
+                window.location.href = this.getAttribute('data-back-url');
+            });
+        }
+        
+        // 改进的视差滚动效果
+        const bgImage = document.getElementById('game-bg-image');
+        if (bgImage) {
+            // 检查用户是否偏好减少动画
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            
+            if (!prefersReducedMotion) {
+                let ticking = false;
+                let lastScrollY = window.pageYOffset || document.documentElement.scrollTop;
+                let currentOffset = 0;
+                let targetOffset = 0;
+                
+                // 平滑缓动函数（ease-out）
+                function easeOut(t) {
+                    return 1 - Math.pow(1 - t, 3);
+                }
+                
+                function updateParallax() {
+                    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+                    
+                    // 计算页面总高度和视口高度
+                    const documentHeight = Math.max(
+                        document.body.scrollHeight,
+                        document.body.offsetHeight,
+                        document.documentElement.clientHeight,
+                        document.documentElement.scrollHeight,
+                        document.documentElement.offsetHeight
+                    );
+                    const viewportHeight = window.innerHeight;
+                    const maxScroll = Math.max(0, documentHeight - viewportHeight);
+                    
+                    // 图片高度是120%，视口高度是100%，所以图片超出视口20%
+                    // 初始位置：图片顶部对齐视口顶部（translateY = 0%）
+                    // 滚动到底部时：图片底部应该对齐视口底部
+                    // 图片高度120% = 视口高度100% + 超出20%
+                    // 所以图片最多可以向下移动20%（相对于视口高度）
+                    // 当scrollY从0到maxScroll时，图片应该从0%移动到-20%
+                    const parallaxIntensity = maxScroll > 0 ? (-20 / maxScroll) : 0;
+                    targetOffset = scrollY * parallaxIntensity;
+                    
+                    // 限制范围：图片顶部从0%（初始）到-20%（滚动到底部）
+                    // 负数表示向下移动（因为图片是绝对定位，top: 0，向下移动需要负值）
+                    const minOffset = -20;  // 最多向下移动20%
+                    const maxOffset = 0;    // 初始位置，不向上移动
+                    targetOffset = Math.max(targetOffset, minOffset); // 确保不小于-20%
+                    targetOffset = Math.min(targetOffset, maxOffset); // 确保不大于0%
+                    
+                    // 平滑插值，使滚动更流畅
+                    const smoothing = 0.25;
+                    currentOffset += (targetOffset - currentOffset) * smoothing;
+                    
+                    // 使用 translate3d 强制GPU加速
+                    // 初始位置：translateY = 0%（图片顶部在视口顶部）
+                    // 滚动时：translateY = currentOffset%（向下移动，显示图片下方部分）
+                    bgImage.style.transform = `translate3d(-50%, ${currentOffset}%, 0)`;
+                    
+                    lastScrollY = scrollY;
+                    ticking = false;
+                }
+                
+                function requestTick() {
+                    if (!ticking) {
+                        window.requestAnimationFrame(updateParallax);
+                        ticking = true;
+                    }
+                }
+                
+                // 使用节流优化性能，passive: true 提升滚动性能
+                window.addEventListener('scroll', requestTick, { passive: true });
+                
+                // 初始设置
+                updateParallax();
+                
+                // 窗口大小改变时重新计算
+                window.addEventListener('resize', () => {
+                    lastScrollY = window.pageYOffset || document.documentElement.scrollTop;
+                    updateParallax();
+                }, { passive: true });
+            }
+        }
+    });
+</script>
+<script src="/static/vendor/chart.umd.min.js" defer></script>
+<script src="/static/vendor/chartjs-plugin-datalabels.min.js" defer></script>
+<script src="/static/js/game-details.js" defer></script>
+{% endblock %}

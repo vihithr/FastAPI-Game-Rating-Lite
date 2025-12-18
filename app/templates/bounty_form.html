@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}{% if action == "create" %}发布悬赏{% else %}编辑悬赏{% endif %} - STG社区评价{% endblock %}
+
+{% block content %}
+<article>
+    <header>
+        <h2><i data-lucide="{% if action == 'create' %}plus-circle{% else %}edit{% endif %}"></i> {% if action == "create" %}发布悬赏{% else %}编辑悬赏{% endif %}</h2>
+    </header>
+    
+    <form method="post" action="{% if action == 'create' %}/bounty/new{% else %}/bounty/{{ bounty.id }}/edit{% endif %}">
+        <label for="title">
+            标题 <span style="color: var(--pico-del-color);">*</span>
+        </label>
+        <input type="text" id="title" name="title" value="{% if bounty %}{{ bounty.title }}{% endif %}" required placeholder="请输入悬赏标题" maxlength="200">
+        
+        <label for="content">
+            悬赏内容 <span style="color: var(--pico-del-color);">*</span>
+        </label>
+        <textarea id="content" name="content" rows="8" required placeholder="请详细描述您的悬赏需求...">{% if bounty %}{{ bounty.content }}{% endif %}</textarea>
+        <small>请尽可能详细地描述您的需求，以便他人更好地理解和帮助您。</small>
+        
+        <label for="reward">
+            悬赏金额或奖品 <span style="color: var(--pico-del-color);">*</span>
+        </label>
+        <input type="text" id="reward" name="reward" value="{% if bounty %}{{ bounty.reward }}{% endif %}" required placeholder="例如：100元、游戏激活码、实物奖品等" maxlength="200">
+        <small>可以是金额、实物奖品或其他形式的奖励。</small>
+        
+        <label for="game_name">
+            游戏悬赏 <small>（可选）</small>
+        </label>
+        <input type="text" id="game_name" name="game_name" value="{% if bounty %}{{ bounty.game_name or '' }}{% endif %}" placeholder="例如：东方红魔乡、怒首领蜂等" maxlength="200">
+        <small>如果悬赏与特定游戏相关，请填写游戏名称。</small>
+        
+        <label for="bounty-tags-input">悬赏标签 <small>（可选，输入后按回车或逗号分隔）</small></label>
+        <div id="bounty-tags-container" class="tag-input-container">
+            <input type="text" id="bounty-tags-input" placeholder="例如: 技术、资源、合作、紧急...">
+        </div>
+        <input type="hidden" name="tags" id="bounty-tags-hidden-input" {% if bounty and bounty.bounty_tags %}data-initial-value="{{ bounty.bounty_tags | map(attribute='name') | join('|~|') }}"{% endif %}>
+        
+        <label for="category_id">
+            悬赏板块 <span style="color: var(--pico-del-color);">*</span>
+        </label>
+        <select id="category_id" name="category_id" required>
+            <option value="">请选择板块</option>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if bounty and bounty.category_id == cat.id %}selected{% endif %}>
+                {{ cat.name }}
+            </option>
+            {% endfor %}
+        </select>
+        
+        <label for="contact_info">
+            联系方式 <small>（可选）</small>
+        </label>
+        <input type="text" id="contact_info" name="contact_info" value="{% if bounty %}{{ bounty.contact_info or '' }}{% endif %}" placeholder="例如：QQ、微信、邮箱、Discord等" maxlength="200">
+        <small>联系方式仅在悬赏详情页显示，不会在列表页公开。</small>
+        
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem; justify-content: flex-start;">
+            <button type="submit" role="button" style="width: 150px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;">
+                <i data-lucide="{% if action == 'create' %}check{% else %}save{% endif %}"></i> {% if action == "create" %}发布悬赏{% else %}保存修改{% endif %}
+            </button>
+            <button type="button" role="button" class="secondary outline" data-cancel-url="{% if action == 'create' %}/bounties{% else %}/bounty/{{ bounty.id }}{% endif %}" style="width: 150px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;">
+                <i data-lucide="x"></i> 取消
+            </button>
+        </div>
+    </form>
+</article>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    lucide.createIcons();
+    
+    // 取消按钮点击事件
+    const cancelButton = document.querySelector('button[data-cancel-url]');
+    if (cancelButton) {
+        cancelButton.addEventListener('click', function() {
+            window.location.href = this.getAttribute('data-cancel-url');
+        });
+    }
+    
+    // 标签输入框逻辑
+    function setupTagInput(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        const textInput = container.querySelector('input[type="text"]');
+        const hiddenInputId = containerId.replace('-container', '-hidden-input');
+        const hiddenInput = document.getElementById(hiddenInputId);
+        
+        let tags = [];
+
+        function renderTags() {
+            container.querySelectorAll('.tag-item').forEach(tagEl => tagEl.remove());
+            tags.slice().reverse().forEach(tag => {
+                const tagElement = document.createElement('span');
+                tagElement.className = 'tag-item';
+                tagElement.textContent = tag;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'tag-remove-btn';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.type = 'button';
+                removeBtn.onclick = () => {
+                    tags = tags.filter(t => t !== tag);
+                    updateHiddenInput();
+                    renderTags();
+                };
+                
+                tagElement.appendChild(removeBtn);
+                container.insertBefore(tagElement, textInput);
+            });
+        }
+
+        function updateHiddenInput() {
+            hiddenInput.value = tags.join('|~|');
+        }
+
+        function addTag(tag) {
+            tag = tag.trim();
+            if (tag.length > 1 && !tags.includes(tag)) {
+                tags.push(tag);
+                updateHiddenInput();
+                renderTags();
+            }
+            textInput.value = '';
+        }
+
+        textInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                addTag(textInput.value);
+            }
+        });
+
+        textInput.addEventListener('blur', () => {
+            addTag(textInput.value);
+        });
+
+        // 从 data-initial-value 属性加载已有数据
+        const initialValue = hiddenInput.dataset.initialValue;
+        if (initialValue) {
+            tags = initialValue.split('|~|').filter(t => t.length > 0);
+            updateHiddenInput();
+            renderTags();
+        }
+    }
+
+    // 初始化标签输入框
+    setupTagInput('bounty-tags-container');
+</script>
+{% endblock %}
+

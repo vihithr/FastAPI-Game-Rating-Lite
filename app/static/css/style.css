@@ -1,0 +1,1819 @@
+/* /app/static/css/style.css */
+
+/* 覆盖 Pico.css 的默认 ul 样式，确保导航栏间距正确 */
+.site-nav ul,
+.site-nav ul.nav-primary,
+.site-nav ul.nav-meta,
+ul.nav-primary,
+ul.nav-meta {
+	gap: 1rem !important;
+}
+
+:root {
+	font-size: 13.5px;
+	line-height: 1.5;
+	--space-1: 0.35rem;
+	--space-2: 0.65rem;
+	--space-3: 1rem;
+	--touch-min: 44px;
+}
+
+main.container, header.container, footer.container {
+	max-width: 1200px;
+}
+
+header.container {
+	padding-top: 1rem;
+	padding-bottom: 0;
+	position: relative;
+	z-index: 100;
+}
+
+.site-header {
+	position: relative;
+	/* 固定的卡片式背景容器 */
+	background: var(--pico-card-background-color);
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--pico-card-border-radius);
+	padding: 1rem 1.25rem;
+	margin-bottom: 1.5rem;
+	/* 柔和的阴影 */
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* 降级方案 */
+@supports not (color-mix(in srgb, black, white)) {
+	.site-header {
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-card-border-color);
+		border-radius: var(--pico-card-border-radius);
+	}
+}
+
+.header-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+	margin-bottom: 0.75rem;
+}
+
+.brand-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	white-space: nowrap;
+	font-size: 1em;
+	font-weight: 600;
+}
+
+.nav-toggle {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	width: var(--touch-min);
+	height: var(--touch-min);
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--pico-border-radius);
+	background: var(--pico-muted-background-color);
+	color: var(--pico-color);
+}
+
+.site-nav {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1.5rem;
+	flex-wrap: wrap;
+}
+
+.site-nav ul,
+nav.site-nav ul,
+.site-header .site-nav ul {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 1rem !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	list-style: none;
+}
+
+/* --- 专用导航栏样式 --- */
+.nav-primary,
+.nav-meta,
+ul.nav-primary,
+ul.nav-meta,
+.site-nav .nav-primary,
+.site-nav .nav-meta {
+	display: flex;
+	align-items: center;
+	gap: 1rem !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	list-style: none;
+}
+
+.nav-primary li,
+.nav-meta li {
+	display: flex;
+	align-items: center;
+	margin: 0 !important;
+	padding: 0 !important;
+	flex-shrink: 0;
+}
+
+/* 导航链接基础样式 - 磨砂玻璃效果 */
+.nav-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem !important;
+	padding: 0.55rem 1.2rem !important;
+	margin: 0 !important;
+	min-height: var(--touch-min);
+	height: var(--touch-min);
+	border-radius: var(--pico-border-radius);
+	text-decoration: none;
+	transition: all 0.2s ease-in-out;
+	background: color-mix(in srgb, var(--pico-card-background-color) 70%, transparent);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid color-mix(in srgb, var(--pico-card-border-color) 20%, transparent);
+	color: var(--pico-color);
+	font-weight: 500;
+	font-size: 1em;
+	position: relative;
+	overflow: hidden;
+	white-space: nowrap;
+	box-sizing: border-box;
+}
+
+/* 降级方案：不支持 color-mix 的浏览器 */
+@supports not (color-mix(in srgb, black, white)) {
+	.nav-link {
+		background: var(--pico-card-background-color);
+		opacity: 0.9;
+		border: 1px solid var(--pico-card-border-color);
+	}
+}
+
+.nav-link::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -100%;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+	transition: left 0.5s ease-in-out;
+}
+
+.nav-link:hover::before {
+	left: 100%;
+}
+
+.nav-link:hover {
+	background: color-mix(in srgb, var(--pico-card-background-color) 85%, transparent);
+	border-color: var(--pico-primary);
+	color: var(--pico-primary);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@supports not (color-mix(in srgb, black, white)) {
+	.nav-link:hover {
+		background: var(--pico-card-background-color);
+		opacity: 1;
+	}
+}
+
+.nav-link:active {
+	transform: translateY(0);
+}
+
+.nav-link i,
+.nav-button i,
+.nav-user-link i {
+	width: 1.1em;
+	height: 1.1em;
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* 确保所有导航按钮垂直居中对齐 */
+.nav-link,
+.nav-button,
+.nav-user-link,
+.nav-button-icon {
+	vertical-align: middle;
+}
+
+.nav-link span {
+	position: relative;
+	z-index: 1;
+}
+
+/* 当前页面高亮 */
+.nav-link[aria-current="page"],
+.nav-link.active {
+	background: var(--pico-primary);
+	color: var(--pico-primary-inverse);
+	border-color: var(--pico-primary);
+}
+
+.nav-link[aria-current="page"]:hover,
+.nav-link.active:hover {
+	background: var(--pico-primary-hover);
+	border-color: var(--pico-primary-hover);
+	color: var(--pico-primary-inverse);
+}
+
+/* 导航按钮样式 */
+.nav-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.7rem;
+	padding: 0.55rem 1.1rem;
+	min-height: var(--touch-min);
+	height: var(--touch-min);
+	border-radius: var(--pico-border-radius);
+	text-decoration: none;
+	transition: all 0.2s ease-in-out;
+	background: var(--pico-primary);
+	color: var(--pico-primary-inverse);
+	border: 1px solid var(--pico-primary);
+	font-weight: 500;
+	font-size: 1em;
+	cursor: pointer;
+	white-space: nowrap;
+	box-sizing: border-box;
+}
+
+.nav-button:hover {
+	background: var(--pico-primary-hover);
+	border-color: var(--pico-primary-hover);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+
+.nav-button-outline {
+	background: transparent;
+	color: var(--pico-secondary-foreground);
+	border-color: var(--pico-secondary-border);
+}
+
+.nav-button-outline:hover {
+	background: var(--pico-secondary-hover-background);
+	color: var(--pico-secondary-hover-foreground);
+	border-color: var(--pico-secondary-hover-border);
+}
+
+.nav-button-secondary {
+	background: var(--pico-secondary-background);
+	color: var(--pico-secondary-foreground);
+	border-color: var(--pico-secondary-border);
+}
+
+.nav-button-secondary:hover {
+	background: var(--pico-secondary-hover-background);
+	color: var(--pico-secondary-hover-foreground);
+	border-color: var(--pico-secondary-hover-border);
+}
+
+/* 用户链接样式 */
+.nav-user-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.4rem;
+	padding: 0.55rem 0.95rem;
+	min-height: var(--touch-min);
+	border-radius: var(--pico-border-radius);
+	text-decoration: none;
+	transition: all 0.2s ease-in-out;
+	background: color-mix(in srgb, var(--pico-card-background-color) 70%, transparent);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid color-mix(in srgb, var(--pico-card-border-color) 20%, transparent);
+	color: var(--pico-color);
+	font-weight: 500;
+	font-size: 1em;
+	white-space: nowrap;
+}
+
+@supports not (color-mix(in srgb, black, white)) {
+	.nav-user-link {
+		background: var(--pico-card-background-color);
+		opacity: 0.9;
+		border: 1px solid var(--pico-card-border-color);
+	}
+}
+
+.nav-user-link:hover {
+	background: color-mix(in srgb, var(--pico-card-background-color) 85%, transparent);
+	border-color: var(--pico-primary);
+	color: var(--pico-primary);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@supports not (color-mix(in srgb, black, white)) {
+	.nav-user-link:hover {
+		background: var(--pico-card-background-color);
+		opacity: 1;
+	}
+}
+
+
+/* 主题切换按钮图标样式 */
+.nav-button-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--touch-min);
+	height: var(--touch-min);
+	min-width: var(--touch-min);
+	min-height: var(--touch-min);
+	padding: 0;
+	border-radius: var(--pico-border-radius);
+	background: color-mix(in srgb, var(--pico-card-background-color) 70%, transparent);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid color-mix(in srgb, var(--pico-card-border-color) 20%, transparent);
+	color: var(--pico-color);
+	transition: all 0.2s ease-in-out;
+	cursor: pointer;
+	flex-shrink: 0;
+	box-sizing: border-box;
+}
+
+.nav-button-icon:hover {
+	background: color-mix(in srgb, var(--pico-card-background-color) 85%, transparent);
+	border-color: var(--pico-primary);
+	color: var(--pico-primary);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@supports not (color-mix(in srgb, black, white)) {
+	.nav-button-icon {
+		background: var(--pico-card-background-color);
+		opacity: 0.9;
+		border: 1px solid var(--pico-card-border-color);
+	}
+	.nav-button-icon:hover {
+		opacity: 1;
+	}
+}
+
+.nav-button-icon i {
+	width: 1.15em;
+	height: 1.15em;
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* 暗色主题下的调整 */
+[data-theme="dark"] .nav-link,
+[data-theme="dark"] .nav-user-link,
+[data-theme="dark"] .nav-button-icon {
+	background: color-mix(in srgb, var(--pico-card-background-color) 80%, transparent);
+	border-color: color-mix(in srgb, var(--pico-card-border-color) 30%, transparent);
+}
+
+[data-theme="dark"] .nav-link:hover,
+[data-theme="dark"] .nav-user-link:hover,
+[data-theme="dark"] .nav-button-icon:hover {
+	background: color-mix(in srgb, var(--pico-card-background-color) 90%, transparent);
+	border-color: var(--pico-primary);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 暗色主题下的导航栏分隔 */
+[data-theme="dark"] .site-header {
+	background: var(--pico-card-background-color);
+	border: 1px solid var(--pico-card-border-color);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+@supports not (color-mix(in srgb, black, white)) {
+	[data-theme="dark"] .nav-link,
+	[data-theme="dark"] .nav-user-link,
+	[data-theme="dark"] .nav-button-icon {
+		background: var(--pico-card-background-color);
+		opacity: 0.85;
+	}
+	[data-theme="dark"] .nav-link:hover,
+	[data-theme="dark"] .nav-user-link:hover,
+	[data-theme="dark"] .nav-button-icon:hover {
+		opacity: 0.95;
+	}
+	[data-theme="dark"] .site-header {
+		background: var(--pico-card-background-color);
+		border: 1px solid var(--pico-card-border-color);
+		border-radius: var(--pico-card-border-radius);
+	}
+}
+
+/* 移动端导航栏调整 */
+@media (max-width: 768px) {
+	.nav-link,
+	.nav-button {
+		width: 100%;
+		justify-content: flex-start;
+		padding: 0.7rem 1rem;
+		min-height: 2.75rem;
+	}
+	
+	.nav-link span,
+	.nav-button span {
+		flex: 1;
+	}
+	
+	.nav-button-icon {
+		width: 100%;
+		height: 2.75rem;
+		min-height: 2.75rem;
+		justify-content: center;
+	}
+	
+	.site-nav {
+		gap: 1rem;
+	}
+	
+	.site-nav ul {
+		gap: 0.6rem;
+	}
+}
+
+.nav-hello {
+	white-space: nowrap;
+	display: flex;
+	align-items: center;
+}
+
+.nav-overlay {
+	display: none;
+}
+
+.stack-sm {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+}
+
+.scroll-x {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+.chip-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	align-items: center;
+	padding: 0.25rem 0;
+}
+
+.chip-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+	gap: 0.35rem;
+	align-items: stretch;
+}
+
+.chip-grid button,
+.chip-grid a[role="button"] {
+	width: 100%;
+	min-height: 30px;
+	padding: 0.3rem 0.45rem;
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	line-height: 1.2;
+	white-space: normal;
+	gap: 0.08rem;
+	text-decoration: none;
+	font-size: 0.8rem;
+}
+
+.chip-grid button small,
+.chip-grid a[role="button"] small {
+	display: block;
+	margin-top: 0.03rem;
+	font-size: 0.7em;
+}
+
+.chip-row::-webkit-scrollbar {
+	height: 6px;
+}
+
+.chip-row::-webkit-scrollbar-thumb {
+	background: var(--pico-muted-border-color);
+	border-radius: 999px;
+}
+
+.chip-meta {
+	opacity: 0.7;
+}
+
+.filters-grid {
+	gap: 0.9rem;
+}
+
+.grid-span-2 {
+	grid-column: span 2;
+}
+
+.view-switcher button {
+	min-height: var(--touch-min);
+}
+
+.filter-details {
+	margin-top: 1rem;
+}
+
+/* 筛选区域：展开时根据内容自适应，标签已变小 */
+.filter-details .chip-grid {
+	position: relative;
+}
+
+.filter-summary {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.filter-summary i {
+	width: 1em;
+	height: 1em;
+}
+
+.actions-row {
+	display: flex;
+	justify-content: flex-start;
+}
+
+.clear-filters {
+	min-height: var(--touch-min);
+}
+
+.game-list-wrap {
+	margin-top: 1rem;
+	position: relative;
+}
+
+.loading-overlay {
+	display: none;
+	position: absolute;
+	inset: 0;
+	background: rgba(var(--pico-background-color-rgb, 255, 255, 255), 0.85);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	z-index: 10;
+	align-items: center;
+	justify-content: center;
+	animation: fadeIn 0.3s ease-out;
+}
+
+[data-theme="dark"] .loading-overlay {
+	background: rgba(var(--pico-background-color-rgb, 0, 0, 0), 0.85);
+}
+
+.loading-card {
+	width: auto;
+	padding: 2rem;
+	position: relative;
+}
+
+/* 美观的加载动画 - Spinner */
+.loading-spinner {
+	width: 48px;
+	height: 48px;
+	border: 4px solid var(--pico-muted-border-color);
+	border-top-color: var(--pico-primary);
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+	margin: 0 auto;
+}
+
+/* 骨架屏加载效果 */
+.skeleton {
+	background: linear-gradient(
+		90deg,
+		var(--pico-muted-background-color) 25%,
+		color-mix(in srgb, var(--pico-muted-background-color) 50%, transparent) 50%,
+		var(--pico-muted-background-color) 75%
+	);
+	background-size: 200% 100%;
+	animation: skeleton-loading 1.5s ease-in-out infinite;
+	border-radius: var(--pico-border-radius);
+}
+
+@keyframes skeleton-loading {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
+}
+
+/* 游戏卡片骨架屏 */
+.skeleton-card {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	background: var(--pico-card-background-color);
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--pico-card-border-radius);
+	overflow: hidden;
+}
+
+.skeleton-card-img {
+	width: 100%;
+	aspect-ratio: 3 / 4;
+	background: var(--pico-muted-background-color);
+}
+
+.skeleton-card-body {
+	padding: 1rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.skeleton-line {
+	height: 1rem;
+	border-radius: 4px;
+}
+
+.skeleton-line.short {
+	width: 60%;
+}
+
+.skeleton-line.medium {
+	width: 80%;
+}
+
+/* 加载文本 */
+.loading-text {
+	text-align: center;
+	color: var(--pico-muted-color);
+	margin-top: 1rem;
+	font-size: 0.9rem;
+	animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+	0%, 100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
+
+@media (max-width: 1200px) {
+	:root { font-size: 13.5px; }
+}
+
+@media (max-width: 768px) {
+	:root { font-size: 13px; }
+	main.container, header.container, footer.container { max-width: 100%; padding-left: 0.9rem; padding-right: 0.9rem; }
+
+	.chip-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
+	.chip-grid button,
+	.chip-grid a[role="button"] { min-height: 28px; padding: 0.25rem 0.4rem; font-size: 0.75rem; }
+
+	.nav-toggle { display: inline-flex; }
+	.site-header {
+		padding: 0.85rem 1rem;
+		margin-bottom: 1rem;
+	}
+	.site-nav {
+		position: fixed;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		width: 78%;
+		max-width: 320px;
+		padding: 1rem;
+		background: var(--pico-card-background-color);
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 1rem;
+		transform: translateX(-100%);
+		transition: transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
+		box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+		z-index: 99;
+		border-right: 1px solid var(--pico-card-border-color);
+	}
+	.site-nav ul {
+		width: 100%;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0.4rem;
+	}
+	.site-nav a,
+	.site-nav button {
+		width: 100%;
+	}
+	.nav-overlay {
+		display: block;
+		position: fixed;
+		inset: 0;
+		background: rgba(0,0,0,0.35);
+		z-index: 98;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.2s ease-in-out;
+	}
+	body.nav-open .site-nav { transform: translateX(0); }
+	body.nav-open .nav-overlay { opacity: 1; pointer-events: auto; }
+	.header-bar { margin-bottom: 0.35rem; }
+	.brand-link { font-size: 1rem; }
+
+	.filters-grid { grid-template-columns: 1fr; }
+	.grid-span-2 { grid-column: span 1; }
+	.chip-row { flex-wrap: nowrap; gap: 0.4rem; }
+
+	#view-switcher { gap: 0.35rem; }
+	#view-switcher button { padding: 0.3rem 0.45rem; min-width: 2.75rem; }
+	#game-list.view-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.8rem; }
+	#game-list.view-list .game-card { padding: 0.65rem; gap: 0.6rem; }
+	#game-list.view-list .game-card-img-container { width: 72px; height: 100px; }
+	#game-list.view-list .game-card-body strong { font-size: 1rem; }
+	#game-list.view-compact { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+}
+
+@media (max-width: 600px) {
+	:root { font-size: 12.5px; }
+	#game-list.view-cards { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
+	#game-list.view-list .game-card { padding: 0.6rem; }
+	.game-card-body strong { font-size: 0.9rem; }
+	.game-card-body small { font-size: 0.78rem; }
+}
+
+/* --- 主题切换器 --- */
+#theme-switcher {
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	color: var(--pico-nav-link-color);
+	transition: color 0.2s;
+}
+#theme-switcher:hover {
+	color: var(--pico-primary);
+}
+
+/* --- 标签输入组件 --- */
+.tag-input-container {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	padding: 5px;
+	border: 1px solid var(--pico-form-element-border-color);
+	border-radius: var(--pico-border-radius);
+	background-color: var(--pico-form-element-background-color);
+	transition: box-shadow 0.2s, border-color 0.2s;
+	margin-bottom: var(--pico-form-element-spacing-vertical);
+}
+.tag-input-container:focus-within {
+	border-color: var(--pico-primary);
+	box-shadow: 0 0 0 1px var(--pico-primary);
+}
+.tag-item {
+	display: inline-flex;
+	align-items: center;
+	background-color: var(--pico-primary);
+	color: var(--pico-primary-inverse);
+	border-radius: var(--pico-border-radius);
+	padding: 0.2em 0.6em;
+	margin: 3px;
+	font-size: 0.9em;
+	white-space: nowrap;
+}
+.tag-remove-btn {
+	margin-left: 8px;
+	cursor: pointer;
+	width: 16px;
+	height: 16px;
+	background: none;
+	border: none;
+	color: var(--pico-primary-inverse);
+	opacity: 0.7;
+	transition: opacity 0.2s;
+	font-weight: bold;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	line-height: 1;
+}
+.tag-remove-btn:hover {
+	opacity: 1;
+}
+.tag-input-container input[type="text"] {
+	flex-grow: 1;
+	border: none !important;
+	padding: 5px !important;
+	outline: none !important;
+	background: transparent !important;
+	color: var(--pico-color) !important;
+	min-width: 150px;
+	box-shadow: none !important;
+	margin-bottom: 0 !important;
+}
+
+/* --- 标签展示徽章 --- */
+.tag-badge {
+	display: inline-block;
+	padding: 0.25em 0.6em;
+	font-size: 0.8em;
+	font-weight: 600;
+	line-height: 1;
+	text-align: center;
+	white-space: nowrap;
+	vertical-align: baseline;
+	border-radius: var(--pico-border-radius);
+	text-decoration: none;
+	background-color: var(--pico-secondary-background);
+	color: var(--pico-secondary-foreground);
+	border: 1px solid var(--pico-secondary-border);
+	transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+	margin: 0 0.2rem 0.2rem 0;
+}
+[data-theme="light"] .tag-badge {
+	background-color: var(--pico-primary-background);
+	color: var(--pico-primary-inverse);
+	border-color: var(--pico-primary-border);
+}
+.tag-badge:hover {
+	background-color: var(--pico-secondary-hover-background);
+	color: var(--pico-secondary-hover-foreground);
+	border-color: var(--pico-secondary-hover-border);
+}
+
+
+/* --- 过滤器激活状态 --- */
+#tag-filters button.active,
+#tag-filters a.active,
+#company-filters button.active {
+	background-color: var(--pico-primary);
+	color: var(--pico-primary-inverse);
+	border-color: var(--pico-primary);
+}
+
+
+/*
+ * ===================================================================
+ * 游戏列表视图切换核心样式 (View Mode Switching)
+ * ===================================================================
+ */
+
+#game-list {
+    transition: all 0.3s ease-in-out;
+}
+
+/* --- 通用基础样式 --- */
+/* 为卡片容器的父链接设置，以确保悬浮效果作用于整个区域 */
+.game-link-container {
+    display: block; /* 确保链接占据块级空间 */
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-radius: var(--pico-card-border-radius); /* 将圆角赋予外层链接，效果更统一 */
+}
+.game-link-container:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--pico-card-box-shadow);
+}
+
+/* 卡片本身的基础样式，现在由父级链接控制悬浮动画 */
+.game-card {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    background-color: var(--pico-card-background-color);
+    border: 1px solid var(--pico-card-border-color);
+    border-radius: var(--pico-card-border-radius);
+    overflow: hidden;
+    transition: border-color 0.2s; /* 为紧凑模式的悬浮效果准备 */
+}
+
+/* 通用图片容器 */
+.game-card-img-container {
+    position: relative;
+    background-color: var(--pico-muted-background-color);
+    flex-shrink: 0; /* 防止图片在flex布局中被压缩 */
+    aspect-ratio: 3 / 4;
+}
+.game-card-img, .img-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.img-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pico-muted-color);
+}
+
+/* 通用内容区域 */
+.game-card-body {
+    display: flex;
+    flex-direction: column;
+    padding: var(--pico-card-body-padding);
+    overflow: hidden;
+}
+.game-card-body strong {
+    color: var(--pico-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* 超长标题显示省略号 */
+	display: block;
+}
+.game-card-body small {
+    color: var(--pico-muted-color);
+    margin-top: 0.25rem;
+}
+
+
+/* ----------------------------- */
+/* 1. 卡片视图 (Card View) - 默认 */
+/* ----------------------------- */
+#game-list.view-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 0.9rem;
+}
+#game-list.view-cards .game-card {
+    flex-direction: column;
+}
+#game-list.view-cards .game-card-img-container {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+}
+#game-list.view-cards .game-card-body {
+    flex-grow: 1;
+    justify-content: flex-start; /* 内容从顶部开始排列 */
+}
+
+/* ----------------------- */
+/* 2. 列表视图 (List View) */
+/* ----------------------- */
+#game-list.view-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem; /* 使用 gap 替代 margin-bottom */
+}
+/* 列表视图下，悬浮时只加阴影，不位移，避免页面跳动 */
+#game-list.view-list .game-link-container:hover {
+    transform: none;
+}
+#game-list.view-list .game-card {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 0.7rem 0.85rem;
+}
+#game-list.view-list .game-card-img-container {
+    padding-top: 0; /* 清除卡片视图的 padding-top */
+    width: 80px;
+    height: 110px;
+    flex-shrink: 0;
+}
+#game-list.view-list .game-card-body {
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+#game-list.view-list .game-card-body strong {
+    font-size: 1.05rem;
+}
+#game-list.view-list .game-card-body .list-meta {
+    display: none;
+    color: var(--pico-muted-color);
+    font-size: 0.9rem;
+    line-height: 1.35;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-clamp: 2;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+
+/* --------------------------- */
+/* 3. 紧凑视图 (Compact View) */
+/* --------------------------- */
+#game-list.view-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.6rem;
+}
+
+/* 在 Grid 布局中，不再需要为链接容器设置 auto 宽度 */
+#game-list.view-compact .game-link-container {
+    width: 100%; /* 链接将撑满整个网格单元 */
+}
+
+/* 悬浮效果保持不变，依然是稳定的边框高亮 */
+#game-list.view-compact .game-link-container:hover {
+    transform: none;
+    box-shadow: none;
+}
+#game-list.view-compact .game-link-container:hover .game-card {
+    border-color: var(--pico-primary-hover);
+}
+
+/* 卡片内部样式保持不变，依然是小缩略图+标题的核心模式 */
+#game-list.view-compact .game-card {
+    flex-direction: row;
+    align-items: center;
+    padding: 0.3rem 0.65rem;
+    width: 100%; /* 卡片也撑满链接容器 */
+}
+
+/* 图片容器样式不变 */
+#game-list.view-compact .game-card-img-container {
+    display: block !important;
+    width: 32px;
+    height: 42px;
+    margin-right: 0.75rem;
+    border-radius: calc(var(--pico-border-radius) / 2);
+    overflow: hidden;
+}
+
+/* 内容主体样式不变 */
+#game-list.view-compact .game-card-body {
+    padding: 0;
+    justify-content: center;
+}
+#game-list.view-compact .game-card-body strong {
+	font-size: 0.95rem;
+}
+
+/* 副标题依然隐藏 */
+#game-list.view-compact .game-card-body small {
+    display: none;
+}
+
+/* --- 主页特定样式 --- */
+.home-game-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.9rem;
+    margin-top: 1rem;
+}
+
+.home-game-grid .game-link-container {
+    display: block;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-radius: var(--pico-card-border-radius);
+}
+
+.home-game-grid .game-link-container:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+.home-game-grid .game-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    background-color: var(--pico-card-background-color);
+    border: 1px solid var(--pico-card-border-color);
+    border-radius: var(--pico-card-border-radius);
+    overflow: hidden;
+    text-decoration: none;
+}
+
+.home-game-grid .game-card-img-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    background-color: var(--pico-muted-background-color);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.home-game-grid .game-card-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.home-game-grid .img-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pico-muted-color);
+}
+
+.home-game-grid .game-card-body {
+    display: flex;
+    flex-direction: column;
+    padding: var(--pico-card-body-padding);
+    overflow: hidden;
+    flex-grow: 1;
+    justify-content: flex-start;
+}
+
+.home-game-grid .game-card-body strong {
+    color: var(--pico-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.home-game-grid .game-card-body small {
+    color: var(--pico-muted-color);
+    margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+    .home-game-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.75rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .home-game-grid {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 0.65rem;
+    }
+}
+
+/* ===================================================================
+ * 全局背景系统 (Global Background System)
+ * ===================================================================
+ */
+
+/* 全局背景容器 */
+body {
+    position: relative;
+    min-height: 100vh;
+    background-color: var(--pico-background-color);
+}
+
+/* 通用背景层 - 可选的装饰性背景 */
+.global-background-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* 网格图案背景 - 性能友好的装饰效果 */
+.global-background-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(var(--pico-primary-rgb, 99, 102, 241), 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(var(--pico-primary-rgb, 99, 102, 241), 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+    opacity: 0.5;
+    animation: gridMove 30s linear infinite; /* 从 20s 增至 30s，更缓慢的动画 */
+}
+
+/* 网格移动动画 */
+@keyframes gridMove {
+    0% {
+        transform: translate(0, 0);
+    }
+    100% {
+        transform: translate(50px, 50px);
+    }
+}
+
+/* 暗色主题下的网格调整 */
+[data-theme="dark"] .global-background-grid {
+    background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    opacity: 0.3;
+}
+
+/* 渐变背景层 - 柔和的色彩渐变 */
+.global-background-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(ellipse at top left, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at center, rgba(59, 130, 246, 0.05) 0%, transparent 60%);
+    animation: globalGradientFlow 25s ease-in-out infinite;
+    opacity: 0.6;
+}
+
+/* 全局渐变动画 */
+@keyframes globalGradientFlow {
+    0%, 100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 0.4; /* 从 0.5 降至 0.4 */
+    }
+    33% {
+        transform: scale(1.1) rotate(5deg);
+        opacity: 0.6; /* 从 0.7 降至 0.6 */
+    }
+    66% {
+        transform: scale(0.9) rotate(-5deg);
+        opacity: 0.5; /* 从 0.6 降至 0.5 */
+    }
+}
+
+/* 暗色主题下的渐变调整 */
+[data-theme="dark"] .global-background-gradient {
+    background: 
+        radial-gradient(ellipse at top left, rgba(99, 102, 153, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(153, 72, 236, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at center, rgba(59, 130, 246, 0.08) 0%, transparent 60%);
+    opacity: 0.4;
+}
+
+/* 粒子效果背景 - 使用 CSS 实现轻量级粒子 */
+.global-background-particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(2px 2px at 20% 30%, rgba(99, 102, 241, 0.3), transparent),
+        radial-gradient(2px 2px at 60% 70%, rgba(236, 72, 153, 0.3), transparent),
+        radial-gradient(1px 1px at 50% 50%, rgba(59, 130, 246, 0.4), transparent),
+        radial-gradient(1px 1px at 80% 10%, rgba(99, 102, 241, 0.3), transparent),
+        radial-gradient(2px 2px at 90% 80%, rgba(236, 72, 153, 0.3), transparent),
+        radial-gradient(1px 1px at 33% 85%, rgba(59, 130, 246, 0.4), transparent),
+        radial-gradient(2px 2px at 10% 50%, rgba(99, 102, 241, 0.3), transparent);
+    background-size: 200% 200%;
+    background-position: 0% 0%, 100% 0%, 50% 50%, 0% 100%, 100% 100%, 50% 0%, 0% 50%;
+    animation: particleFloat 30s ease-in-out infinite;
+    opacity: 0.3; /* 从 0.4 降至 0.3，减少粒子效果密度 */
+}
+
+/* 粒子浮动动画 */
+@keyframes particleFloat {
+    0%, 100% {
+        background-position: 0% 0%, 100% 0%, 50% 50%, 0% 100%, 100% 100%, 50% 0%, 0% 50%;
+    }
+    25% {
+        background-position: 25% 25%, 75% 25%, 75% 75%, 25% 75%, 75% 25%, 25% 25%, 25% 75%;
+    }
+    50% {
+        background-position: 50% 50%, 50% 50%, 50% 50%, 50% 50%, 50% 50%, 50% 50%, 50% 50%;
+    }
+    75% {
+        background-position: 75% 25%, 25% 75%, 25% 25%, 75% 75%, 25% 25%, 75% 75%, 75% 25%;
+    }
+}
+
+/* 暗色主题下的粒子调整 */
+[data-theme="dark"] .global-background-particles {
+    background-image: 
+        radial-gradient(2px 2px at 20% 30%, rgba(99, 102, 241, 0.4), transparent),
+        radial-gradient(2px 2px at 60% 70%, rgba(236, 72, 153, 0.4), transparent),
+        radial-gradient(1px 1px at 50% 50%, rgba(59, 130, 246, 0.5), transparent),
+        radial-gradient(1px 1px at 80% 10%, rgba(99, 102, 241, 0.4), transparent),
+        radial-gradient(2px 2px at 90% 80%, rgba(236, 72, 153, 0.4), transparent),
+        radial-gradient(1px 1px at 33% 85%, rgba(59, 130, 246, 0.5), transparent),
+        radial-gradient(2px 2px at 10% 50%, rgba(99, 102, 241, 0.4), transparent);
+    opacity: 0.2; /* 从 0.3 降至 0.2，进一步减少粒子效果密度 */
+}
+
+/* 减少动画偏好设置 */
+@media (prefers-reduced-motion: reduce) {
+    .global-background-grid,
+    .global-background-gradient,
+    .global-background-particles {
+        animation: none;
+    }
+    
+    .global-background-grid {
+        transform: translate(0, 0);
+    }
+}
+
+/* 性能优化：使用 will-change 提示浏览器优化 */
+.global-background-layer > * {
+    will-change: transform, opacity;
+    transform: translateZ(0); /* 强制硬件加速 */
+    backface-visibility: hidden; /* 优化渲染性能 */
+    perspective: 1000px; /* 启用3D变换上下文 */
+}
+
+/* 优化动画性能 - 使用 transform 和 opacity 而非位置属性 */
+.global-background-gradient,
+.global-background-particles,
+.global-background-grid {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* ===================================================================
+ * 表单页面优化 (Form Enhancements)
+ * ===================================================================
+ */
+
+/* 表单容器样式 */
+article form,
+form {
+    position: relative;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* 表单输入框增强 */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="search"],
+input[type="number"],
+input[type="file"],
+textarea,
+select {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); /* 从 0.3s 降至 0.15s，更快的过渡 */
+    border-width: 1.5px;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="search"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+select:focus {
+    transform: translateY(-0.5px); /* 从 -1px 降至 -0.5px，减少位移 */
+    box-shadow: 0 3px 8px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.15); /* 降低阴影强度：从 4px 12px 0.2 降至 3px 8px 0.15 */
+    border-color: var(--pico-primary);
+}
+
+/* 输入框聚焦时的动画效果 */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="search"],
+input[type="number"],
+textarea {
+    position: relative;
+}
+
+input[type="text"]:focus::before,
+input[type="password"]:focus::before,
+input[type="email"]:focus::before,
+input[type="search"]:focus::before,
+input[type="number"]:focus::before,
+textarea:focus::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--pico-primary), var(--pico-primary-hover));
+    animation: inputFocusLine 0.15s ease-out; /* 从 0.3s 降至 0.15s，更快的动画 */
+}
+
+@keyframes inputFocusLine {
+    from {
+        transform: scaleX(0);
+        opacity: 0;
+    }
+    to {
+        transform: scaleX(1);
+        opacity: 1;
+    }
+}
+
+/* 表单按钮增强 */
+button[type="submit"],
+input[type="submit"],
+button.primary {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button[type="submit"]:hover,
+input[type="submit"]:hover,
+button.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.3);
+}
+
+button[type="submit"]:active,
+input[type="submit"]:active,
+button.primary:active {
+    transform: translateY(0);
+}
+
+/* 表单加载状态 */
+form.loading button[type="submit"],
+form.loading input[type="submit"] {
+    position: relative;
+    color: transparent;
+    pointer-events: none;
+}
+
+form.loading button[type="submit"]::after,
+form.loading input[type="submit"]::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid var(--pico-primary-inverse);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 表单容器背景效果 */
+article[role="article"] form,
+article form {
+    background: var(--pico-card-background-color);
+    padding: 2rem;
+    border-radius: var(--pico-border-radius);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--pico-card-border-color);
+}
+
+[data-theme="dark"] article form {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* 标签输入容器增强 */
+.tag-input-container:focus-within {
+    transform: translateY(-0.5px); /* 从 -1px 降至 -0.5px，保持一致性 */
+    box-shadow: 0 3px 8px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.12); /* 降低阴影强度 */
+}
+
+/* 文件上传区域增强 */
+input[type="file"] {
+    padding: 0.75rem;
+    border: 2px dashed var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+input[type="file"]:hover {
+    border-color: var(--pico-primary);
+    background: rgba(var(--pico-primary-rgb, 99, 102, 241), 0.05);
+}
+
+input[type="file"]:focus {
+    border-color: var(--pico-primary);
+    box-shadow: 0 0 0 3px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.1);
+}
+
+/* 移动端优化：减少背景效果以提升性能 */
+@media (max-width: 768px) {
+    .global-background-particles {
+        opacity: 0.15; /* 从 0.2 降至 0.15，移动端进一步降低 */
+    }
+    
+    .global-background-grid {
+        background-size: 80px 80px;
+        opacity: 0.25; /* 从 0.3 降至 0.25，移动端进一步降低 */
+    }
+    
+    .global-background-gradient {
+        opacity: 0.3; /* 从 0.4 降至 0.3，移动端进一步降低 */
+    }
+    
+    /* 移动端禁用部分动画以提升性能 */
+    .global-background-layer > * {
+        will-change: auto;
+    }
+    
+    /* 移动端表单优化 */
+    article form {
+        padding: 1.5rem;
+    }
+    
+    input[type="text"]:focus,
+    input[type="password"]:focus,
+    input[type="email"]:focus,
+    textarea:focus {
+        transform: none;
+    }
+}
+
+/* 低性能设备优化 */
+@media (prefers-reduced-motion: reduce) {
+    .global-background-layer > * {
+        will-change: auto;
+    }
+}
+
+/* 内容区域性能优化 - 确保内容在背景之上正确渲染 */
+main.container {
+    position: relative;
+    z-index: 1;
+    contain: layout style paint; /* CSS containment 优化 */
+}
+
+/* 卡片性能优化 */
+.game-card,
+article {
+    contain: layout style; /* 限制重绘范围 */
+    transform: translateZ(0); /* 启用硬件加速 */
+}
+
+/* ===================================================================
+ * 列表页面卡片优化 (List Page Card Enhancements)
+ * ===================================================================
+ */
+
+/* 卡片进入动画 */
+article.card,
+.game-card {
+    animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards; /* 使用更自然的缓动函数 */
+}
+
+/* 为不同卡片添加延迟，创造波浪效果 */
+article.card:nth-child(1) { animation-delay: 0.03s; } /* 从 0.05s 降至 0.03s */
+article.card:nth-child(2) { animation-delay: 0.06s; } /* 从 0.1s 降至 0.06s */
+article.card:nth-child(3) { animation-delay: 0.09s; } /* 从 0.15s 降至 0.09s */
+article.card:nth-child(4) { animation-delay: 0.12s; } /* 从 0.2s 降至 0.12s */
+article.card:nth-child(5) { animation-delay: 0.15s; } /* 从 0.25s 降至 0.15s */
+article.card:nth-child(6) { animation-delay: 0.18s; } /* 从 0.3s 降至 0.18s */
+article.card:nth-child(n+7) { animation-delay: 0.21s; } /* 从 0.35s 降至 0.21s */
+
+/* 淡入上升动画 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px); /* 从 20px 降至 15px，减少动画距离 */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 文章列表卡片增强 */
+.articles-list article.card,
+.bounties-list article.card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.articles-list article.card::before,
+.bounties-list article.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.articles-list article.card:hover::before,
+.bounties-list article.card:hover::before {
+    left: 100%;
+}
+
+/* 卡片3D悬浮效果 */
+.articles-list article.card:hover,
+.bounties-list article.card:hover {
+    transform: translateY(-8px) translateZ(0) rotateX(2deg);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+    border-color: var(--pico-primary);
+}
+
+[data-theme="dark"] .articles-list article.card:hover,
+[data-theme="dark"] .bounties-list article.card:hover {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ===================================================================
+ * 卡片悬浮3D效果增强 (Enhanced 3D Card Hover Effects)
+ * ===================================================================
+ */
+
+/* 游戏卡片3D效果增强 */
+.game-link-container {
+    perspective: 1000px;
+    transform-style: preserve-3d;
+}
+
+.game-card {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+/* 卡片悬浮时的3D变换 */
+.game-link-container:hover .game-card {
+    transform: translateY(-6px) translateZ(20px) rotateY(2deg) rotateX(-1deg); /* 降低位移和旋转角度 */
+    box-shadow: 
+        0 12px 24px rgba(0, 0, 0, 0.12), /* 降低阴影强度：从 16px 32px 降至 12px 24px */
+        0 0 0 1px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.1);
+    border-color: var(--pico-primary);
+}
+
+[data-theme="dark"] .game-link-container:hover .game-card {
+    box-shadow: 
+        0 12px 24px rgba(0, 0, 0, 0.4), /* 降低阴影强度：从 16px 32px 降至 12px 24px */
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* 卡片图片的3D效果 */
+.game-card-img-container {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+}
+
+.game-link-container:hover .game-card-img-container {
+    transform: scale(1.05) translateZ(10px);
+}
+
+/* 鼠标跟随效果 - 使用JavaScript实现 */
+.game-card.mouse-tilt {
+    transition: transform 0.1s ease-out;
+}
+
+/* 文章和悬赏卡片的3D效果 */
+.articles-list article.card,
+.bounties-list article.card {
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+.articles-list article.card:hover,
+.bounties-list article.card:hover {
+    transform: translateY(-8px) translateZ(20px) rotateX(1deg) rotateY(-0.5deg); /* 降低位移和旋转角度 */
+    box-shadow: 
+        0 14px 28px rgba(0, 0, 0, 0.12), /* 降低阴影强度：从 20px 40px 降至 14px 28px */
+        0 0 0 1px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.15);
+}
+
+[data-theme="dark"] .articles-list article.card:hover,
+[data-theme="dark"] .bounties-list article.card:hover {
+    box-shadow: 
+        0 14px 28px rgba(0, 0, 0, 0.5), /* 降低阴影强度：从 20px 40px 降至 14px 28px */
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* 卡片内容区域的3D层次 */
+.game-card-body,
+.articles-list article.card > div:first-child,
+.bounties-list article.card > div:first-child {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.game-link-container:hover .game-card-body,
+.articles-list article.card:hover > div:first-child,
+.bounties-list article.card:hover > div:first-child {
+    transform: translateZ(10px);
+}
+
+/* 流畅的阴影过渡 */
+.game-card,
+.articles-list article.card,
+.bounties-list article.card {
+    transition: 
+        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 0.3s ease;
+}
+
+/* 移动端优化 - 减少3D效果 */
+@media (max-width: 768px) {
+    .game-link-container:hover .game-card,
+    .articles-list article.card:hover,
+    .bounties-list article.card:hover {
+        transform: translateY(-4px) translateZ(0);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+}
+
+/* 列表视图下的卡片优化 */
+#game-list.view-list .game-link-container:hover .game-card {
+    transform: translateX(3px) translateZ(0); /* 从 4px 降至 3px，减少位移效果 */
+}
+
+/* 紧凑视图下的卡片优化 */
+#game-list.view-compact .game-link-container:hover .game-card {
+    transform: translateX(2px) translateZ(0);
+    border-color: var(--pico-primary-hover);
+}
+
+/* ===================================================================
+ * 全局过渡动画 (Global Transition Animations)
+ * ===================================================================
+ */
+
+/* 页面元素进入动画 */
+main.container > * {
+    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards; /* 使用更自然的缓动函数 */
+}
+
+main.container > *:nth-child(1) { animation-delay: 0.03s; } /* 从 0.05s 降至 0.03s */
+main.container > *:nth-child(2) { animation-delay: 0.06s; } /* 从 0.1s 降至 0.06s */
+main.container > *:nth-child(3) { animation-delay: 0.09s; } /* 从 0.15s 降至 0.09s */
+main.container > *:nth-child(4) { animation-delay: 0.12s; } /* 从 0.2s 降至 0.12s */
+main.container > *:nth-child(n+5) { animation-delay: 0.15s; } /* 从 0.25s 降至 0.15s */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* 统一的过渡时间曲线 */
+* {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 链接过渡效果 */
+a {
+    transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+a:hover {
+    opacity: 0.8;
+}
+
+/* 按钮统一过渡 */
+button,
+[role="button"],
+input[type="submit"],
+input[type="button"] {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+    article.card,
+    .game-card,
+    main.container > * {
+        animation: none;
+    }
+    
+    * {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+    
+    .articles-list article.card:hover,
+    .bounties-list article.card:hover,
+    .game-link-container:hover .game-card {
+        transform: translateY(-4px);
+    }
+}

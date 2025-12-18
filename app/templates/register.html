@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}注册 - STG社区评价{% endblock %}
+
+{% block content %}
+<article>
+    <header>
+        <h2><i data-lucide="user-plus"></i> 创建新账户</h2>
+    </header>
+    <form action="/register" method="post" id="register-form">
+        <label for="username">
+            用户名
+            <input type="text" id="username" name="username" placeholder="用户名" required>
+        </label>
+        <label for="email">
+            邮箱地址
+            <input type="email" id="email" name="email" placeholder="邮箱" required>
+        </label>
+        <label for="password">
+            密码
+            <input type="password" id="password" name="password" placeholder="密码" required>
+        </label>
+        <button type="submit">注册</button>
+    </form>
+    <footer style="text-align: center;">
+        已经有账户了? <a href="/login">立即登录</a>
+    </footer>
+</article>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('register-form');
+        if (form) {
+            form.addEventListener('submit', function() {
+                form.classList.add('loading');
+            });
+        }
+    });
+</script>
+{% endblock %}
