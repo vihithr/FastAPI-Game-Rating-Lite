@@ -30,7 +30,7 @@
 - `stg_website.service`：Systemd 服务单元模板  
 - `Caddyfile`：Caddy 反向代理模板（HTTPS / HTTP 配置）  
 - `gunicorn_config.py`：Gunicorn 配置  
-- `DEPLOYMENT.md`：更详细的部署说明与故障排查  
+- [`DEPLOYMENT.md`](DEPLOYMENT.md)：更详细的部署说明与故障排查  
 
 ---
 
@@ -48,7 +48,7 @@
 
 ### 2. 在线一键部署（推荐，从本仓库拉取）
 
-完整的部署说明和所有模式（从 GitHub 克隆、Release 源码包、离线本地包等）已迁移到 `DEPLOYMENT.md`。  
+完整的部署说明和所有模式（从 GitHub 克隆、Release 源码包、离线本地包等）已迁移到 [`DEPLOYMENT.md`](DEPLOYMENT.md)。  
 这里只保留一个**最推荐、可直接复制的生产环境 Quick Start**。
 
 **场景：新服务器，直接以 `root` 登录，有域名，使用 Release `v0.1.0` 源码包 + HTTPS，一行命令完成下载与安装：**
@@ -71,7 +71,7 @@ bash -c 'cd /tmp && \
   ```
 
 - 若没有域名、只想用 IP 访问，可把末尾的 `--domain example.com` 改成 `--ip`。  
-- 更多部署模式与参数说明请查看 `DEPLOYMENT.md` 中的“快速开始”与“手动部署步骤”章节。  
+- 更多部署模式与参数说明请查看 [`DEPLOYMENT.md`](DEPLOYMENT.md) 中的“快速开始”与“手动部署步骤”章节。  
 
 ### 3. 离线 / 本地部署（可选）
 
