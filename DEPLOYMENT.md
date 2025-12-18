@@ -31,36 +31,37 @@
 
 ## 快速开始
 
-### 方式一：使用 Release 源码包（推荐、服务器无需 git）
+### 方式一：使用 Release 源码包（一行命令完成下载 + 安装，推荐）
 
-本项目提供了 GitHub Release 源码包 [`v0.1.0`](https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz)，适合大多数生产环境部署。
+本项目提供了 GitHub Release 源码包 [`v0.1.0`](https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz)，适合大多数生产环境部署，服务器无需安装 `git`。
 
 #### 1. 以 root 登录，有域名（HTTPS 模式）
 
 ```bash
-cd /root/rating  # 或任意工作目录
-
-# 1）下载 v0.1.0 源码包
-curl -L -o stg_website_v0.1.0.tar.gz \
-  https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz
-
-# 2）通过一键脚本从压缩包安装（会启动交互式向导）
-bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-  install --from-archive /root/rating/stg_website_v0.1.0.tar.gz --domain example.com
+bash -c 'cd /tmp && \
+  curl -L -o stg_website_v0.1.0.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz && \
+  bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+    install --from-archive /tmp/stg_website_v0.1.0.tar.gz --domain example.com'
 ```
 
-> 将 `example.com` 替换为你的实际域名。如果你是普通用户而非 root，请在最后一行前加上 `sudo`。
+> 将 `example.com` 替换为你的实际域名。
+
+如果你是普通用户而非 root，可以在外层加 `sudo`：
+
+```bash
+sudo bash -c 'cd /tmp && \
+  curl -L -o stg_website_v0.1.0.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz && \
+  bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+    install --from-archive /tmp/stg_website_v0.1.0.tar.gz --domain example.com'
+```
 
 #### 2. 以 root 登录，无域名（IP 模式，仅 HTTP）
 
 ```bash
-cd /root/rating
-
-curl -L -o stg_website_v0.1.0.tar.gz \
-  https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz
-
-bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-  install --from-archive /root/rating/stg_website_v0.1.0.tar.gz --ip
+bash -c 'cd /tmp && \
+  curl -L -o stg_website_v0.1.0.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz && \
+  bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+    install --from-archive /tmp/stg_website_v0.1.0.tar.gz --ip'
 ```
 
 ### 方式二：始终使用最新 main 分支源码（需要服务器安装 git）
