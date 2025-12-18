@@ -50,21 +50,23 @@
 
 本项目已经托管在 GitHub 仓库 [`vihithr/FastAPI-Game-Rating-Lite`](https://github.com/vihithr/FastAPI-Game-Rating-Lite.git)，根据你的登录方式分两种常见场景：
 
-#### 2.1 常见场景：以普通用户登录，使用 `sudo`
+#### 2.1 常见场景：以普通用户登录，使用 `sudo`（真正一行一键）
 
 **有域名（HTTPS 模式，自动申请证书）**：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
-  sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
 ```
 
 **无域名（IP 模式，仅 HTTP，用于内网 / 临时环境）**：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
-  sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
 ```
+
+> 说明：这里用的是 `bash <(curl ...)`，脚本从网络加载，但 **stdin 仍然是你的终端**，所以交互式向导（数据库类型 / 域名选择等）可以正常工作，不会像 `curl ... | bash` 那样直接读到 EOF 退出。
 
 #### 2.2 直接以 `root` 登录（无 `sudo` 或最小系统环境）
 
@@ -73,15 +75,15 @@ curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/ma
 **有域名（HTTPS 模式）**：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
-  bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
+bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
 ```
 
 **无域名（IP 模式）**：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
-  bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
+bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
 ```
 
 常用可选参数（可与上面的命令组合使用）：
