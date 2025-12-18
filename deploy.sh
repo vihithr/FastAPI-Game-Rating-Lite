@@ -1422,6 +1422,7 @@ print_summary() {
     print_info "Caddy 目录: $CADDY_DIR"
     print_info "服务用户: $SERVICE_USER"
     print_info "服务名称: ${PROJECT_NAME}.service"
+    print_info "部署脚本: $INSTALL_DIR/deploy.sh（用于后续更新 / 管理）"
     
     if [ "$USE_IP_MODE" = true ]; then
         print_info "访问模式: IP 地址（HTTP）"
@@ -1451,6 +1452,7 @@ print_summary() {
         echo "  - 查看状态: systemctl status ${PROJECT_NAME}.service"
         echo "  - 查看 Caddy 日志: journalctl -u caddy -f"
         echo "  - 编辑配置: nano $INSTALL_DIR/.env"
+        echo "  - 进入部署管理菜单: $INSTALL_DIR/deploy.sh menu"
         echo "  - 卸载: $0 uninstall"
     else
         echo "  - 查看日志: sudo journalctl -u ${PROJECT_NAME}.service -f"
@@ -1458,6 +1460,7 @@ print_summary() {
         echo "  - 查看状态: sudo systemctl status ${PROJECT_NAME}.service"
         echo "  - 查看 Caddy 日志: sudo journalctl -u caddy -f"
         echo "  - 编辑配置: sudo nano $INSTALL_DIR/.env"
+        echo "  - 进入部署管理菜单: sudo $INSTALL_DIR/deploy.sh menu"
         echo "  - 卸载: sudo $0 uninstall"
     fi
     echo ""

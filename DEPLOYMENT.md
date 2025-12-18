@@ -143,6 +143,25 @@ sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Ra
    sudo systemctl restart stg_website.service
    ```
 
+## 后续运维入口与快捷命令
+
+安装完成后，部署脚本会被复制到安装目录中，作为后续更新和运维的统一入口：
+
+- 部署脚本位置：`/opt/stg_website/deploy.sh`
+- 进入交互式管理菜单：
+  - 以 root 登录：`/opt/stg_website/deploy.sh menu`
+  - 普通用户：`sudo /opt/stg_website/deploy.sh menu`
+
+你也可以在自己的 shell 中添加一个简单的别名，方便日常维护（示例）：
+
+```bash
+echo "alias stgctl='/opt/stg_website/deploy.sh menu'" >> ~/.bashrc
+source ~/.bashrc
+
+# 之后只需运行：
+stgctl
+```
+
 ## 手动部署步骤
 
 如果自动部署脚本不适用于你的环境，可以按照以下步骤手动部署。
