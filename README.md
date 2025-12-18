@@ -48,16 +48,40 @@
 
 ### 2. 在线一键部署（推荐，从本仓库拉取）
 
-本项目已经托管在 GitHub 仓库 [`vihithr/FastAPI-Game-Rating-Lite`](https://github.com/vihithr/FastAPI-Game-Rating-Lite.git)，你只需要根据自己是否有域名选择下面其中一种命令即可。
+本项目已经托管在 GitHub 仓库 [`vihithr/FastAPI-Game-Rating-Lite`](https://github.com/vihithr/FastAPI-Game-Rating-Lite.git)，根据你的登录方式分两种常见场景：
+
+#### 2.1 常见场景：以普通用户登录，使用 `sudo`
+
+**有域名（HTTPS 模式，自动申请证书）**：
 
 ```bash
-# HTTPS 模式（有域名，自动申请 HTTPS 证书）
 curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
   sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
+```
 
-# IP 模式（无域名 / 内网环境，仅 HTTP）
+**无域名（IP 模式，仅 HTTP，用于内网 / 临时环境）**：
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
   sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
+```
+
+#### 2.2 直接以 `root` 登录（无 `sudo` 或最小系统环境）
+
+如果你登录的就是 `root@server`，或者系统里没有安装 `sudo`，请使用下列命令（**去掉 sudo**）：
+
+**有域名（HTTPS 模式）**：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
+  bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
+```
+
+**无域名（IP 模式）**：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
+  bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
 ```
 
 常用可选参数（可与上面的命令组合使用）：
