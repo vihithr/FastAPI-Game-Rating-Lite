@@ -70,7 +70,7 @@
 完整的部署说明和所有模式（从 GitHub 克隆、Release 源码包、离线本地包等）已迁移到 [`DEPLOYMENT.md`](DEPLOYMENT.md)。  
 这里只保留一个**最推荐、可直接复制的生产环境 Quick Start**。
 
-**场景：新服务器，直接以 `root` 登录，有域名，使用 Release `v0.1.0` 源码包 + HTTPS，一行命令完成下载与安装：**
+**场景：新服务器，直接以 `root` 登录，使用 Release `v0.1.0` 源码包 + HTTPS，一行命令完成下载与安装：**
 
 ```bash
 bash -c 'cd /tmp && \
