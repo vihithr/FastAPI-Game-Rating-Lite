@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}添加新作品 - {{ site_config.title }}{% endblock %}
+{% block title %}添加新作品 - STG社区评价{% endblock %}
 
 {% block content %}
 <article>
@@ -58,7 +58,7 @@
         </div>
         <input type="hidden" name="difficulty_levels" id="difficulty_levels-hidden-input">
 
-        <label for="ship_types-input">{{ site_config.ui_text.get('ship_type', {}).get('label', '机体/角色') }}名称 (选填, 输入后按回车或逗号分隔)</label>
+        <label for="ship_types-input">机体/角色名称 (选填, 输入后按回车或逗号分隔)</label>
         <div id="ship_types-container" class="tag-input-container">
             <input type="text" id="ship_types-input" placeholder="例如: Type-A, Type-B, Reimu Hakurei, Marisa Kirisame">
         </div>
@@ -80,8 +80,11 @@
         if (!container) return;
         
         const textInput = container.querySelector('input[type="text"]');
+        if (!textInput) return;
+        
         const hiddenInputId = containerId.replace('-container', '-hidden-input');
         const hiddenInput = document.getElementById(hiddenInputId);
+        if (!hiddenInput) return;
         
         let tags = [];
 
@@ -134,68 +137,72 @@
         });
     }
 
-    // 初始化页面上所有的标签输入框
-    setupTagInput('tags-container');
-    setupTagInput('translations-container');
-    setupTagInput('aliases-container');
-    setupTagInput('difficulty_levels-container');
-    setupTagInput('ship_types-container');
-    
-    // --- 表单提交JS (保持不变) ---
-    document.getElementById('add-game-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const submitButton = form.querySelector('button[type="submit"]');
-        form.classList.add('loading');
-        submitButton.setAttribute('aria-busy', 'true');
-        submitButton.disabled = true;
+    // 初始化所有标签输入框
+    document.addEventListener('DOMContentLoaded', () => {
+        setupTagInput('tags-container');
+        setupTagInput('translations-container');
+        setupTagInput('aliases-container');
+        setupTagInput('difficulty_levels-container');
+        setupTagInput('ship_types-container');
+        
+        // --- 表单提交JS ---
+        const form = document.getElementById('add-game-form');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const submitButton = form.querySelector('button[type="submit"]');
+                form.classList.add('loading');
+                submitButton.setAttribute('aria-busy', 'true');
+                submitButton.disabled = true;
 
-        try {
-            const formData = new FormData(form);
-            
-            const imageFile = formData.get('image_file');
-            if (imageFile && imageFile.size > 1 * 1024 * 1024) {
-                alert('图片文件大小不能超过 1MB');
-                throw new Error('File too large');
-            }
-
-            const response = await fetch('/add-game', {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (response.redirected) {
-                window.location.href = response.url;
-                return;
-            }
-
-            if (!response.ok) {
-                let errorMessage = '提交失败，未知错误';
                 try {
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && contentType.includes('application/json')) {
-                        const result = await response.json();
-                        errorMessage = result.detail || errorMessage;
-                    } else {
-                        // 如果不是JSON响应，尝试读取文本
-                        const text = await response.text();
-                        errorMessage = `服务器错误 (${response.status}): ${text.substring(0, 100)}`;
+                    const formData = new FormData(form);
+                    
+                    const imageFile = formData.get('image_file');
+                    if (imageFile && imageFile.size > 1 * 1024 * 1024) {
+                        alert('图片文件大小不能超过 1MB');
+                        throw new Error('File too large');
                     }
-                } catch (parseError) {
-                    errorMessage = `服务器错误 (${response.status}): 无法解析错误信息`;
+
+                    const response = await fetch('/add-game', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        let errorMessage = '提交失败，未知错误';
+                        try {
+                            const contentType = response.headers.get('content-type');
+                            if (contentType && contentType.includes('application/json')) {
+                                const result = await response.json();
+                                errorMessage = result.detail || errorMessage;
+                            } else {
+                                // 如果不是JSON响应，尝试读取文本
+                                const text = await response.text();
+                                errorMessage = `服务器错误 (${response.status}): ${text.substring(0, 100)}`;
+                            }
+                        } catch (parseError) {
+                            errorMessage = `服务器错误 (${response.status}): 无法解析错误信息`;
+                        }
+                        throw new Error(errorMessage);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    if (error.message !== 'File too large') {
+                        alert(error.message);
+                    }
+                } finally {
+                    form.classList.remove('loading');
+                    submitButton.removeAttribute('aria-busy');
+                    submitButton.disabled = false;
                 }
-                throw new Error(errorMessage);
-            }
-            
-        } catch (error) {
-            console.error('Error:', error);
-            if (error.message !== 'File too large') {
-                alert(error.message);
-            }
-        } finally {
-            form.classList.remove('loading');
-            submitButton.removeAttribute('aria-busy');
-            submitButton.disabled = false;
+            });
         }
     });
 </script>

@@ -91,8 +91,11 @@
         if (!container) return;
         
         const textInput = container.querySelector('input[type="text"]');
+        if (!textInput) return;
+        
         const hiddenInputId = containerId.replace('-container', '-hidden-input');
         const hiddenInput = document.getElementById(hiddenInputId);
+        if (!hiddenInput) return;
         
         let tags = [];
 
