@@ -538,19 +538,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const formData = new FormData(form);
                 
-                // 对于难度评分，需要从输入框获取值（如果滑块没有值）
+                // 对于难度评分，确保滑块和输入框值一致（表单字段名已经在模板中使用字段名）
                 if (formId === 'difficulty-rating-form') {
                     document.querySelectorAll('.difficulty-value-input').forEach(input => {
                         const category = input.dataset.category;
-                        const field = input.dataset.field || input.closest('.slider-container')?.querySelector('.difficulty-slider')?.dataset.field;
+                        const field = input.dataset.field;
                         const slider = document.getElementById(`rating-difficulty-${category}`);
                         if (slider && input.value) {
                             // 确保滑块和输入框值一致
                             slider.value = input.value;
-                            // 使用字段名（field）而不是类别名（category）作为表单字段名
-                            if (field) {
-                                formData.set(`rating_${field}`, input.value);
-                            }
+                            // 表单字段名已经在模板中使用字段名（rating_{{field}}），不需要再次设置
                         }
                     });
                 }

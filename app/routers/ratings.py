@@ -31,12 +31,24 @@ async def rate_game_quality(
     quality_dims = get_quality_dimensions()
     
     ratings = {}
+    # 调试：打印所有表单字段名
+    form_keys = list(form_data.keys())
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Quality rating form keys: {form_keys}")
+    logger.info(f"Expected fields: {[dim['field'] for dim in quality_dims]}")
+    
     for dim in quality_dims:
         field_name = dim["field"]
         # HTML中星级评分的name是 "rating_fun" 等（使用字段名）
         rating_value = form_data.get(f"rating_{field_name}")
         if rating_value and rating_value.isdigit():
             ratings[field_name] = int(rating_value)
+    
+    # 如果ratings为空，尝试调试：打印所有表单字段
+    if not ratings:
+        logger.error(f"Quality rating form keys: {form_keys}")
+        logger.error(f"Expected fields: {[dim['field'] for dim in quality_dims]}")
 
     if not ratings:
         raise HTTPException(status_code=400, detail="没有提供任何有效的评分数据")
@@ -133,12 +145,24 @@ async def rate_game_difficulty(
     difficulty_dims = get_difficulty_dimensions()
     
     ratings = {}
+    # 调试：打印所有表单字段名
+    form_keys = list(form_data.keys())
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Difficulty rating form keys: {form_keys}")
+    logger.info(f"Expected fields: {[dim['field'] for dim in difficulty_dims]}")
+    
     for dim in difficulty_dims:
         field_name = dim["field"]
         # HTML中输入框的name是 "rating_dodge" 等（使用字段名）
         rating_value = form_data.get(f"rating_{field_name}")
         if rating_value and rating_value.isdigit():
             ratings[field_name] = int(rating_value)
+    
+    # 如果ratings为空，尝试调试：打印所有表单字段
+    if not ratings:
+        logger.error(f"Difficulty rating form keys: {form_keys}")
+        logger.error(f"Expected fields: {[dim['field'] for dim in difficulty_dims]}")
 
     if not ratings:
         raise HTTPException(status_code=400, detail="没有提供任何有效的评分数据")
