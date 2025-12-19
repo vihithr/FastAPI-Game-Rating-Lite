@@ -80,11 +80,8 @@
         if (!container) return;
         
         const textInput = container.querySelector('input[type="text"]');
-        if (!textInput) return;
-        
         const hiddenInputId = containerId.replace('-container', '-hidden-input');
         const hiddenInput = document.getElementById(hiddenInputId);
-        if (!hiddenInput) return;
         
         let tags = [];
 
@@ -137,8 +134,9 @@
         });
     }
 
-    // 初始化所有标签输入框
+    // 初始化所有标签输入框和表单提交处理
     document.addEventListener('DOMContentLoaded', () => {
+        // 初始化页面上所有的标签输入框
         setupTagInput('tags-container');
         setupTagInput('translations-container');
         setupTagInput('aliases-container');

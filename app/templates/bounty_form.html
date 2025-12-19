@@ -148,7 +148,9 @@
     }
 
     // 初始化标签输入框
-    setupTagInput('bounty-tags-container');
+    document.addEventListener('DOMContentLoaded', () => {
+        setupTagInput('bounty-tags-container');
+    });
 </script>
 {% endblock %}
 
