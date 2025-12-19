@@ -1,5 +1,4 @@
 {
-  "_comment": "站点配置文件示例 - 复制此文件为 site_config.json 并修改配置项",
   "site": {
     "name": "STG社区评价",
     "brand": "STG Ratings",
