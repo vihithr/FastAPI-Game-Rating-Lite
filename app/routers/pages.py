@@ -390,15 +390,18 @@ def read_game(request: Request, game_id: int, db: Session = Depends(database.get
         ).all()
         if user_difficulty_ratings:
             user_ratings['difficulty'] = {}
+            # 从配置获取难度维度字段名
+            difficulty_dims = get_difficulty_dimensions()
             for rating in user_difficulty_ratings:
                 context_key = f"d{rating.difficulty_level_id or 0}_s{rating.ship_type_id or 0}"
-                user_ratings['difficulty'][context_key] = {
-                    'dodge': rating.dodge,
-                    'strategy': rating.strategy,
-                    'execution': rating.execution,
+                rating_data = {
                     'difficulty_level_id': rating.difficulty_level_id,
                     'ship_type_id': rating.ship_type_id
                 }
+                for dim in difficulty_dims:
+                    field = dim["field"]
+                    rating_data[field] = getattr(rating, field, None)
+                user_ratings['difficulty'][context_key] = rating_data
     
     # 获取配置数据传递给模板
     quality_dimensions = get_quality_dimensions()
@@ -642,10 +645,17 @@ def user_profile(
     all_difficulty_ratings = db.query(models.DifficultyRating).filter(models.DifficultyRating.user_id == user_id).all()
     avg_difficulty_score = 0.0
     if all_difficulty_ratings:
+        # 从配置获取难度维度字段名
+        difficulty_dims = get_difficulty_dimensions()
         total_difficulty = 0
         valid_count = 0
         for r in all_difficulty_ratings:
-            dims = [d for d in [r.dodge, r.strategy, r.execution] if d is not None]
+            dims = []
+            for dim in difficulty_dims:
+                field = dim["field"]
+                value = getattr(r, field, None)
+                if value is not None:
+                    dims.append(value)
             if dims:
                 total_difficulty += sum(dims) / len(dims)
                 valid_count += 1

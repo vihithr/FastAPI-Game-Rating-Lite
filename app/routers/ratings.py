@@ -26,11 +26,15 @@ async def rate_game_quality(
 ):
     form_data = await request.form()
     
-    # 解析品质评分数据
+    # 解析品质评分数据（从配置动态读取字段名）
+    from app.config.site_config import get_quality_dimensions
+    quality_dims = get_quality_dimensions()
+    
     ratings = {}
-    for cat_name, field_name in QUALITY_CATEGORY_MAP.items():
-        # HTML中星级评分的name是 "rating_趣味性" 等
-        rating_value = form_data.get(f"rating_{cat_name}")
+    for dim in quality_dims:
+        field_name = dim["field"]
+        # HTML中星级评分的name是 "rating_fun" 等（使用字段名）
+        rating_value = form_data.get(f"rating_{field_name}")
         if rating_value and rating_value.isdigit():
             ratings[field_name] = int(rating_value)
 
@@ -124,11 +128,15 @@ async def rate_game_difficulty(
     difficulty_level_id = int(difficulty_id_str) if difficulty_id_str and difficulty_id_str.isdigit() else None
     ship_type_id = int(ship_id_str) if ship_id_str and ship_id_str.isdigit() else None
     
-    # 解析难度评分数据
+    # 解析难度评分数据（从配置动态读取字段名）
+    from app.config.site_config import get_difficulty_dimensions
+    difficulty_dims = get_difficulty_dimensions()
+    
     ratings = {}
-    for cat_name, field_name in DIFFICULTY_CATEGORY_MAP.items():
-        # HTML中输入框的name是 "rating_避弹" 等
-        rating_value = form_data.get(f"rating_{cat_name}")
+    for dim in difficulty_dims:
+        field_name = dim["field"]
+        # HTML中输入框的name是 "rating_dodge" 等（使用字段名）
+        rating_value = form_data.get(f"rating_{field_name}")
         if rating_value and rating_value.isdigit():
             ratings[field_name] = int(rating_value)
 

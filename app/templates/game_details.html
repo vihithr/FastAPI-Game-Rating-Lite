@@ -509,9 +509,9 @@
                             {% endif %}
                         </label>
                         <div class="star-rating-wrapper">
-                            <div class="star-rating" data-category="{{ cat }}">
+                            <div class="star-rating" data-category="{{ cat }}" data-field="{{ field }}">
                                 {% for i in range(quality_max, quality_min - 1, -1) %}
-                                <input type="radio" id="star{{i}}-{{cat}}" name="rating_{{cat}}" value="{{i}}" 
+                                <input type="radio" id="star{{i}}-{{cat}}" name="rating_{{field}}" value="{{i}}" 
                                        {% if user_ratings.quality and user_ratings.quality[field] == i %}checked{% endif %} />
                                 <label for="star{{i}}-{{cat}}" title="{{i}}分">&#9733;</label>
                                 {% endfor %}
@@ -571,9 +571,10 @@
                         <label for="rating-difficulty-{{cat}}">{{ cat }}</label>
                         <input type="range" min="{{ difficulty_min }}" max="{{ difficulty_max }}" value="{{ (difficulty_min + difficulty_max) // 2 }}" 
                                id="rating-difficulty-{{cat}}" 
-                               name="rating_{{cat}}" 
+                               name="rating_{{field}}" 
                                class="difficulty-slider"
-                               data-category="{{ cat }}">
+                               data-category="{{ cat }}"
+                               data-field="{{ field }}">
                         <div class="slider-value">
                             <input type="number" 
                                    min="{{ difficulty_min }}" 
@@ -581,6 +582,7 @@
                                    id="difficulty-value-{{cat}}" 
                                    class="difficulty-value-input"
                                    data-category="{{ cat }}"
+                                   data-field="{{ field }}"
                                    value="{{ (difficulty_min + difficulty_max) // 2 }}"
                                    style="width: 100%;">
                         </div>

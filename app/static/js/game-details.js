@@ -542,11 +542,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (formId === 'difficulty-rating-form') {
                     document.querySelectorAll('.difficulty-value-input').forEach(input => {
                         const category = input.dataset.category;
+                        const field = input.dataset.field || input.closest('.slider-container')?.querySelector('.difficulty-slider')?.dataset.field;
                         const slider = document.getElementById(`rating-difficulty-${category}`);
                         if (slider && input.value) {
                             // 确保滑块和输入框值一致
                             slider.value = input.value;
-                            formData.set(`rating_${category}`, input.value);
+                            // 使用字段名（field）而不是类别名（category）作为表单字段名
+                            if (field) {
+                                formData.set(`rating_${field}`, input.value);
+                            }
                         }
                     });
                 }
@@ -614,9 +618,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ratingData[field] = value ? parseInt(value) : null;
         }
         userRatings.difficulty[contextKey] = ratingData;
-            difficulty_level_id: formDiffId?.value ? parseInt(formDiffId.value) : null,
-            ship_type_id: formShipId?.value ? parseInt(formShipId.value) : null
-        };
         // 重新渲染当前查看的情境，数据已经是新的了
         updateUIForContext();
         updateDifficultyFormContext();
