@@ -53,15 +53,15 @@
 
 ### 方式一：使用 Release 源码包（一行命令完成下载 + 安装，推荐）
 
-本项目提供了 GitHub Release 源码包 [`v0.1.0`](https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz)，适合大多数生产环境部署，服务器无需安装 `git`。
+本项目提供了 GitHub Release 源码包 [`v0.1.1`](https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz)，适合大多数生产环境部署，服务器无需安装 `git`。
 
 #### 1. 以 root 登录，有域名（HTTPS 模式）
 
 ```bash
 bash -c 'cd /tmp && \
-  curl -L -o stg_website_v0.1.0.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz && \
+  curl -L -o stg_website_v0.1.1.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz && \
   bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-    install --from-archive /tmp/stg_website_v0.1.0.tar.gz --domain example.com'
+    install --from-archive /tmp/stg_website_v0.1.1.tar.gz --domain example.com'
 ```
 
 > 将 `example.com` 替换为你的实际域名。
@@ -70,18 +70,18 @@ bash -c 'cd /tmp && \
 
 ```bash
 sudo bash -c 'cd /tmp && \
-  curl -L -o stg_website_v0.1.0.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz && \
+  curl -L -o stg_website_v0.1.1.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz && \
   bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-    install --from-archive /tmp/stg_website_v0.1.0.tar.gz --domain example.com'
+    install --from-archive /tmp/stg_website_v0.1.1.tar.gz --domain example.com'
 ```
 
 #### 2. 以 root 登录，无域名（IP 模式，仅 HTTP）
 
 ```bash
 bash -c 'cd /tmp && \
-  curl -L -o stg_website_v0.1.0.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz && \
+  curl -L -o stg_website_v0.1.1.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz && \
   bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-    install --from-archive /tmp/stg_website_v0.1.0.tar.gz --ip'
+    install --from-archive /tmp/stg_website_v0.1.1.tar.gz --ip'
 ```
 
 ### 方式二：始终使用最新 main 分支源码（需要服务器安装 git）

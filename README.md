@@ -71,13 +71,13 @@
 完整的部署说明和所有模式（从 GitHub 克隆、Release 源码包、离线本地包等）已迁移到 [`DEPLOYMENT.md`](DEPLOYMENT.md)。  
 这里只保留一个**最推荐、可直接复制的生产环境 Quick Start**。
 
-**场景：新服务器，直接以 `root` 登录，使用 Release `v0.1.0` 源码包 + HTTPS，一行命令完成下载与安装：**
+**场景：新服务器，直接以 `root` 登录，使用 Release `v0.1.1` 源码包 + HTTPS，一行命令完成下载与安装：**
 
 ```bash
 bash -c 'cd /tmp && \
-  curl -L -o stg_website_v0.1.0.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz && \
+  curl -L -o stg_website_v0.1.1.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz && \
   bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-    install --from-archive /tmp/stg_website_v0.1.0.tar.gz --domain example.com'
+    install --from-archive /tmp/stg_website_v0.1.1.tar.gz --domain example.com'
 ```
 
 - 将命令中的 `example.com` 替换为你的实际域名。  
@@ -85,9 +85,9 @@ bash -c 'cd /tmp && \
 
   ```bash
   sudo bash -c 'cd /tmp && \
-    curl -L -o stg_website_v0.1.0.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.0.tar.gz && \
+    curl -L -o stg_website_v0.1.1.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz && \
     bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-      install --from-archive /tmp/stg_website_v0.1.0.tar.gz --domain example.com'
+      install --from-archive /tmp/stg_website_v0.1.1.tar.gz --domain example.com'
   ```
 
 - 若没有域名、只想用 IP 访问，可把末尾的 `--domain example.com` 改成 `--ip`。  
