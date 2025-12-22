@@ -90,6 +90,7 @@ print_usage() {
   menu                  交互式菜单（默认）
   install               安装 / 更新
   uninstall             卸载
+  backup                备份当前安装（代码 + 数据库 + 上传文件，过滤环境数据）
 
 常用选项:
   --domain <域名>       指定域名（使用 HTTPS 模式）
@@ -111,11 +112,50 @@ print_usage() {
 EOF
 }
 
+# 备份排除列表（用于 tar 命令，格式为 --exclude=pattern）
+get_backup_exclude_patterns() {
+    # Python 相关缓存
+    echo "--exclude=venv"
+    echo "--exclude=__pycache__"
+    echo "--exclude=*.pyc"
+    echo "--exclude=*.pyo"
+    echo "--exclude=*.pyd"
+    # 配置文件（环境相关）
+    echo "--exclude=.env"
+    # 日志文件
+    echo "--exclude=*.log"
+    echo "--exclude=logs"
+    echo "--exclude=log"
+    # 临时文件
+    echo "--exclude=*.tmp"
+    echo "--exclude=*.temp"
+    echo "--exclude=tmp"
+    echo "--exclude=temp"
+    # 缓存
+    echo "--exclude=.cache"
+    echo "--exclude=cache"
+    echo "--exclude=*.cache"
+    # 系统文件
+    echo "--exclude=*.pid"
+    echo "--exclude=*.lock"
+    echo "--exclude=.DS_Store"
+    echo "--exclude=Thumbs.db"
+    # IDE / 版本控制
+    echo "--exclude=.idea"
+    echo "--exclude=.vscode"
+    echo "--exclude=.git"
+    echo "--exclude=.svn"
+    echo "--exclude=*.swp"
+    echo "--exclude=*.swo"
+    # 运行时文件
+    echo "--exclude=caddy"
+}
+
 parse_args() {
     COMMAND="menu"
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            install|uninstall|menu)
+            install|uninstall|menu|backup)
                 COMMAND="$1"
                 shift
                 ;;
@@ -705,15 +745,45 @@ sync_code() {
     
     # 复制所有文件（排除不必要的文件）
     print_info "复制应用文件..."
+    
+    # 检查目标位置是否已有数据库文件（用于判断是首次安装还是更新）
+    local EXISTING_DB=""
+    if [ -f "$INSTALL_DIR/stg_website.db" ]; then
+        EXISTING_DB="$INSTALL_DIR/stg_website.db"
+        print_info "检测到现有数据库文件，将在更新时保留它"
+    fi
+    
     if command -v rsync &> /dev/null; then
         print_info "使用 rsync 复制文件（显示详细输出）..."
-        rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
-            --exclude='venv' --exclude='*.db' --exclude='copy_files.py' \
-            "$source_dir/" "$INSTALL_DIR/"
+        # 更新时排除数据库文件，避免覆盖现有数据
+        # 但如果是首次安装（目标位置没有数据库），则允许从源目录拷贝数据库
+        if [ -n "$EXISTING_DB" ]; then
+            # 已有数据库，排除 .db 文件以保护现有数据
+            rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
+                --exclude='venv' --exclude='*.db' --exclude='copy_files.py' \
+                "$source_dir/" "$INSTALL_DIR/"
+            print_info "已保留现有数据库文件: $EXISTING_DB"
+        else
+            # 首次安装，允许拷贝数据库文件（如果源目录有的话）
+            rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
+                --exclude='venv' --exclude='copy_files.py' \
+                "$source_dir/" "$INSTALL_DIR/"
+            print_info "首次安装，已同步所有文件（包括数据库文件，如果存在）"
+        fi
     else
         # 如果没有 rsync，使用 cp
         print_info "使用 cp 复制文件..."
-        cp -rv "$source_dir"/* "$INSTALL_DIR/" 2>&1 || true
+        if [ -n "$EXISTING_DB" ]; then
+            # 已有数据库，先备份，然后拷贝，最后恢复
+            local DB_BACKUP="${EXISTING_DB}.backup.$$"
+            cp "$EXISTING_DB" "$DB_BACKUP"
+            cp -rv "$source_dir"/* "$INSTALL_DIR/" 2>&1 || true
+            mv "$DB_BACKUP" "$EXISTING_DB"
+            print_info "已保留现有数据库文件: $EXISTING_DB"
+        else
+            cp -rv "$source_dir"/* "$INSTALL_DIR/" 2>&1 || true
+            print_info "首次安装，已同步所有文件（包括数据库文件，如果存在）"
+        fi
         # 清理不需要的文件
         print_info "清理临时文件..."
         find "$INSTALL_DIR" -type d -name "__pycache__" -exec rm -rf {} + 2>&1 || true
@@ -729,6 +799,13 @@ sync_code() {
     # 确保 Caddy 二进制保持可执行（避免被上面的 644 覆盖）
     if [ -f "$CADDY_DIR/caddy" ]; then
         chmod +x "$CADDY_DIR/caddy"
+    fi
+    
+    # 特别处理数据库文件权限（如果存在）
+    if [ -f "$INSTALL_DIR/stg_website.db" ]; then
+        chmod 600 "$INSTALL_DIR/stg_website.db"
+        chown "$SERVICE_USER:$SERVICE_GROUP" "$INSTALL_DIR/stg_website.db"
+        print_info "已设置数据库文件权限: $INSTALL_DIR/stg_website.db"
     fi
     
     # 使脚本可执行
@@ -1022,6 +1099,116 @@ static_cleanup() {
     print_info "静态资源清理完成。"
 }
 
+backup() {
+    print_step "开始备份 STG 社区网站..."
+
+    # 检查安装目录
+    if [ ! -d "$INSTALL_DIR" ]; then
+        print_error "安装目录不存在: $INSTALL_DIR"
+        print_error "请先完成安装后再执行备份。"
+        return 1
+    fi
+
+    # 生成备份文件名
+    local TIMESTAMP
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S" 2>/dev/null || echo "backup")
+    local BACKUP_NAME="${PROJECT_NAME}_backup_${TIMESTAMP}.tar.gz"
+
+    # 默认备份目录为安装目录的父目录
+    local BACKUP_DIR
+    BACKUP_DIR=$(dirname "$INSTALL_DIR")
+    local BACKUP_PATH="${BACKUP_DIR}/${BACKUP_NAME}"
+
+    echo ""
+    read -p "备份文件将保存到: $BACKUP_PATH (直接回车使用默认路径，或输入自定义路径): " USER_BACKUP_PATH
+    if [ -n "$USER_BACKUP_PATH" ]; then
+        BACKUP_PATH="$USER_BACKUP_PATH"
+        # 如果只输入了文件名，则放在默认目录
+        if [ "$(dirname "$BACKUP_PATH")" = "." ] || [ "$(dirname "$BACKUP_PATH")" = "$BACKUP_PATH" ]; then
+            BACKUP_PATH="${BACKUP_DIR}/${BACKUP_PATH}"
+        fi
+    fi
+
+    # 确保备份目录存在
+    local BACKUP_DIR_PATH
+    BACKUP_DIR_PATH=$(dirname "$BACKUP_PATH")
+    if [ ! -d "$BACKUP_DIR_PATH" ]; then
+        print_info "创建备份目录: $BACKUP_DIR_PATH"
+        mkdir -p "$BACKUP_DIR_PATH" || {
+            print_error "无法创建备份目录: $BACKUP_DIR_PATH"
+            return 1
+        }
+    fi
+
+    # 检查备份文件是否已存在
+    if [ -f "$BACKUP_PATH" ]; then
+        print_warn "备份文件已存在: $BACKUP_PATH"
+        read -p "是否覆盖？(y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_info "取消备份"
+            return 0
+        fi
+        rm -f "$BACKUP_PATH"
+    fi
+
+    print_info "正在创建备份..."
+    print_info "源目录: $INSTALL_DIR"
+    print_info "备份文件: $BACKUP_PATH"
+    print_info "将排除虚拟环境、日志、缓存、.env 等环境相关文件，仅保留代码、数据库和上传资源。"
+
+    # 切换到安装目录的父目录
+    cd "$(dirname "$INSTALL_DIR")" || {
+        print_error "无法切换到目录: $(dirname "$INSTALL_DIR")"
+        return 1
+    }
+
+    local INSTALL_BASENAME
+    INSTALL_BASENAME=$(basename "$INSTALL_DIR")
+
+    # 构建排除参数
+    local EXCLUDE_ARGS=()
+    while IFS= read -r exclude_pattern; do
+        EXCLUDE_ARGS+=("$exclude_pattern")
+    done < <(get_backup_exclude_patterns)
+
+    # 创建压缩包
+    if ! tar -czf "$BACKUP_PATH" "${EXCLUDE_ARGS[@]}" "$INSTALL_BASENAME" 2>/dev/null; then
+        print_error "备份失败，请检查磁盘空间和权限，以及 tar 命令是否可用。"
+        return 1
+    fi
+
+    # 验证备份文件
+    if [ ! -f "$BACKUP_PATH" ]; then
+        print_error "备份文件创建失败。"
+        return 1
+    fi
+
+    # 获取备份大小
+    local BACKUP_SIZE
+    if command -v du &> /dev/null; then
+        BACKUP_SIZE=$(du -h "$BACKUP_PATH" | cut -f1)
+    else
+        BACKUP_SIZE="未知"
+    fi
+
+    print_info "备份完成！✓"
+    echo ""
+    print_info "备份文件: $BACKUP_PATH"
+    print_info "文件大小: $BACKUP_SIZE"
+    echo ""
+    print_info "在新服务器上恢复的基本步骤："
+    print_info "  1. 将备份文件复制到目标服务器并解压，例如："
+    echo "     tar -xzf $(basename "$BACKUP_PATH")"
+    print_info "  2. 进入解压后的 ${INSTALL_BASENAME} 目录："
+    echo "     cd ${INSTALL_BASENAME}"
+    print_info "  3. 执行部署脚本进行安装 / 更新（会自动重建 venv、Caddy、.env 等环境）："
+    echo "     ./deploy.sh install --from-local --ip"
+    print_info "     或者：./deploy.sh install --from-local --domain your-domain.com"
+    echo ""
+    print_info "注意：备份中包含 SQLite 数据库和上传资源，可以直接迁移业务数据；环境变量和运行环境会在新机器上重新配置。"
+}
+
 setup_database() {
     print_step "初始化数据库..."
     
@@ -1106,10 +1293,33 @@ setup_database() {
             mkdir -p "$DB_DIR"
             chown "$SERVICE_USER:$SERVICE_GROUP" "$DB_DIR"
         fi
+        
+        # 检查数据库文件是否已存在
+        if [ -f "$DB_PATH" ]; then
+            # 获取数据库文件大小
+            DB_SIZE=$(stat -f%z "$DB_PATH" 2>/dev/null || stat -c%s "$DB_PATH" 2>/dev/null || echo "0")
+            if [ "$DB_SIZE" -gt 0 ]; then
+                print_info "检测到现有数据库文件: $DB_PATH (大小: ${DB_SIZE} 字节)"
+                print_info "将保留现有数据库数据，仅更新表结构（如果需要）"
+                DB_EXISTS=true
+            else
+                print_warn "数据库文件存在但为空，将重新初始化"
+                DB_EXISTS=false
+            fi
+        else
+            print_info "数据库文件不存在，将创建新数据库"
+            DB_EXISTS=false
+        fi
+    else
+        DB_EXISTS=false
     fi
     
     # 初始化数据库表
-    print_info "创建数据库表..."
+    if [ "$DB_EXISTS" = true ]; then
+        print_info "更新数据库表结构（保留现有数据）..."
+    else
+        print_info "创建数据库表..."
+    fi
     print_info "正在执行数据库初始化（这可能需要几秒钟）..."
     
     # 准备环境变量字符串
@@ -1826,8 +2036,10 @@ show_menu() {
         echo " 4) 运行管理（服务 / 日志 / 静态资源清理）"
         echo " 5) 卸载"
         echo " 6) 其他"
+        echo " 7) 备份"
+        echo " 8) 退出"
         echo ""
-        read -p "请选择 [1-6]: " choice
+        read -p "请选择 [1-8]: " choice
 
         case "$choice" in
             1)
@@ -1907,6 +2119,16 @@ show_menu() {
                 echo " - 如需查看日志，可使用: journalctl -u ${PROJECT_NAME}.service -f"
                 echo " - 关于：STG 社区网站是一个用于 STG 游戏评价与社区交流的网站，脚本支持一键安装、配置和反向代理"
                 ;;
+            7)
+                echo ""
+                print_step "备份 STG 社区网站..."
+                backup
+                ;;
+            8)
+                echo ""
+                print_info "已退出管理菜单。"
+                break
+                ;;
             *)
                 echo ""
                 print_warn "无效的选择，请输入 1-6 之间的数字。"
@@ -1931,6 +2153,9 @@ main() {
         uninstall)
             check_root
             uninstall
+            ;;
+        backup)
+            backup
             ;;
         *)
             echo "用法: $0 [menu|install|uninstall]"

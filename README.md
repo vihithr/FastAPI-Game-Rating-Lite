@@ -19,6 +19,7 @@
 - ✅ **权限隔离**：自动创建专用非 root 用户 `stg_website` 运行服务  
 - ✅ **集中管理**：所有安装内容集中在 `/opt/stg_website` 目录下  
 - ✅ **安全默认值**：自动生成 JWT / Session 密钥，强制使用 SQLite 本地数据库  
+- ✅ **数据保护**：更新部署时自动保留现有数据库，支持一键备份与迁移  
 
 ---
 
@@ -115,6 +116,71 @@ bash -c 'cd /tmp && \
 - 环境变量：`/opt/stg_website/.env`  
 - Caddy 二进制：`/opt/stg_website/caddy/`  
 
+### 4. 备份与迁移（重要）
+
+#### 快速备份
+
+在服务器上执行备份命令，将生成包含代码、数据库和上传资源的压缩包：
+
+```bash
+cd /opt/stg_website
+sudo ./deploy.sh backup
+```
+
+备份文件默认保存在 `/opt/stg_website_backup_YYYYMMDD_HHMMSS.tar.gz`，包含：
+- ✅ 应用代码
+- ✅ SQLite 数据库（`stg_website.db`）
+- ✅ 上传的文件（文章封面、静态包等）
+- ❌ 排除虚拟环境、日志、缓存、`.env` 等环境相关文件
+
+#### 快速迁移到新服务器
+
+**步骤 1：在原服务器备份**
+```bash
+cd /opt/stg_website
+sudo ./deploy.sh backup
+# 备份文件会显示保存路径，例如：/opt/stg_website_backup_20241218_143022.tar.gz
+```
+
+**步骤 2：将备份文件传输到新服务器**
+```bash
+# 使用 scp 传输（示例）
+scp /opt/stg_website_backup_20241218_143022.tar.gz user@new-server:/tmp/
+```
+
+**步骤 3：在新服务器恢复**
+```bash
+# 解压备份文件
+cd /tmp
+tar -xzf stg_website_backup_20241218_143022.tar.gz
+
+# 进入解压后的目录（通常是 stg_website 目录）
+cd stg_website
+
+# 执行部署脚本（会自动保留数据库和上传文件）
+sudo ./deploy.sh install --from-local --domain your-domain.com
+# 或使用 IP 模式：sudo ./deploy.sh install --from-local --ip
+```
+
+**重要提示**：
+- ✅ 部署脚本会**自动检测并保留**备份中的数据库文件，不会覆盖
+- ✅ 环境变量（`.env`）会在新服务器上重新生成，但数据库数据会保留
+- ✅ 上传的文件（封面、静态包等）会一并迁移
+- ⚠️ 如果新服务器已有数据库，更新时会自动保护现有数据
+
+#### 更新部署时的数据保护
+
+当执行更新部署时（例如从 GitHub 拉取新代码），脚本会：
+- ✅ **自动检测**目标位置是否已有数据库文件
+- ✅ **自动保护**现有数据库，不会覆盖
+- ✅ 仅更新代码和表结构（如果需要）
+
+```bash
+# 更新代码（保留现有数据库）
+cd /opt/stg_website
+sudo ./deploy.sh install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain your-domain.com
+```
+
 ---
 
 ## 环境变量与配置
@@ -175,6 +241,104 @@ sudo systemctl stop stg_website.service
 
 ---
 
+## 备份与数据迁移
+
+### 一键备份
+
+部署脚本提供了便捷的备份功能，可以快速备份整个站点（代码 + 数据库 + 上传文件）：
+
+```bash
+cd /opt/stg_website
+sudo ./deploy.sh backup
+```
+
+备份过程会：
+1. 提示备份文件保存路径（默认在 `/opt/` 目录下）
+2. 自动排除虚拟环境、日志、缓存、`.env` 等环境相关文件
+3. 包含应用代码、SQLite 数据库和所有上传资源
+4. 生成带时间戳的压缩包：`stg_website_backup_YYYYMMDD_HHMMSS.tar.gz`
+
+### 服务器迁移步骤
+
+#### 方法一：使用备份功能（推荐）
+
+**在原服务器：**
+```bash
+cd /opt/stg_website
+sudo ./deploy.sh backup
+# 记录备份文件路径，例如：/opt/stg_website_backup_20241218_143022.tar.gz
+```
+
+**传输备份文件到新服务器：**
+```bash
+# 使用 scp
+scp /opt/stg_website_backup_20241218_143022.tar.gz user@new-server:/tmp/
+
+# 或使用 rsync
+rsync -avz /opt/stg_website_backup_20241218_143022.tar.gz user@new-server:/tmp/
+```
+
+**在新服务器恢复：**
+```bash
+# 1. 解压备份文件
+cd /tmp
+tar -xzf stg_website_backup_20241218_143022.tar.gz
+
+# 2. 进入解压后的目录
+cd stg_website
+
+# 3. 执行部署（会自动保留数据库）
+sudo ./deploy.sh install --from-local --domain your-domain.com
+```
+
+#### 方法二：直接复制数据库文件
+
+如果只需要迁移数据库数据：
+
+```bash
+# 在原服务器
+sudo cp /opt/stg_website/stg_website.db /tmp/
+
+# 传输到新服务器
+scp /tmp/stg_website.db user@new-server:/tmp/
+
+# 在新服务器部署后，替换数据库文件
+sudo cp /tmp/stg_website.db /opt/stg_website/
+sudo chown stg_website:stg_website /opt/stg_website/stg_website.db
+sudo chmod 600 /opt/stg_website/stg_website.db
+sudo systemctl restart stg_website.service
+```
+
+### 更新部署时的数据保护
+
+部署脚本在更新时会自动保护现有数据：
+
+- ✅ **检测现有数据库**：如果目标位置已有 `stg_website.db`，会自动保护
+- ✅ **保留数据**：更新代码时不会覆盖现有数据库
+- ✅ **智能同步**：首次安装时允许从源目录拷贝数据库（如果存在）
+
+```bash
+# 更新代码（自动保护现有数据库）
+cd /opt/stg_website
+sudo ./deploy.sh install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain your-domain.com
+```
+
+### 备份内容说明
+
+备份文件包含：
+- ✅ 应用代码（`app/` 目录）
+- ✅ SQLite 数据库（`stg_website.db`）
+- ✅ 上传的文件（`app/static/uploads/`）
+- ✅ 配置文件模板（`Caddyfile`、`stg_website.service` 等）
+
+备份文件**不包含**：
+- ❌ 虚拟环境（`venv/`，会在新服务器重新创建）
+- ❌ 环境变量（`.env`，会在新服务器重新生成）
+- ❌ 日志文件（`*.log`）
+- ❌ 缓存文件（`__pycache__/`、`*.pyc`）
+
+---
+
 ## 卸载
 
 完全卸载（包含数据目录，执行前请备份数据库）：
@@ -218,7 +382,8 @@ uvicorn app.main:app --reload
 1. 生产环境务必使用**强随机密钥**（脚本已自动生成一份，但建议妥善备份）。  
 2. `.env` 文件权限应为 `600`，仅服务用户可读。  
 3. 确保你的域名解析正确指向服务器 IP，并开放 80 / 443 端口。  
-4. 数据库文件默认位于本地磁盘，注意定期备份。  
+4. **定期备份数据**：使用 `./deploy.sh backup` 定期备份，建议设置定时任务（cron）自动备份。  
+5. 数据库文件默认位于本地磁盘（`/opt/stg_website/stg_website.db`），注意定期备份到其他位置。  
 
 ---
 
