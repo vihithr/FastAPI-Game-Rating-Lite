@@ -253,14 +253,15 @@
 
     {% if total_pages > 1 %}
     <nav class="pagination" aria-label="作品分页">
-        {% if page > 1 %}
-        <a href="{{ games_url(active_tags, current_company, page - 1) }}" class="page-btn" rel="prev" aria-label="上一页">
+        <a href="{{ games_url(active_tags, current_company, [1, page - 1]|max) }}"
+           class="page-btn" rel="prev" aria-label="上一页"
+           {% if page == 1 %}aria-disabled="true" tabindex="-1"{% endif %}>
             <i data-lucide="chevron-left"></i>
         </a>
-        {% endif %}
         {% set ns = namespace(gap=false) %}
         {% for p in range(1, total_pages + 1) %}
-        {% if p == 1 or p == total_pages or (p >= page - 1 and p <= page + 1) %}
+        {# 首尾各留两页 + 当前页左右各两页；只有 38 页时不会出现「1 2 … 38」这种过稀的排列 #}
+        {% if p <= 2 or p >= total_pages - 1 or (p >= page - 2 and p <= page + 2) %}
         {% set ns.gap = false %}
         <a href="{{ games_url(active_tags, current_company, p) }}" class="page-num {% if p == page %}current{% endif %}" {% if p == page %}aria-current="page"{% endif %}>{{ p }}</a>
         {% elif not ns.gap %}
@@ -268,11 +269,11 @@
         <span class="page-gap" aria-hidden="true">…</span>
         {% endif %}
         {% endfor %}
-        {% if page < total_pages %}
-        <a href="{{ games_url(active_tags, current_company, page + 1) }}" class="page-btn" rel="next" aria-label="下一页">
+        <a href="{{ games_url(active_tags, current_company, [total_pages, page + 1]|min) }}"
+           class="page-btn" rel="next" aria-label="下一页"
+           {% if page >= total_pages %}aria-disabled="true" tabindex="-1"{% endif %}>
             <i data-lucide="chevron-right"></i>
         </a>
-        {% endif %}
     </nav>
     {% endif %}
 

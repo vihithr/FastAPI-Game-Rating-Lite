@@ -41,7 +41,8 @@
                     {{ item.title }}{% if item.orig and item.orig|lower != item.title|lower %} · {{ item.orig }}{% endif %}
                 </p>
 
-                {% if item.desc %}
+                {# 只有长到会被截断时才在 hero 里放摘要，否则和下面的「简介」面板完全重复 #}
+                {% if item.desc and item.desc|length > 240 %}
                 <p class="pg-lib-hero__lead">{{ item.desc }}</p>
                 {% endif %}
 
@@ -80,9 +81,18 @@
                         <i data-lucide="joystick"></i> MAME / ADB
                     </a>
                     {% endif %}
-                    <a class="pg-btn pg-btn--sm pg-btn--ghost" href="/games?q={{ item.title|urlencode }}">
-                        <i data-lucide="search"></i> 在社区里找这部作品
+                    {% if game_id %}
+                    <a class="pg-btn pg-btn--sm" href="/game/{{ game_id }}">
+                        <i data-lucide="star"></i> 在社区里评价这部作品
                     </a>
+                    {% else %}
+                    <a class="pg-btn pg-btn--sm pg-btn--ghost" href="/games?q={{ item.title|urlencode }}">
+                        <i data-lucide="search"></i> 社区里还没有，去搜索
+                    </a>
+                    <a class="pg-btn pg-btn--sm pg-btn--ghost" href="/add-game">
+                        <i data-lucide="plus-circle"></i> 添加进评分库
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -96,9 +106,17 @@
             <section class="pg-panel">
                 <div class="pg-panel__head">
                     <h3><i data-lucide="align-left"></i> 简介</h3>
+                    {% if item.lang %}
+                    <small class="pg-lang-tag">
+                        {% if item.lang == 'en' %}English{% elif item.lang == 'ja' %}日本語{% else %}中文{% endif %}
+                    </small>
+                    {% endif %}
                 </div>
                 <div class="pg-panel__body">
-                    <div class="pg-prose">
+                    {% if item.lang == 'en' %}
+                    <p class="pg-hint">这一条采集自英文来源，暂无中文简介，以下为原文。</p>
+                    {% endif %}
+                    <div class="pg-prose"{% if item.lang == 'en' %} lang="en"{% elif item.lang == 'ja' %} lang="ja"{% endif %}>
                         <p>{{ item.desc }}</p>
                     </div>
                 </div>
@@ -191,6 +209,14 @@
                         <div>
                             <dt>数据置信度</dt>
                             <dd>{{ item.conf or '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt>资料来源</dt>
+                            <dd>
+                                {% if item.src_url %}
+                                <a href="{{ item.src_url }}" target="_blank" rel="noopener">{{ item.src_label }} ↗</a>
+                                {% else %}{{ item.src_label or '—' }}{% endif %}
+                            </dd>
                         </div>
                         <div>
                             <dt>来源 ID</dt>

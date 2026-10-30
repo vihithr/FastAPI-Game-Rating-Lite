@@ -1,4 +1,7 @@
+import hashlib
 import logging
+import random
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, status, File, UploadFile
 from sqlalchemy.orm import Session, selectinload
@@ -23,6 +26,39 @@ router = APIRouter(
     tags=["Pages"]
 )
 logger = logging.getLogger(__name__)
+
+
+def _daily_pick(items: list, count: int, salt: str) -> list:
+    """按日期做种子抽一批：同一天内顺序稳定，跨天自动轮换。
+
+    刻意不做真随机——每次刷新都换会让首屏图闪一下、链接没法分享，
+    也会让页面缓存失效。每日轮换是「有新鲜感」和「可预期」之间的折中。
+    """
+    if not items:
+        return []
+    if len(items) <= count:
+        return list(items)
+    seed = f"{date.today().isoformat()}::{salt}"
+    rnd = random.Random(hashlib.sha256(seed.encode()).hexdigest())
+    pool = list(items)
+    rnd.shuffle(pool)
+    return pool[:count]
+
+
+def _library_entry_for(game):
+    """查资料库里有没有同一款作品，用于详情页互跳。
+
+    懒加载 import，避免路由模块之间形成循环依赖；查询失败只是少一个入口，
+    不能让整个详情页 500。
+    """
+    try:
+        from . import library as library_module
+
+        return library_module.find_entry_for_game(game)
+    except Exception:
+        logger.exception("资料库反查失败: game_id=%s", getattr(game, "id", None))
+        return None
+
 
 # --- 页面路由 ---
 
@@ -97,9 +133,26 @@ def read_root(request: Request, db: Session = Depends(database.get_db)):
         selectinload(models.Comment.author)
     ).order_by(models.Comment.id.desc()).limit(5).all()
     
+    # 首页精选：批量导入后「按 id 倒序」只能看到字母表末尾那几部，
+    # 代表不了整个库。改成每日轮换，同一天内稳定、跨天自动换一批。
+    featured_pool = db.query(models.Game).options(
+        selectinload(models.Game.tags)
+    ).filter(
+        models.Game.image_url.isnot(None),
+        models.Game.description.isnot(None),
+    ).all()
+    featured_games = _daily_pick(featured_pool, 6, "featured")
+    # hero 拼贴避开下面已经出现的 6 部，否则首屏等于同一批图出现两次
+    featured_ids = {g.id for g in featured_games}
+    hero_covers = _daily_pick(
+        [g for g in featured_pool if g.id not in featured_ids], 3, "hero"
+    )
+
     return templates.TemplateResponse("home.html", {
         "request": request,
         "recent_games": recent_games,
+        "featured_games": featured_games,
+        "hero_covers": hero_covers,
         "popular_games": popular_games,
         "total_games": total_games,
         "total_ratings": total_ratings,
@@ -454,6 +507,8 @@ def read_game(request: Request, game_id: int, db: Session = Depends(database.get
         "evaluation": evaluation,
         "user_ratings": user_ratings,
         "similar_games": similar_games,
+        # 资料库里如果有同一款作品，详情页给一个互跳入口
+        "library_entry": _library_entry_for(game),
     })
 
 @router.get("/add-game", response_class=HTMLResponse)

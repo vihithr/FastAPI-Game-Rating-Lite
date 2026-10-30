@@ -9,12 +9,17 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+import unicodedata
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
+from app import database, models
 from app.config.constants import BASE_DIR
 from app.config.templates import templates
 
@@ -25,6 +30,7 @@ _DATA_PATH = Path(BASE_DIR) / "app" / "data" / "library.json"
 _COVER_ROOT = Path(BASE_DIR) / "app" / "static" / "library" / "covers"
 _records: list[dict[str, Any]] | None = None
 _by_id: dict[str, dict[str, Any]] = {}
+_by_norm: dict[str, dict[str, Any]] = {}
 
 PLATFORM_LABELS = {
     "pc": "PC",
@@ -77,6 +83,61 @@ SORTS = {
     "company": "按开发商",
 }
 
+# 采集来源：rid 的前缀就是来源标识（如 shmups_wiki:1941-counter-attack）
+SOURCE_META: dict[str, tuple[str, str]] = {
+    "shmups_wiki": ("shmups.wiki", "https://shmups.wiki/"),
+    "doujinstyle": ("DoujinStyle", "https://doujinstyle.com/"),
+    "enwiki": ("英文维基百科", "https://en.wikipedia.org/"),
+    "curated": ("手工整理", ""),
+    "enrich": ("补充采集", ""),
+    "steam": ("Steam 商店", "https://store.steampowered.com/"),
+}
+
+CJK_RE = re.compile(r"[\u3400-\u9fff]")
+KANA_RE = re.compile(r"[\u3040-\u30ff]")
+NON_ALNUM = re.compile(r"[^0-9a-z\u3040-\u30ff\u3400-\u9fff]+")
+
+
+def norm(text: str | None) -> str:
+    """用于跨表匹配的归一化：NFKC、小写、∀→v、去掉所有标点空白。"""
+    if not text:
+        return ""
+    s = unicodedata.normalize("NFKC", text).lower().replace("∀", "v")
+    return NON_ALNUM.sub("", s)
+
+
+LATIN_RE = re.compile(r"[A-Za-z]")
+
+
+def lang_of(text: str | None) -> str:
+    """粗判简介语种。
+
+    不能只看「有没有假名」——很多英文简介里夹着日文原名（如
+    "1941: カウンターアタック is a vertically scrolling shoot 'em up…"），
+    那样会被误判成日文。这里按字符占比判断：拉丁字母占七成以上算英文，
+    假名占比超过一成算日文，其余算中文。
+    """
+    if not text:
+        return ""
+    kana = len(KANA_RE.findall(text))
+    cjk = len(CJK_RE.findall(text))
+    latin = len(LATIN_RE.findall(text))
+    total = kana + cjk + latin
+    if not total:
+        return ""
+    if latin / total > 0.7:
+        return "en"
+    if kana and kana / (kana + cjk or 1) > 0.1:
+        return "ja"
+    return "zh"
+
+
+def source_of(rid: str) -> tuple[str, str, str]:
+    """返回 (来源键, 展示名, 主页链接)。"""
+    key = (rid or "").split(":")[0]
+    label, url = SOURCE_META.get(key, (key or "未知", ""))
+    return key, label, url
+
 
 def platform_label(key: str) -> str:
     return PLATFORM_LABELS.get(key, key.upper() if len(key) <= 4 else key.title())
@@ -114,6 +175,11 @@ def _load() -> list[dict[str, Any]]:
             ).lower()
             rec["wide"] = bool(rec.get("cw") and rec.get("cw") > rec.get("ch"))
             rec["sub"] = subtitle(rec)
+            key, label, url = source_of(rec.get("rid") or "")
+            rec["src_key"] = key
+            rec["src_label"] = label
+            rec["src_url"] = url
+            rec["lang"] = lang_of(rec.get("desc"))
             # 列表页用 400px webp 缩略图，详情页才用原图
             cover = rec.get("cover") or ""
             if cover:
@@ -126,8 +192,56 @@ def _load() -> list[dict[str, Any]]:
         _records = data
         _by_id.clear()
         _by_id.update({r["id"]: r for r in data})
+        _by_norm.clear()
+        for r in data:
+            for name in (r.get("title"), r.get("zh"), r.get("orig")):
+                n = norm(name)
+                if n:
+                    _by_norm.setdefault(n, r)
         logger.info("资料库已载入 %d 条记录", len(data))
     return _records
+
+
+def find_entry_for_game(game: models.Game) -> dict[str, Any] | None:
+    """评分库的作品 → 资料库条目（按标题/别名/译名归一化匹配）。"""
+    _load()
+    names = [game.title]
+    names += [a.name for a in game.aliases]
+    names += [t.name for t in game.translations]
+    for name in names:
+        rec = _by_norm.get(norm(name))
+        if rec:
+            return rec
+    return None
+
+
+def _find_game_id(db: Session, rec: dict[str, Any]) -> int | None:
+    """资料库条目 → 评分库的作品 id（反向匹配）。"""
+    names = [n.strip().lower() for n in (rec.get("title"), rec.get("zh"), rec.get("orig")) if n]
+    if not names:
+        return None
+    game = (
+        db.query(models.Game)
+        .filter(func.lower(models.Game.title).in_(names))
+        .first()
+    )
+    if game:
+        return game.id
+    game = (
+        db.query(models.Game)
+        .join(models.Alias, models.Alias.game_id == models.Game.id)
+        .filter(func.lower(models.Alias.name).in_(names))
+        .first()
+    )
+    if game:
+        return game.id
+    game = (
+        db.query(models.Game)
+        .join(models.Translation, models.Translation.game_id == models.Game.id)
+        .filter(func.lower(models.Translation.name).in_(names))
+        .first()
+    )
+    return game.id if game else None
 
 
 def _facets(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -233,7 +347,11 @@ def library_index(
 
 
 @router.get("/library/{slug}", response_class=HTMLResponse)
-def library_detail(request: Request, slug: str):
+def library_detail(
+    request: Request,
+    slug: str,
+    db: Session = Depends(database.get_db),
+):
     records = _load()
     rec = _by_id.get(slug)
     if not rec:
@@ -259,6 +377,7 @@ def library_detail(request: Request, slug: str):
         {
             "request": request,
             "item": rec,
+            "game_id": _find_game_id(db, rec),
             "related_series": related_series,
             "related_company": related_company,
             "platform_label": platform_label,

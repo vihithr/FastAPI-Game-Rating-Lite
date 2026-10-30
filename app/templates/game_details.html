@@ -3258,6 +3258,46 @@
             box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.14);
         }
 
+/* 资料库互跳入口 */
+.rail-lib-link {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	margin-top: 0.9rem;
+	padding: 0.6rem 0.7rem;
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--radius-md);
+	background: color-mix(in srgb, var(--pico-primary) 6%, transparent);
+	color: var(--pico-color);
+	font-size: 0.82rem;
+	text-decoration: none;
+	transition: border-color var(--dur-1) var(--ease-out),
+		background-color var(--dur-1) var(--ease-out);
+}
+
+.rail-lib-link:hover {
+	border-color: var(--pico-primary);
+	background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+	text-decoration: none;
+}
+
+.rail-lib-link small {
+	display: block;
+	color: var(--pico-muted-color);
+	font-size: 0.7rem;
+	line-height: 1.4;
+}
+
+.rail-lib-link .spacer {
+	margin-left: auto;
+	opacity: 0.5;
+}
+
+.rail-lib-link svg {
+	width: 1rem;
+	height: 1rem;
+	flex-shrink: 0;
+}
 </style>
 <div class="detail-demo" data-game-id="{{ game.id }}">
     <nav class="demo-crumbs" aria-label="面包屑">
@@ -3637,6 +3677,16 @@
                     <a class="tag-badge" href="/games?tag={{ tag.name|urlencode }}">{{ tag.name }}</a>
                     {% endfor %}
                 </div>
+                {% endif %}
+                {% if library_entry %}
+                <a class="rail-lib-link" href="/library/{{ library_entry.id }}">
+                    <i data-lucide="library"></i>
+                    <span>
+                        资料库条目
+                        <small>{% if library_entry.year %}{{ library_entry.year }} · {% endif %}{{ library_entry.src_label }}</small>
+                    </span>
+                    <i data-lucide="chevron-right" class="spacer"></i>
+                </a>
                 {% endif %}
             </section>
 

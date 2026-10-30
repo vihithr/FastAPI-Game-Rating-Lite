@@ -2253,3 +2253,68 @@ a.pg-chip:hover {
 #game-list.view-compact .card-platform {
 	display: none;
 }
+
+/* --------------------------------------------------------------------------
+   21. 浏览作品分页
+   旧标记 .pagination 一直缺容器样式，而 Pico 给 nav 设了 space-between，
+   页码就被撑到页面两端（看着像没样式）。这里显式居中，并补齐禁用态。
+   -------------------------------------------------------------------------- */
+.pg .pagination {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 0.35rem;
+	margin-top: 1.5rem;
+}
+
+.pg .pagination .page-num,
+.pg .pagination .page-btn {
+	min-width: 2.2rem;
+	height: 2.2rem;
+	padding: 0 0.5rem;
+	border-radius: var(--radius-md);
+	font-size: 0.82rem;
+	line-height: 1;
+	text-decoration: none;
+}
+
+.pg .pagination .page-num {
+	font-variant-numeric: tabular-nums;
+}
+
+.pg .pagination .page-btn svg {
+	width: 1rem;
+	height: 1rem;
+}
+
+.pg .pagination .page-btn[aria-disabled="true"] {
+	opacity: 0.4;
+	pointer-events: none;
+}
+
+.pg .pagination .page-gap {
+	padding: 0 0.2rem;
+	color: var(--pg-muted);
+}
+
+/* 简介语种标记：采集来的简介可能是英/日文，标出来用户才不会以为加载错了 */
+.pg .pg-lang-tag {
+	padding: 0.05em 0.55em;
+	border: 1px solid var(--pg-line);
+	border-radius: var(--radius-pill);
+	background: color-mix(in srgb, var(--pg-muted) 9%, transparent);
+	color: var(--pg-muted);
+	font-size: 0.68rem;
+	letter-spacing: 0.03em;
+	white-space: nowrap;
+}
+
+/* 键盘聚焦时与 hover 同一套视觉反馈，别只靠浏览器默认描边 */
+.pg-lib-card:focus-visible {
+	transform: translateY(-3px);
+	box-shadow: var(--shadow-md);
+	border-color: color-mix(in srgb, var(--pg-brand) 45%, var(--pg-line));
+	outline: 2px solid var(--pg-brand);
+	outline-offset: 2px;
+}

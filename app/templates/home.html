@@ -23,10 +23,9 @@
             <div><dt>社区成员</dt><dd>{{ total_users }}</dd></div>
         </dl>
     </div>
-    {% set hero_covers = recent_games | selectattr('image_url') | list %}
     {% if hero_covers %}
     <div class="hero-art" aria-hidden="true">
-        {% for game in hero_covers[:3] %}
+        {% for game in hero_covers %}
         <img class="hero-cover hero-cover-{{ loop.index }}"
              src="{{ cover_thumb(game.image_url, 400) }}" alt="" loading="{{ 'eager' if loop.first else 'lazy' }}" decoding="async">
         {% endfor %}
@@ -37,15 +36,15 @@
 
 <!-- 主内容：最近添加 + 热门排行 -->
 <div class="home-main">
-    <section class="home-col-primary" aria-labelledby="recent-title">
+    <section class="home-col-primary" aria-labelledby="featured-title">
         <header class="section-head">
             <span class="section-icon"><i data-lucide="sparkles"></i></span>
-            <h2 id="recent-title">最近添加的作品</h2>
+            <h2 id="featured-title">今日精选</h2>
             <a class="section-more" href="/games">全部作品 <i data-lucide="arrow-right"></i></a>
         </header>
-        {% if recent_games %}
+        {% if featured_games %}
         <div id="recent-games-list" class="home-game-grid">
-            {% for game in recent_games %}
+            {% for game in featured_games %}
             <div class="game-link-container">
                 <a href="/game/{{ game.id }}" class="game-card">
                     <div class="game-card-img-container">
