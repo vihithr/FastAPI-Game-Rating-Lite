@@ -1,763 +1,3959 @@
 {% extends "base.html" %}
 
-{# Block for the page title, which will be inserted into the <title> tag of base.html #}
-{% block title %}{{ game.title }} - 社区评价{% endblock %}
+{% block body_class %}demo-body{% endblock %}
+{% set quality_avg = evaluation.overall_quality_score %}
+{% set quality_count = evaluation.quality_ratings_count %}
+{% set difficulty_avg = evaluation.overall_difficulty_score %}
+{% set difficulty_count = evaluation.difficulty_ratings_count %}
+{% set difficulty_realm = evaluation.overall_difficulty_realm if evaluation.overall_difficulty_realm != 'N/A' else '暂无评分' %}
+{% set comment_count = evaluation.comments|length %}
+{% set global_ctx = evaluation.difficulty_scores_by_context.get('d0_s0') %}
+{% set user_quality = user_ratings.quality %}
+{% set user_quality_mode = user_quality.mode if user_quality else None %}
+{% set user_overall_difficulty = user_ratings.difficulty.get('d0_s0') if user_ratings.difficulty else None %}
+{% set user_difficulty_mode = user_overall_difficulty.mode if user_overall_difficulty else None %}
+{% set alt_names = [] %}
+{% for translation in game.translations %}{% set _ = alt_names.append(translation.name) %}{% endfor %}
+{% for alias in game.aliases %}{% set _ = alt_names.append(alias.name) %}{% endfor %}
+{% set user_quality_score = none %}
+{% if user_quality %}
+  {% if user_quality_mode == 'quick' %}
+    {% set user_quality_score = user_quality.overall %}
+  {% elif user_quality.fun is not none and user_quality.core is not none and user_quality.depth is not none and user_quality.performance is not none and user_quality.story is not none %}
+    {% set user_quality_score = (user_quality.fun + user_quality.core + user_quality.depth + user_quality.performance + user_quality.story) / 5.0 %}
+  {% endif %}
+{% endif %}
+{% set user_difficulty_score = none %}
+{% if user_overall_difficulty %}
+  {% if user_difficulty_mode == 'quick' %}
+    {% set user_difficulty_score = user_overall_difficulty.overall %}
+  {% elif user_overall_difficulty.dodge is not none and user_overall_difficulty.strategy is not none and user_overall_difficulty.execution is not none %}
+    {% set user_difficulty_score = (user_overall_difficulty.dodge + user_overall_difficulty.strategy + user_overall_difficulty.execution) / 3.0 %}
+  {% endif %}
+{% endif %}
+{% set quick_quality_value = user_quality.overall if user_quality and user_quality_mode == 'quick' and user_quality.overall is not none else ((user_quality_score|round(1)) if user_quality_score is not none else 5.0) %}
+{% set quick_difficulty_value = user_overall_difficulty.overall if user_overall_difficulty and user_difficulty_mode == 'quick' and user_overall_difficulty.overall is not none else ((user_difficulty_score|round|int) if user_difficulty_score is not none else 30) %}
+{% set quick_difficulty_open = user_overall_difficulty is not none %}
+{% set quick_difficulty_enabled = user_difficulty_mode == 'quick' %}
+{% set detail_quality = {} %}
+{% if user_quality and user_quality_mode == 'detailed' %}
+  {% set _ = detail_quality.update({
+    '趣味性': user_quality.fun or 0,
+    '核心设计': user_quality.core or 0,
+    '深度': user_quality.depth or 0,
+    '演出': user_quality.performance or 0,
+    '剧情': user_quality.story or 0
+  }) %}
+{% endif %}
+{% set detail_dodge = user_overall_difficulty.dodge if user_overall_difficulty and user_difficulty_mode == 'detailed' and user_overall_difficulty.dodge is not none else 30 %}
+{% set detail_strategy = user_overall_difficulty.strategy if user_overall_difficulty and user_difficulty_mode == 'detailed' and user_overall_difficulty.strategy is not none else 30 %}
+{% set detail_execution = user_overall_difficulty.execution if user_overall_difficulty and user_difficulty_mode == 'detailed' and user_overall_difficulty.execution is not none else 30 %}
+{% set detail_quality_average = (detail_quality.values()|sum / 5.0) if detail_quality and detail_quality.values()|sum > 0 else 0 %}
+{% set detail_difficulty_average = ((detail_dodge + detail_strategy + detail_execution) / 3.0) %}
 
-{# Main content block, everything visible on the page goes here #}
+
+{% block title %}{{ game.title }} - {{ game.company }} | STG Ratings{% endblock %}
+{% block description %}{{ (game.description or (game.title ~ ' 的品质评分与难度记录'))|truncate(150, true, '…') }}{% endblock %}
+{% block og_title %}{{ game.title }} - {{ game.company }}{% endblock %}
+
 {% block content %}
 <style>
-    /* 页面特有的样式可以保留在这里 */
-    [data-lucide] { vertical-align: middle; width: 1em; height: 1em; margin-right: 0.25em; }
-    
-    /* 磨砂质感背景效果 */
-    .game-details-wrapper {
-        position: relative;
-        min-height: 100vh;
-    }
-    
-    .game-background-layer {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 0;
-        overflow: hidden;
-        pointer-events: none;
-    }
-    
-    /* 确保导航栏在游戏详情页也能正常显示，保持在背景层之上 */
-    /* 导航栏样式已由全局 style.css 统一管理，确保与其他页面视觉效果一致 */
-    header.container {
-        position: relative;
-        z-index: 100;
-    }
-    
-    .game-background-image {
-        position: absolute;
-        top: 0;
-        left: 50%;
-        width: 120%;
-        height: 120%;
-        object-fit: cover;
-        filter: blur(5px) brightness(0.8) saturate(1.2);
-        opacity: 0.6;
-        transition: opacity 0.5s ease-in-out;
-        will-change: transform, opacity;
-        transform-origin: top center;
-        backface-visibility: hidden;
-        /* 初始transform：图片顶部对齐视口顶部，水平居中 */
-        transform: translate3d(-50%, 0%, 0);
-    }
-    
-    /* 磨砂质感叠加层 */
-    .game-background-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: 
-            linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%),
-            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-        backdrop-filter: blur(1px);
-        -webkit-backdrop-filter: blur(1px);
-    }
-    
-    /* 动态渐变叠加层 - 流动的渐变效果 */
-    .game-background-gradient {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: 
-            radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-            radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.15) 0%, transparent 50%),
-            radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 60%);
-        animation: gradientFlow 20s ease-in-out infinite;
-        opacity: 0.8;
-        mix-blend-mode: overlay;
-        will-change: transform, opacity;
-        transform: translateZ(0);
-        backface-visibility: hidden;
-    }
-    
-    /* 动态渐变动画 */
-    @keyframes gradientFlow {
-        0%, 100% {
-            background-position: 0% 50%, 100% 50%, 50% 50%;
-            transform: scale(1) rotate(0deg);
+
+        /* =====================================================================
+           Game detail redesign — static preview
+           Scoped to .detail-demo. Reuses the site's tokens and theme system.
+           ===================================================================== */
+        body.demo-body,
+        .detail-demo {
+            --demo-radius: 20px;
+            --demo-card: var(--pico-card-background-color);
+            --demo-line: var(--pico-card-border-color);
+            --demo-muted: var(--pico-muted-color);
+            --demo-tint: var(--pico-card-sectioning-background-color);
+            --demo-quality: var(--pico-primary);
+            --demo-difficulty: var(--accent-500);
         }
-        33% {
-            background-position: 30% 60%, 70% 40%, 50% 50%;
-            transform: scale(1.05) rotate(2deg);
+
+        .detail-demo {
+            --demo-hero-ink: #f8faff;
+            --demo-hero-muted: rgba(240, 245, 255, 0.66);
+            --demo-hero-line: rgba(255, 255, 255, 0.16);
+            padding-bottom: 2.5rem;
         }
-        66% {
-            background-position: 60% 40%, 40% 60%, 50% 50%;
-            transform: scale(0.95) rotate(-2deg);
+
+        .detail-demo a {
+            text-underline-offset: 0.18em;
         }
-    }
-    
-    /* 光影效果层 */
-    .game-background-glow {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: 
-            radial-gradient(ellipse at top, rgba(99, 102, 241, 0.2) 0%, transparent 50%),
-            radial-gradient(ellipse at bottom right, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
-        animation: glowPulse 8s ease-in-out infinite;
-        opacity: 0.6;
-        pointer-events: none;
-        will-change: transform, opacity;
-        transform: translateZ(0);
-        backface-visibility: hidden;
-    }
-    
-    /* 光影脉冲动画 */
-    @keyframes glowPulse {
-        0%, 100% {
-            opacity: 0.4;
-            transform: scale(1);
+
+        /* ---------- Preview flag / breadcrumb ---------- */
+        .demo-topline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1.25rem 0 0.7rem;
         }
-        50% {
+
+        .demo-flag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            margin: 0;
+            padding: 0.35rem 0.7rem;
+            border: 1px dashed color-mix(in srgb, var(--demo-quality) 38%, var(--demo-line));
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--demo-quality) 7%, transparent);
+            color: var(--demo-muted);
+            font-size: 0.74rem;
+        }
+
+        .demo-flag strong {
+            color: var(--demo-quality);
+            letter-spacing: 0.08em;
+            font-size: 0.68rem;
+        }
+
+        .demo-flag a {
+            color: var(--demo-quality);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .demo-flag a:hover {
+            text-decoration: underline;
+        }
+
+        .demo-crumbs {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+            margin: 0 0 0.85rem;
+            font-size: 0.8rem;
+            color: var(--demo-muted);
+        }
+
+        .demo-crumbs a {
+            color: var(--demo-muted);
+            text-decoration: none;
+        }
+
+        .demo-crumbs a:hover {
+            color: var(--demo-quality);
+        }
+
+        .demo-crumbs span[aria-current] {
+            color: var(--pico-color);
+            font-weight: 600;
+        }
+
+        .demo-crumbs svg {
+            width: 0.85em;
+            height: 0.85em;
+            opacity: 0.55;
+        }
+
+        /* ---------- Hero ---------- */
+        .game-hero {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            border-radius: 24px;
+            color: var(--demo-hero-ink);
+            box-shadow: 0 30px 70px rgba(9, 13, 24, 0.28);
+        }
+
+        .game-hero__media,
+        .game-hero__media img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .game-hero__media {
+            z-index: -3;
+            overflow: hidden;
+            background: #141a26;
+        }
+
+        .game-hero__media img {
+            object-fit: cover;
+            transform: scale(1.22);
+            filter: blur(30px) saturate(1.3) brightness(0.5);
+            opacity: 0.9;
+        }
+
+        .game-hero::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -2;
+            background:
+                radial-gradient(60% 90% at 12% 18%, rgba(66, 99, 235, 0.34), transparent 62%),
+                radial-gradient(50% 80% at 92% 10%, rgba(240, 140, 0, 0.18), transparent 60%),
+                linear-gradient(180deg, rgba(8, 11, 19, 0.5) 0%, rgba(8, 11, 19, 0.72) 58%, rgba(8, 11, 19, 0.9) 100%);
+        }
+
+        .game-hero::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: linear-gradient(180deg, #000 0%, transparent 78%);
+            -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 78%);
+            pointer-events: none;
+        }
+
+        .game-hero__inner {
+            display: grid;
+            grid-template-columns: 220px minmax(0, 1fr) 320px;
+            align-items: center;
+            gap: 2rem;
+            padding: 2.2rem;
+        }
+
+        .game-hero__poster {
+            margin: 0;
+            aspect-ratio: 3 / 4;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 24px 50px rgba(0, 0, 0, 0.48);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .game-hero__poster img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .game-hero__identity {
+            min-width: 0;
+        }
+
+        .game-hero__eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+            margin: 0 0 0.55rem;
+            color: var(--demo-hero-muted);
+            font-size: 0.71rem;
+            font-weight: 600;
+            line-height: 1.4;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .game-hero__eyebrow .dot {
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.55;
+        }
+
+        .game-hero h1 {
+            margin: 0;
+            color: var(--demo-hero-ink);
+            font-size: clamp(2.1rem, 3.4vw, 3rem);
+            line-height: 1.06;
+            letter-spacing: -0.028em;
+            text-wrap: balance;
+        }
+
+        .game-hero__alt {
+            margin: 0.4rem 0 0;
+            color: var(--demo-hero-muted);
+            font-size: 0.88rem;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+
+        .game-hero__alt span {
+            margin: 0 0.35rem;
+            opacity: 0.45;
+        }
+
+        .game-hero__tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.38rem;
+            margin: 1rem 0 0;
+        }
+
+        .game-hero__tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.24rem 0.66rem;
+            border: 1px solid var(--demo-hero-line);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(248, 250, 255, 0.88);
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background-color var(--dur-1) var(--ease-out),
+                border-color var(--dur-1) var(--ease-out);
+        }
+
+        .game-hero__tag:hover {
+            border-color: rgba(255, 255, 255, 0.36);
+            background: rgba(255, 255, 255, 0.16);
+            color: #fff;
+        }
+
+        .game-hero__lede {
+            max-width: 48ch;
+            margin: 1rem 0 1.25rem;
+            color: rgba(240, 245, 255, 0.76);
+            font-size: 0.9rem;
+            line-height: 1.72;
+        }
+
+        .game-hero__actions {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+
+        .demo-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.42rem;
+            width: auto;
+            min-height: 2.45rem;
+            padding: 0.52rem 0.95rem;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 650;
+            line-height: 1.2;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color var(--dur-1) var(--ease-out),
+                border-color var(--dur-1) var(--ease-out),
+                color var(--dur-1) var(--ease-out),
+                transform var(--dur-1) var(--ease-out);
+        }
+
+        .demo-btn:active {
+            transform: translateY(1px);
+        }
+
+        .demo-btn svg {
+            width: 1em;
+            height: 1em;
+        }
+
+        .demo-btn--light {
+            background: #f8faff;
+            border-color: rgba(255, 255, 255, 0.7);
+            color: #141a26;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+        }
+
+        .demo-btn--light:hover {
+            background: #fff;
+            color: #0d1220;
+        }
+
+        .demo-btn--glass {
+            background: rgba(255, 255, 255, 0.09);
+            border-color: var(--demo-hero-line);
+            color: rgba(248, 250, 255, 0.92);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .demo-btn--glass:hover {
+            background: rgba(255, 255, 255, 0.16);
+            border-color: rgba(255, 255, 255, 0.34);
+            color: #fff;
+        }
+
+        .demo-btn--icon {
+            width: 2.45rem;
+            padding: 0;
+        }
+
+        .demo-btn--primary {
+            background: var(--pico-primary-background);
+            border-color: var(--pico-primary-background);
+            color: var(--pico-primary-inverse);
+        }
+
+        .demo-btn--primary:hover {
+            background: var(--pico-primary-hover-background);
+            border-color: var(--pico-primary-hover-background);
+        }
+
+        .demo-btn--ghost {
+            background: transparent;
+            border-color: var(--demo-line);
+            color: var(--fg-muted);
+        }
+
+        .demo-btn--ghost:hover {
+            border-color: color-mix(in srgb, var(--pico-primary) 44%, var(--demo-line));
+            color: var(--pico-primary);
+        }
+
+        .demo-btn--subtle {
+            min-height: 2rem;
+            padding: 0.3rem 0.65rem;
+            border-color: var(--demo-line);
+            background: var(--demo-tint);
+            color: var(--fg-muted);
+            font-size: 0.74rem;
+            font-weight: 600;
+        }
+
+        .demo-btn--subtle:hover {
+            border-color: color-mix(in srgb, var(--pico-primary) 40%, var(--demo-line));
+            color: var(--pico-primary);
+        }
+
+        .demo-btn[disabled] {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ---------- Score panel ---------- */
+        .score-panel {
+            position: relative;
+            padding: 1.15rem 1.2rem 0.95rem;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 18px;
+            background: rgba(9, 13, 22, 0.55);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(18px) saturate(1.1);
+            -webkit-backdrop-filter: blur(18px) saturate(1.1);
+        }
+
+        .score-quality {
+            display: flex;
+            align-items: center;
+            gap: 0.95rem;
+        }
+
+        .score-ring {
+            --pct: 82%;
+            position: relative;
+            display: grid;
+            place-items: center;
+            flex: 0 0 auto;
+            width: 78px;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background: conic-gradient(#9db2ff calc(var(--pct)), rgba(255, 255, 255, 0.13) 0);
+        }
+
+        .score-ring::before {
+            content: "";
+            position: absolute;
+            inset: 7px;
+            border-radius: 50%;
+            background: rgba(10, 14, 24, 0.94);
+        }
+
+        .score-ring__value {
+            position: relative;
+            display: flex;
+            align-items: baseline;
+            gap: 0.1rem;
+            font-size: 1.5rem;
+            font-weight: 780;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .score-ring__value small {
+            font-size: 0.62rem;
+            font-weight: 600;
+            color: rgba(248, 250, 255, 0.5);
+            letter-spacing: 0;
+        }
+
+        .score-quality__label {
+            display: block;
+            color: rgba(248, 250, 255, 0.92);
+            font-size: 0.84rem;
+            font-weight: 650;
+        }
+
+        .score-quality__meta {
+            display: block;
+            margin-top: 0.18rem;
+            color: rgba(240, 245, 255, 0.45);
+            font-size: 0.7rem;
+        }
+
+        .score-panel__divider {
+            height: 1px;
+            margin: 0.95rem 0;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .score-difficulty__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.6rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .score-difficulty__label {
+            color: rgba(248, 250, 255, 0.92);
+            font-size: 0.84rem;
+            font-weight: 650;
+        }
+
+        .realm-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.16rem 0.52rem;
+            border: 1px solid rgba(255, 169, 77, 0.32);
+            border-radius: 999px;
+            background: rgba(240, 140, 0, 0.16);
+            color: #ffc078;
+            font-size: 0.68rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .score-difficulty__value {
+            display: flex;
+            align-items: baseline;
+            gap: 0.12rem;
+            color: #ffd8a8;
+            font-size: 2.1rem;
+            font-weight: 780;
+            letter-spacing: -0.035em;
+            line-height: 1.1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .score-difficulty__value small {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: rgba(240, 245, 255, 0.45);
+            letter-spacing: 0;
+        }
+
+        .score-gauge {
+            position: relative;
+            margin-top: 0.65rem;
+        }
+
+        .score-gauge__track {
+            position: relative;
+            height: 6px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #4dabf7 0%, #69db7c 28%, #ffd43b 54%, #ff922b 76%, #fa5252 100%);
+            opacity: 0.9;
+        }
+
+        .score-gauge__marker {
+            position: absolute;
+            top: 50%;
+            left: 49.7%;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #111726;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.16);
+            transform: translate(-50%, -50%);
+        }
+
+        .score-gauge__labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.28rem;
+            color: rgba(240, 245, 255, 0.38);
+            font-size: 0.61rem;
+        }
+
+        .score-difficulty__meta {
+            display: block;
+            margin-top: 0.4rem;
+            color: rgba(240, 245, 255, 0.45);
+            font-size: 0.7rem;
+        }
+
+        .score-panel__foot {
+            margin-top: 0.8rem;
+            padding-top: 0.65rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(240, 245, 255, 0.42);
+            font-size: 0.68rem;
+            text-align: center;
+        }
+
+        /* ---------- Sticky section nav ---------- */
+        #quality,
+        #difficulty,
+        #reviews {
+            scroll-margin-top: 128px;
+        }
+
+        .detail-tabs {
+            position: sticky;
+            top: 50px;
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: 1.4rem 0;
+            padding: 0.38rem 0.55rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 13px;
+            background: color-mix(in srgb, var(--pico-background-color) 92%, transparent);
+            box-shadow: var(--shadow-xs);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        .detail-tabs__links {
+            display: flex;
+            gap: 0.2rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .detail-tabs__links::-webkit-scrollbar {
+            display: none;
+        }
+
+        .detail-tabs__links a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.45rem 0.78rem;
+            border-radius: 9px;
+            color: var(--demo-muted);
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+            text-decoration: none;
+            transition: background-color var(--dur-1) var(--ease-out),
+                color var(--dur-1) var(--ease-out);
+        }
+
+        .detail-tabs__links a:hover {
+            color: var(--pico-color);
+            background: color-mix(in srgb, var(--pico-color) 5%, transparent);
+        }
+
+        .detail-tabs__links a.is-active {
+            background: color-mix(in srgb, var(--pico-primary) 11%, var(--demo-card));
+            color: var(--pico-primary);
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pico-primary) 20%, transparent);
+        }
+
+        .detail-tabs__links .tab-count {
+            display: inline-grid;
+            place-items: center;
+            min-width: 1.25rem;
+            height: 1.25rem;
+            padding: 0 0.28rem;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--pico-primary) 11%, transparent);
+            color: var(--pico-primary);
+            font-size: 0.66rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .detail-tabs__score {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex: 0 0 auto;
+            padding-right: 0.3rem;
+            color: var(--demo-muted);
+            font-size: 0.74rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .detail-tabs__score span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.22rem 0.5rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 999px;
+            background: var(--demo-card);
+        }
+
+        .detail-tabs__score .score-quality-dot {
+            color: var(--pico-primary);
+            font-weight: 700;
+        }
+
+        .detail-tabs__score .score-difficulty-dot {
+            color: var(--demo-difficulty);
+            font-weight: 700;
+        }
+
+        /* ---------- Layout / panels ---------- */
+        .detail-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            align-items: start;
+            gap: 1.5rem;
+        }
+
+        .detail-main {
+            display: grid;
+            gap: 1.4rem;
+            min-width: 0;
+        }
+
+        .detail-rail {
+            position: sticky;
+            top: 142px;
+            display: grid;
+            gap: 1.1rem;
+            min-width: 0;
+        }
+
+        .panel {
+            overflow: hidden;
+            border: 1px solid var(--demo-line);
+            border-radius: var(--demo-radius);
+            background: var(--demo-card);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .panel__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1.05rem 1.3rem;
+            border-bottom: 1px solid var(--demo-line);
+        }
+
+        .panel__title {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            min-width: 0;
+        }
+
+        .panel__title h2 {
+            margin: 0;
+            font-size: 1rem;
+            letter-spacing: -0.01em;
+        }
+
+        .panel__title p {
+            margin: 0.12rem 0 0;
+            color: var(--demo-muted);
+            font-size: 0.71rem;
+        }
+
+        .icon-chip {
+            display: inline-grid;
+            place-items: center;
+            flex: 0 0 auto;
+            width: 2.15rem;
+            height: 2.15rem;
+            border-radius: 11px;
+            font-size: 1rem;
+        }
+
+        .icon-chip--quality {
+            background: color-mix(in srgb, var(--pico-primary) 11%, transparent);
+            color: var(--pico-primary);
+        }
+
+        .icon-chip--difficulty {
+            background: color-mix(in srgb, var(--accent-500) 13%, transparent);
+            color: var(--accent-500);
+        }
+
+        .icon-chip--neutral {
+            background: var(--demo-tint);
+            color: var(--demo-muted);
+        }
+
+        .panel__meta {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex: 0 0 auto;
+        }
+
+        .panel__meta strong {
+            font-size: 1.22rem;
+            font-weight: 750;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .panel__meta small {
+            color: var(--demo-muted);
+            font-size: 0.7rem;
+        }
+
+        .panel__meta .quality-ink {
+            color: var(--pico-primary);
+        }
+
+        .panel__meta .difficulty-ink {
+            color: var(--demo-difficulty);
+        }
+
+        /* ---------- Quality panel ---------- */
+        .quality-grid {
+            display: grid;
+            grid-template-columns: 260px minmax(0, 1fr);
+            align-items: center;
+            gap: 1.6rem;
+            padding: 1.25rem 1.3rem 0.9rem;
+        }
+
+        .radar-wrap {
+            position: relative;
+            width: 100%;
+            max-width: 260px;
+            margin: 0 auto;
+            aspect-ratio: 1;
+        }
+
+        .radar-wrap svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .radar-grid line,
+        .radar-grid polygon {
+            fill: none;
+            stroke: color-mix(in srgb, var(--pico-color) 10%, transparent);
+            stroke-width: 1;
+        }
+
+        .radar-grid line {
+            stroke: color-mix(in srgb, var(--pico-color) 8%, transparent);
+        }
+
+        .radar-area {
+            fill: color-mix(in srgb, var(--pico-primary) 16%, transparent);
+            stroke: var(--pico-primary);
+            stroke-width: 2;
+            stroke-linejoin: round;
+        }
+
+        .radar-dots circle {
+            fill: var(--pico-primary);
+            stroke: var(--demo-card);
+            stroke-width: 2;
+        }
+
+        .radar-label {
+            fill: var(--demo-muted);
+            font-size: 10.5px;
+            font-weight: 600;
+            font-family: var(--font-sans);
+        }
+
+        .radar-average {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            text-align: center;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .radar-average strong {
+            display: block;
+            color: var(--pico-color);
+            font-size: 1.72rem;
+            font-weight: 780;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .radar-average span {
+            display: block;
+            margin-top: 0.15rem;
+            color: var(--demo-muted);
+            font-size: 0.63rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+        }
+
+        .dimension-list {
+            display: grid;
+            gap: 0.82rem;
+        }
+
+        .dim-row {
+            display: grid;
+            gap: 0.3rem;
+        }
+
+        .dim-row__head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.6rem;
+            font-size: 0.82rem;
+        }
+
+        .dim-row__head span:first-child {
+            color: var(--pico-color);
+            font-weight: 600;
+        }
+
+        .dim-row__head strong {
+            color: var(--pico-color);
+            font-size: 0.88rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .dim-row__head small {
+            margin-left: 0.25rem;
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+            font-weight: 500;
+        }
+
+        .bar-track {
+            position: relative;
+            height: 7px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--pico-color) 8%, transparent);
+        }
+
+        .bar-fill {
+            display: block;
+            height: 100%;
+            width: var(--v, 0%);
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--brand-600), var(--brand-300));
+            transition: width var(--dur-3) var(--ease-out);
+        }
+
+        .bar-fill--difficulty {
+            background: linear-gradient(90deg, var(--accent-500), #ffd43b);
+        }
+
+        .distribution {
+            padding: 0 1.3rem 0.6rem;
+        }
+
+        .distribution__head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .distribution__head h3 {
+            margin: 0;
+            color: var(--pico-color);
+            font-size: 0.78rem;
+            font-weight: 650;
+        }
+
+        .distribution__head span {
+            color: var(--demo-muted);
+            font-size: 0.68rem;
+        }
+
+        .histogram {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(10, minmax(0, 1fr));
+            align-items: end;
+            gap: 5px;
+            height: 84px;
+            padding-top: 0.5rem;
+        }
+
+        .hist-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            height: 100%;
+            gap: 0.26rem;
+        }
+
+        .hist-bar i {
+            display: block;
+            width: 100%;
+            height: calc(var(--h) * 1%);
+            min-height: 2px;
+            border-radius: 4px 4px 2px 2px;
+            background: color-mix(in srgb, var(--pico-primary) 18%, transparent);
+            transition: height var(--dur-3) var(--ease-out),
+                background-color var(--dur-1) var(--ease-out);
+        }
+
+        .hist-bar:hover i {
+            background: color-mix(in srgb, var(--pico-primary) 34%, transparent);
+        }
+
+        .hist-bar.is-peak i {
+            background: linear-gradient(180deg, var(--brand-300), var(--brand-600));
+        }
+
+        .hist-bar span {
+            color: var(--demo-muted);
+            font-size: 0.6rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hist-marker {
+            position: absolute;
+            top: 0.2rem;
+            bottom: 0.95rem;
+            left: 82%;
+            border-left: 1px dashed color-mix(in srgb, var(--pico-primary) 55%, transparent);
+            pointer-events: none;
+        }
+
+        .hist-marker span {
+            position: absolute;
+            top: -0.15rem;
+            left: 0.35rem;
+            padding: 0.08rem 0.3rem;
+            border-radius: 4px;
+            background: color-mix(in srgb, var(--pico-primary) 10%, var(--demo-card));
+            color: var(--pico-primary);
+            font-size: 0.58rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .insight {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.45rem;
+            margin: 0.55rem 1.3rem 1.15rem;
+            padding: 0.62rem 0.75rem;
+            border-radius: 10px;
+            background: color-mix(in srgb, var(--pico-primary) 6%, transparent);
+            color: var(--demo-muted);
+            font-size: 0.78rem;
+            line-height: 1.6;
+        }
+
+        .insight svg {
+            flex: 0 0 auto;
+            margin-top: 0.2rem;
+            color: var(--pico-primary);
+        }
+
+        /* ---------- Difficulty panel ---------- */
+        .context-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.9rem;
+            flex-wrap: wrap;
+            padding: 0.95rem 1.3rem 0.2rem;
+        }
+
+        .segmented {
+            display: inline-flex;
+            gap: 3px;
+            padding: 3px;
+            border: 1px solid var(--demo-line);
+            border-radius: 11px;
+            background: var(--demo-tint);
+        }
+
+        .segmented button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            width: auto;
+            padding: 0.38rem 0.62rem;
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--fg-muted);
+            font-size: 0.76rem;
+            font-weight: 600;
+            line-height: 1.2;
+            cursor: pointer;
+            transition: background-color var(--dur-1) var(--ease-out),
+                color var(--dur-1) var(--ease-out);
+        }
+
+        .segmented button:hover {
+            color: var(--fg);
+        }
+
+        .segmented button.is-active {
+            background: var(--pico-primary-background);
+            color: var(--pico-primary-inverse);
+            box-shadow: var(--shadow-xs);
+        }
+
+        .segmented button span {
+            color: var(--demo-muted);
+            font-size: 0.64rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .segmented button.is-active span {
+            color: rgba(255, 255, 255, 0.75);
+        }
+
+        .ship-filter {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin: 0;
+            color: var(--demo-muted);
+            font-size: 0.72rem;
+            font-weight: 500;
+        }
+
+        .ship-filter select {
+            width: auto;
+            min-width: 7.8rem;
+            margin: 0;
+            padding: 0.34rem 1.9rem 0.34rem 0.6rem;
+            border-radius: 9px;
+            font-size: 0.76rem;
+        }
+
+        .difficulty-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 272px;
+            align-items: stretch;
+            gap: 1.3rem;
+            padding: 1rem 1.3rem 0.85rem;
+        }
+
+        .difficulty-bars {
+            display: grid;
+            align-content: center;
+            gap: 0.95rem;
+            min-width: 0;
+        }
+
+        .diff-row {
+            display: grid;
+            gap: 0.3rem;
+        }
+
+        .diff-row__head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.6rem;
+            font-size: 0.82rem;
+        }
+
+        .diff-row__name {
+            font-weight: 650;
+        }
+
+        .diff-row__value {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 0.35rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .diff-row__value strong {
+            color: var(--pico-color);
+            font-size: 0.9rem;
+        }
+
+        .diff-row__value small {
+            color: var(--demo-difficulty);
+            font-size: 0.67rem;
+            font-weight: 650;
+        }
+
+        .diff-row .bar-track {
+            height: 8px;
+        }
+
+        .realm-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0.95rem 1rem;
+            border: 1px solid color-mix(in srgb, var(--accent-500) 25%, var(--demo-line));
+            border-radius: 15px;
+            background:
+                radial-gradient(90% 90% at 100% 0%, color-mix(in srgb, var(--accent-500) 16%, transparent), transparent 62%),
+                var(--demo-tint);
+        }
+
+        .realm-card__kicker {
+            color: var(--demo-muted);
+            font-size: 0.64rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+        }
+
+        .realm-card__head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.6rem;
+            margin-top: 0.1rem;
+        }
+
+        .realm-card__name {
+            color: var(--demo-difficulty);
+            font-size: 1.3rem;
+            font-weight: 750;
+            letter-spacing: -0.02em;
+        }
+
+        .realm-card__score {
+            color: var(--pico-color);
+            font-size: 1.5rem;
+            font-weight: 780;
+            letter-spacing: -0.03em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .realm-card__score small {
+            color: var(--demo-muted);
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0;
+        }
+
+        .realm-scale {
+            position: relative;
+            margin-top: 0.7rem;
+        }
+
+        .realm-scale__track {
+            position: relative;
+            height: 8px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #4dabf7 0%, #69db7c 26%, #ffd43b 52%, #ff922b 74%, #fa5252 100%);
+            opacity: 0.92;
+        }
+
+        .realm-scale__marker {
+            position: absolute;
+            top: 50%;
+            left: 49.7%;
+            width: 13px;
+            height: 13px;
+            border: 2px solid var(--demo-card);
+            border-radius: 50%;
+            background: var(--pico-color);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--pico-color) 16%, transparent);
+            transform: translate(-50%, -50%);
+            transition: left var(--dur-3) var(--ease-out);
+        }
+
+        .realm-scale__labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.28rem;
+            color: var(--demo-muted);
+            font-size: 0.58rem;
+        }
+
+        .realm-card__meta {
+            margin: 0.65rem 0 0;
+            color: var(--demo-muted);
+            font-size: 0.68rem;
+        }
+
+        .context-note {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.4rem;
+            margin: 0;
+            padding: 0 1.3rem 1.1rem;
+            color: var(--demo-muted);
+            font-size: 0.72rem;
+            line-height: 1.55;
+        }
+
+        .context-note svg {
+            flex: 0 0 auto;
+            margin-top: 0.15rem;
+            color: var(--demo-difficulty);
+        }
+
+        /* ---------- Reviews ---------- */
+        .review-sort {
+            display: inline-flex;
+            flex: 0 0 auto;
+            gap: 2px;
+            width: auto;
+            padding: 2px;
+            border: 1px solid var(--demo-line);
+            border-radius: 8px;
+            background: var(--demo-tint);
+        }
+
+        .review-sort button {
+            width: auto;
+            padding: 0.22rem 0.5rem;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--fg-muted);
+            font-size: 0.68rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .review-sort button.is-active {
+            background: var(--demo-card);
+            color: var(--fg);
+            box-shadow: var(--shadow-xs);
+        }
+
+        .review-list {
+            padding: 0 1.3rem;
+        }
+
+        .review {
+            display: grid;
+            grid-template-columns: 38px minmax(0, 1fr);
+            gap: 0.8rem;
+            padding: 1.05rem 0;
+            border-bottom: 1px solid var(--demo-line);
+        }
+
+        .review:last-child {
+            border-bottom: 0;
+        }
+
+        .review__avatar,
+        .composer__avatar,
+        .avatar-sm {
+            display: inline-grid;
+            place-items: center;
+            flex: 0 0 auto;
+            border-radius: 50%;
+            color: #fff;
+            font-weight: 700;
+            line-height: 1;
+            background: linear-gradient(135deg,
+                hsl(var(--hue, 220) 68% 56%),
+                hsl(calc(var(--hue, 220) + 42) 70% 44%));
+        }
+
+        .review__avatar {
+            width: 38px;
+            height: 38px;
+            font-size: 0.82rem;
+        }
+
+        .review__body {
+            min-width: 0;
+        }
+
+        .review__head {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+
+        .review__head strong {
+            color: var(--pico-color);
+            font-size: 0.84rem;
+        }
+
+        .review__badge {
+            padding: 0.09rem 0.4rem;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--pico-primary) 11%, transparent);
+            color: var(--pico-primary);
+            font-size: 0.64rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .review__context {
+            padding: 0.09rem 0.4rem;
+            border: 1px solid color-mix(in srgb, var(--accent-500) 28%, transparent);
+            border-radius: 999px;
+            color: var(--demo-difficulty);
+            font-size: 0.64rem;
+            font-weight: 650;
+        }
+
+        .review__head time {
+            margin-left: auto;
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+            white-space: nowrap;
+        }
+
+        .review__body > p {
+            margin: 0.42rem 0 0.55rem;
+            color: var(--pico-color);
+            font-size: 0.85rem;
+            line-height: 1.72;
+            white-space: pre-wrap;
+        }
+
+        .review__foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .helpful {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.28rem;
+            width: auto;
+            padding: 0.24rem 0.55rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--fg-muted);
+            font-size: 0.68rem;
+            font-weight: 600;
+            line-height: 1.2;
+            cursor: pointer;
+            transition: background-color var(--dur-1) var(--ease-out),
+                border-color var(--dur-1) var(--ease-out),
+                color var(--dur-1) var(--ease-out);
+        }
+
+        .helpful svg {
+            width: 0.9em;
+            height: 0.9em;
+        }
+
+        .helpful:hover,
+        .helpful.is-active {
+            border-color: color-mix(in srgb, var(--pico-primary) 40%, var(--demo-line));
+            background: color-mix(in srgb, var(--pico-primary) 7%, transparent);
+            color: var(--pico-primary);
+        }
+
+        .review__meta {
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+        }
+
+        .composer {
+            display: grid;
+            grid-template-columns: 38px minmax(0, 1fr);
+            gap: 0.8rem;
+            padding: 1.05rem 1.3rem 1.15rem;
+            border-top: 1px solid var(--demo-line);
+            background: var(--demo-tint);
+        }
+
+        .composer__avatar {
+            width: 38px;
+            height: 38px;
+            font-size: 0.78rem;
+            --hue: 260;
+        }
+
+        .composer textarea {
+            min-height: 84px;
+            margin: 0;
+            padding: 0.65rem 0.75rem;
+            border-radius: 11px;
+            background: var(--demo-card);
+            font-size: 0.84rem;
+            line-height: 1.65;
+            resize: vertical;
+        }
+
+        .composer__foot {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            margin-top: 0.45rem;
+            flex-wrap: wrap;
+        }
+
+        .composer__hint {
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+        }
+
+        .composer__count {
+            margin-left: auto;
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .composer .composer__submit {
+            width: auto;
+            min-height: 2.1rem;
+            padding: 0.38rem 0.8rem;
+            font-size: 0.76rem;
+        }
+
+        .demo-hint {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.4rem;
+            margin: 0;
+            padding: 0.7rem 1.3rem 1rem;
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+            line-height: 1.5;
+        }
+
+        .demo-hint svg {
+            flex: 0 0 auto;
+            margin-top: 0.1rem;
             opacity: 0.7;
-            transform: scale(1.1);
         }
-    }
-    
-    /* 暗色主题下的光影效果 */
-    [data-theme="dark"] .game-background-glow {
-        background: 
-            radial-gradient(ellipse at top, rgba(99, 102, 241, 0.3) 0%, transparent 50%),
-            radial-gradient(ellipse at bottom right, rgba(236, 72, 153, 0.25) 0%, transparent 50%);
-        opacity: 0.5;
-    }
-    
-    /* 暗色主题下的动态渐变调整 */
-    [data-theme="dark"] .game-background-gradient {
-        background: 
-            radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.2) 0%, transparent 50%),
-            radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.2) 0%, transparent 50%),
-            radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 60%);
-        mix-blend-mode: screen;
-    }
-    
-    /* 确保内容区域有足够的对比度 */
-    .game-details-wrapper article {
-        background: var(--pico-card-background-color);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* 深色主题下的调整 - 增强可见度 */
-    [data-theme="dark"] .game-background-image {
-        filter: blur(8px) brightness(1.0) saturate(1.3) contrast(1.0);
-        opacity: 0.75;
-    }
-    
-    [data-theme="dark"] .game-background-overlay {
-        background: 
-            linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%),
-            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-    }
-    
-    /* 减少动画偏好设置 */
-    @media (prefers-reduced-motion: reduce) {
-        .game-background-gradient,
-        .game-background-glow {
-            animation: none;
+
+        /* ---------- Sidebar ---------- */
+        .rail-card {
+            padding: 1rem 1.1rem;
         }
-        
-        .game-background-image {
-            transition: opacity 0.5s ease-in-out;
+
+        .rail-card__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.6rem;
+            margin-bottom: 0.75rem;
         }
-    }
-    
-    /* 暗色模式下增强内容卡片的对比度 */
-    [data-theme="dark"] .game-details-wrapper article {
-        background: var(--pico-card-background-color);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
-    }
-    
-    /* 无封面图时的处理 - 通过类名控制 */
-    .game-background-layer.no-image {
-        display: none;
-    }
-    .chart-container { position: relative; height: 40vh; width: 100%; margin: 1rem 0; }
-    .toast { visibility: hidden; min-width: 250px; background-color: var(--pico-contrast); color: var(--pico-contrast-inverse); text-align: center; border-radius: var(--pico-border-radius); padding: 16px; position: fixed; z-index: 10; left: 50%; transform: translateX(-50%); bottom: 30px; opacity: 0; transition: visibility 0s 0.5s, opacity 0.5s linear; }
-    .toast.show { visibility: visible; opacity: 1; transition: opacity 0.5s linear; }
-    .star-rating { display: inline-flex; flex-direction: row-reverse; justify-content: flex-end; }
-    .star-rating input { display: none; }
-    .star-rating label { color: var(--pico-muted-border-color); cursor: pointer; font-size: 1.5rem; padding: 0 0.1em; transition: color 0.2s; }
-    .star-rating input:checked ~ label, .star-rating:not(:hover) input:checked ~ label { color: var(--pico-primary-hover); }
-    .star-rating:hover label { color: var(--pico-primary-hover); }
-    .star-rating input:hover ~ label { color: var(--pico-primary-hover); }
-    .star-rating:hover label:hover ~ label { color: var(--pico-primary-hover); }
-    .star-rating input:checked + label:hover, .star-rating input:checked ~ label:hover, .star-rating label:hover ~ input:checked ~ label { color: var(--pico-primary-focus); }
-    .comment-actions { font-size: 0.8em; margin-left: 1em; }
-    .danger { 
-        --pico-color: var(--pico-color-red-550); 
-        --pico-background-color: transparent;
-        --pico-border-color: var(--pico-color-red-550);
-    }
-    .danger:hover {
-        --pico-color: var(--pico-color-red-50); 
-        --pico-background-color: var(--pico-color-red-600);
-    }
-    .rating-section { 
-        background: var(--pico-card-background-color); 
-        border-radius: var(--pico-border-radius); 
-        padding: 1.5rem; 
-        margin: 1rem 0;
-    }
-    .rating-section h4 { margin-top: 0; }
-    .star-rating { 
-        display: flex; 
-        flex-direction: row-reverse; 
-        justify-content: flex-start; 
-        gap: 0.1rem;
-        font-size: 1.5rem;
-        flex-wrap: nowrap;
-    }
-    .star-rating input { display: none; }
-    .star-rating label { 
-        color: var(--pico-muted-border-color); 
-        cursor: pointer; 
-        transition: all 0.2s;
-        user-select: none;
-        flex-shrink: 0;
-        line-height: 1;
-    }
-    .star-rating label:hover,
-    .star-rating label:hover ~ label { 
-        color: var(--pico-primary-hover); 
-    }
-    .star-rating input:checked ~ label,
-    .star-rating:not(:hover) input:checked ~ label { 
-        color: var(--pico-primary); 
-    }
-    .rating-value-display {
-        display: inline-block;
-        margin-left: 0.5rem;
-        font-weight: normal;
-        color: var(--pico-primary);
-        font-size: 0.85rem;
-    }
-    .star-rating-wrapper {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        width: 100%;
-    }
-    .star-rating {
-        display: flex;
-        flex-direction: row-reverse;
-        justify-content: flex-start;
-        gap: 0.15rem;
-        flex-shrink: 0;
-    }
-    .slider-container {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        gap: 0.5rem;
-        align-items: center;
-        margin: 0.5rem 0;
-    }
-    .slider-container label {
-        min-width: 4rem;
-        font-weight: 500;
-    }
-    .slider-container input[type="range"] {
-        width: 100%;
-    }
-    .slider-value {
-        min-width: 3.5rem;
-        text-align: center;
-    }
-    .slider-value input[type="number"] {
-        width: 100%;
-        text-align: center;
-        font-weight: bold;
-        color: var(--pico-primary);
-        padding: 0.25rem 0.5rem;
-    }
-    .user-rating-badge {
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        background: var(--pico-primary-background);
-        color: var(--pico-primary-inverse);
-        border-radius: var(--pico-border-radius);
-        font-size: 0.9rem;
-        margin-left: 0.5rem;
-    }
-    /* 确保返回按钮能够正确响应主题切换，并增强对比度 */
-    button[data-back-url].secondary {
-        background-color: var(--pico-secondary-background) !important;
-        color: var(--pico-secondary-foreground) !important;
-        border-color: var(--pico-secondary-border) !important;
-    }
-    
-    /* 亮色模式：使用更深的背景色和更浅的文字色以增强对比度 */
-    html[data-theme="light"] button[data-back-url].secondary {
-        background-color: var(--pico-secondary-background) !important;
-        color: var(--pico-color) !important;
-        border-color: var(--pico-secondary-border) !important;
-    }
-    
-    /* 暗色模式：使用更浅的背景色和更深的文字色以增强对比度 */
-    html[data-theme="dark"] button[data-back-url].secondary {
-        background-color: var(--pico-secondary-background) !important;
-        color: var(--pico-color) !important;
-        border-color: var(--pico-secondary-border) !important;
-    }
-    
-    /* 悬停状态 */
-    button[data-back-url].secondary:hover,
-    button[data-back-url].secondary:active,
-    button[data-back-url].secondary:focus {
-        background-color: var(--pico-secondary-hover-background) !important;
-        color: var(--pico-secondary-hover-foreground) !important;
-        border-color: var(--pico-secondary-hover-border) !important;
-    }
-    
-    /* 亮色模式悬停：增强对比度 */
-    html[data-theme="light"] button[data-back-url].secondary:hover,
-    html[data-theme="light"] button[data-back-url].secondary:active,
-    html[data-theme="light"] button[data-back-url].secondary:focus {
-        background-color: var(--pico-primary) !important;
-        color: var(--pico-primary-inverse) !important;
-        border-color: var(--pico-primary) !important;
-    }
-    
-    /* 暗色模式悬停：增强对比度 */
-    html[data-theme="dark"] button[data-back-url].secondary:hover,
-    html[data-theme="dark"] button[data-back-url].secondary:active,
-    html[data-theme="dark"] button[data-back-url].secondary:focus {
-        background-color: var(--pico-primary) !important;
-        color: var(--pico-primary-inverse) !important;
-        border-color: var(--pico-primary) !important;
-    }
-</style>
 
-<div id="toast-notification" class="toast"></div>
-
-{# 磨砂质感背景层 #}
-{% if game.image_url %}
-<div class="game-background-layer">
-    <img src="{{ game.image_url }}" alt="{{ game.title }} background" class="game-background-image" id="game-bg-image">
-    <div class="game-background-gradient"></div>
-    <div class="game-background-glow"></div>
-    <div class="game-background-overlay"></div>
-</div>
-{% endif %}
-
-<div class="game-details-wrapper">
-{# 这个返回链接在 base.html 的导航栏中已经存在，但放在内容区顶部作为面包屑导航也是很好的体验，可以选择保留 #}
-<nav>
-    <ul><li><button type="button" role="button" class="secondary" data-back-url="/games" style="display: inline-flex; align-items: center; gap: 0.25rem;">&laquo; 返回作品列表</button></li></ul>
-</nav>
-
-<article style="padding-bottom: 0;">
-    <div class="grid">
-        <div class="two-thirds">
-             <hgroup style="margin-bottom: 1rem;">
-				<div style="display: flex; align-items: flex-start; justify-content: space-between;">
-					<div>
-						<h1>{{ game.title }}</h1>
-						<h2>{{ game.company }}</h2>
-                        {# --- 修改：循环显示译名 --- #}
-                        {% if game.translations %}
-                        <p style="color: var(--pico-muted-color); margin-bottom: 0;">
-                            {% for t in game.translations %}{{ t.name }}{% if not loop.last %}, {% endif %}{% endfor %}
-                        </p>
-                        {% endif %}
-					</div>
-					
-					{% if request.state.user and (request.state.user.is_admin or game.created_by == request.state.user.id) %}
-					<div class="admin-actions">
-						<a href="/game/{{ game.id }}/edit" role="button" class="contrast outline" data-tooltip="编辑游戏资料">
-							<i data-lucide="file-pen-line"></i>
-						</a>
-						{% if request.state.user.is_admin %}
-						<button id="delete-game-button" class="danger outline" data-tooltip="删除此游戏" data-game-id="{{ game.id }}" data-game-title="{{ game.title }}">
-							<i data-lucide="trash-2"></i>
-						</button>
-						{% endif %}
-					</div>
-					{% endif %}
-				</div>
-			</hgroup>
-            
-            {# --- 新增：显示标签和别名 --- #}
-            {% if game.tags %}
-            <div class="tags-display" style="margin-bottom: 1rem;">
-                {% for tag in game.tags %}
-                    <a href="/games?tag={{ tag.name }}" class="tag-badge">{{ tag.name }}</a>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            {% if game.description %}
-            <p>{{ game.description }}</p>
-            {% endif %}
-
-            {% if game.aliases %}
-            <p><small><strong>常用别名:</strong> {% for alias in game.aliases %}{{ alias.name }}{% if not loop.last %}, {% endif %}{% endfor %}</small></p>
-            {% endif %}
-
-        </div>
-        <div class="one-third">
-            {% if game.image_url %}
-            <figure style="margin: 0;">
-                <img src="{{ game.image_url }}" alt="{{ game.title }} cover art" style="width:100%; height: auto; object-fit: cover; border-radius: var(--pico-border-radius);">
-            </figure>
-            {% else %}
-            <div style="display: flex; align-items: center; justify-content: center; height: 100%; background-color: var(--pico-card-background-color); border-radius: var(--pico-border-radius);">
-                <small>暂无封面</small>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</article>
-<article>
-    <div class="grid">
-        <div style="text-align: center;">
-            <hgroup>
-                <h4><i data-lucide="gem"></i> 社区总品质</h4>
-                <p id="overall-quality-display" style="font-size: 1.5rem; color: var(--pico-primary);">
-                    {% if evaluation.overall_quality_score > 0 %}
-                        {{ "%.2f"|format(evaluation.overall_quality_score) }}
-                    {% else %}
-                        暂无评分
-                    {% endif %}
-                </p>
-                <small id="quality-ratings-count">({{ evaluation.quality_ratings_count }} 条评分)</small>
-            </hgroup>
-        </div>
-        <div style="text-align: center;">
-			<hgroup>
-				<h4><i data-lucide="swords"></i> 社区难度</h4>
-                <div class="grid" style="margin-bottom: 0.5rem; align-items: center;">
-                    <select id="difficulty-context-selector">
-                        <option value="0">游戏总体</option>
-                        {% for diff_level in game.difficulty_levels %}
-                            <option value="{{ diff_level.id }}">{{ diff_level.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <select id="ship-context-selector">
-                        <option value="0">全机体/角色</option>
-                        {% for ship_type in game.ship_types %}
-                            <option value="{{ ship_type.id }}">{{ ship_type.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <small id="overall-difficulty-realm" style="font-size: 0.8rem; color: var(--pico-muted-color);">
-                        {{ evaluation.overall_difficulty_realm }}
-                    </small>
-                </div>
-				<p id="overall-difficulty-display" style="font-size: 1.5rem; color: var(--pico-primary);">
-					</p>
-                <small id="context-info" style="color: var(--pico-muted-color); min-height: 1.2em;"></small>
-			</hgroup>
-		</div>
-    </div>
-</article>
-<article>
-    <header><strong><i data-lucide="bar-chart-3"></i> 社区综合评价</strong></header>
-    <div class="grid">
-        <section>
-            <h4><i data-lucide="gem"></i> 品质评分</h4>
-            <div class="chart-container">
-                <canvas id="qualityChart"></canvas>
-            </div>
-        </section>
-
-        <section>
-            <h4><i data-lucide="swords"></i> 难度评分</h4>
-            <div class="chart-container">
-                <canvas id="difficultyChart"></canvas>
-            </div>
-        </section>
-    </div>
-</article>
-
-<div class="grid">
-    <details>
-        <summary role="button" class="contrast"><i data-lucide="gem"></i> 参与品质评分</summary>
-        <div class="rating-section">
-            {% if request.state.user %}
-                {% if user_ratings.quality %}
-                <p><small class="user-rating-badge">✓ 已评分</small></p>
-                {% endif %}
-            <form id="quality-rating-form" action="/game/{{ game.id }}/rate_quality" method="post">
-                <fieldset>
-                    {% set quality_map = {"趣味性": "fun", "核心设计": "core", "深度": "depth", "演出": "performance", "剧情": "story"} %}
-                    {% for cat, field in quality_map.items() %}
-                    <div style="margin-bottom: 1rem;">
-                        <label for="rating-quality-{{cat}}">
-                            {{ cat }}
-                            {% if user_ratings.quality and user_ratings.quality[field] %}
-                            <span class="rating-value-display">(当前: {{ user_ratings.quality[field] }}/10)</span>
-                            {% endif %}
-                        </label>
-                        <div class="star-rating-wrapper">
-                            <div class="star-rating" data-category="{{ cat }}">
-                                {% for i in range(10, 0, -1) %}
-                                <input type="radio" id="star{{i}}-{{cat}}" name="rating_{{cat}}" value="{{i}}" 
-                                       {% if user_ratings.quality and user_ratings.quality[field] == i %}checked{% endif %} />
-                                <label for="star{{i}}-{{cat}}" title="{{i}}分">&#9733;</label>
-                                {% endfor %}
-                            </div>
-                            <span class="rating-value-display" id="quality-value-{{cat}}"></span>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </fieldset>
-                <input type="hidden" name="user_name" value="{{ request.state.user.username }}">
-                <div class="grid" style="margin-top: 0.5rem;">
-                    <button type="submit">{% if user_ratings.quality %}更新{% else %}提交{% endif %}品质评分</button>
-                    {% if user_ratings.quality %}
-                    <button type="button" id="delete-quality-rating-btn" class="secondary outline" style="justify-self: flex-start;">
-                        撤销我的品质评分
-                    </button>
-                    {% endif %}
-                </div>
-            </form>
-            {% else %}	
-                <p>请<a href="/login?redirect=/game/{{ game.id }}">登录</a>后参与评分</p>
-            {% endif %}
-        </div>
-    </details>
-
-    <details>
-        <summary role="button" class="secondary"><i data-lucide="swords"></i> 参与难度评分</summary>
-        <div class="rating-section">
-            {% if request.state.user %}
-            <form id="difficulty-rating-form" action="/game/{{ game.id }}/rate_difficulty" method="post">
-                <div style="margin-bottom: 1rem;">
-                    <label><strong>评分情境:</strong></label>
-                    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-                        <select id="form-difficulty-selector" name="difficulty_level_id" style="margin-bottom: 0;">
-                            <option value="">游戏总体</option>
-                            {% for diff_level in game.difficulty_levels %}
-                            <option value="{{ diff_level.id }}">{{ diff_level.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <select id="form-ship-selector" name="ship_type_id" style="margin-bottom: 0;">
-                            <option value="">全机体/角色</option>
-                            {% for ship_type in game.ship_types %}
-                            <option value="{{ ship_type.id }}">{{ ship_type.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <p id="form-context-label" style="color: var(--pico-primary-focus); margin-top: 0.5rem; font-size: 0.9rem;">
-                        游戏总体 | 全机体/角色
-                    </p>
-                    <span id="difficulty-rating-status" class="user-rating-badge" style="display: none;">✓ 已评分</span>
-                </div>
-                <fieldset>
-                    {% set difficulty_map = {"避弹": "dodge", "策略": "strategy", "执行": "execution"} %}
-                    {% for cat, field in difficulty_map.items() %}
-                    <div class="slider-container">
-                        <label for="rating-difficulty-{{cat}}">{{ cat }}</label>
-                        <input type="range" min="1" max="60" value="30" 
-                               id="rating-difficulty-{{cat}}" 
-                               name="rating_{{cat}}" 
-                               class="difficulty-slider"
-                               data-category="{{ cat }}">
-                        <div class="slider-value">
-                            <input type="number" 
-                                   min="1" 
-                                   max="60" 
-                                   id="difficulty-value-{{cat}}" 
-                                   class="difficulty-value-input"
-                                   data-category="{{ cat }}"
-                                   value="30"
-                                   style="width: 100%;">
-                        </div>
-                    </div>
-                    {% endfor %}
-                </fieldset>
-                <input type="hidden" name="user_name" value="{{ request.state.user.username }}">
-                <div class="grid" style="margin-top: 0.5rem;">
-                    <button type="submit">提交难度评分</button>
-                    <button type="button" id="delete-difficulty-rating-btn" class="secondary outline" style="justify-self: flex-start;">
-                        撤销当前情境评分
-                    </button>
-                </div>
-            </form>
-            {% else %}	
-                <p>请<a href="/login?redirect=/game/{{ game.id }}">登录</a>后参与评分</p>
-            {% endif %}
-        </div>
-    </details>
-</div>
- 
-<article>
-    <header><strong><i data-lucide="users"></i> 玩家评论区</strong></header>
-    <div id="comments-section">
-		{% for comment in evaluation.comments %}
-		<blockquote data-comment-id="{{ comment.id }}">
-			<p>{{ comment.content | e }}</p> {# 使用 |e 过滤器转义HTML，更安全 #}
-			<footer>
-				{# 左侧部分 #}
-				<cite>- {% if comment.user_id %}<a href="/user/{{ comment.user_id }}">{{ comment.user_name }}</a>{% else %}{{ comment.user_name }}{% endif %}</cite>
-				
-				{# 右侧部分：权限判断和操作链接 #}
-				{% if request.state.user and (comment.user_id == request.state.user.id or request.state.user.is_admin) %}
-					<span class="comment-actions">
-						{% if comment.user_id == request.state.user.id %}
-							<a href="#" class="edit-comment" data-comment-id="{{ comment.id }}">编辑</a> | 
-						{% endif %}
-						<a href="#" class="delete-comment" data-comment-id="{{ comment.id }}">删除</a>
-					</span>
-				{% endif %}
-			</footer>
-		</blockquote>
-		{% else %}
-		<p id="no-comments-placeholder">还没有人评论，快来抢占沙发吧！</p>
-		{% endfor %}
-	</div>
-    <form id="comment-form" data-game-id="{{ game.id }}">
-		{% if not request.state.user %}
-		<label for="user_name_comment">昵称 (登录后将自动使用您的用户名)</label>
-		<input type="text" name="user_name" id="user_name_comment" placeholder="输入你的常用昵称">
-		{% endif %}
-
-		<label for="content">添加评论 (最多2000字)</label>
-		<textarea name="content" id="content" rows="3" required maxlength="2000"></textarea>
-		
-		{% if request.state.user %}
-			<button type="submit">发表评论</button>
-		{% else %}
-			<a href="/login?redirect=/game/{{ game.id }}" role="button">登录后发表评论</a>
-		{% endif %}
-	</form>
-</article>
-</div> {# 结束 game-details-wrapper #}
-
-<script id="evaluation-data" type="application/json">
-    {{ evaluation | tojson | safe }}
-</script>
-<script id="session-data" type="application/json">
-    {
-        "user_id": {{ request.state.user.id if request.state.user else 'null' }}
-    }
-</script>
-<script id="user-ratings-data" type="application/json">
-    {{ user_ratings | tojson | safe }}
-</script>
-{# +++ 新增这个 script 标签，将管理员状态传递给JS +++ #}
-{% if request.state.user and request.state.user.is_admin %}
-<script>window.IS_ADMIN = true;</script>
-{% else %}
-<script>window.IS_ADMIN = false;</script>
-{% endif %}
-{% endblock %}
-
-
-{# Scripts block for page-specific JS files #}
-{% block scripts %}
-<script>
-    // 返回按钮点击事件
-    document.addEventListener('DOMContentLoaded', function() {
-        const backButton = document.querySelector('button[data-back-url]');
-        if (backButton) {
-            backButton.addEventListener('click', function() {
-                window.location.href = this.getAttribute('data-back-url');
-            });
+        .rail-card__head h3 {
+            margin: 0;
+            font-size: 0.84rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
         }
-        
-        // 改进的视差滚动效果
-        const bgImage = document.getElementById('game-bg-image');
-        if (bgImage) {
-            // 检查用户是否偏好减少动画
-            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            
-            if (!prefersReducedMotion) {
-                let ticking = false;
-                let lastScrollY = window.pageYOffset || document.documentElement.scrollTop;
-                let currentOffset = 0;
-                let targetOffset = 0;
-                
-                // 平滑缓动函数（ease-out）
-                function easeOut(t) {
-                    return 1 - Math.pow(1 - t, 3);
-                }
-                
-                function updateParallax() {
-                    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-                    
-                    // 计算页面总高度和视口高度
-                    const documentHeight = Math.max(
-                        document.body.scrollHeight,
-                        document.body.offsetHeight,
-                        document.documentElement.clientHeight,
-                        document.documentElement.scrollHeight,
-                        document.documentElement.offsetHeight
-                    );
-                    const viewportHeight = window.innerHeight;
-                    const maxScroll = Math.max(0, documentHeight - viewportHeight);
-                    
-                    // 图片高度是120%，视口高度是100%，所以图片超出视口20%
-                    // 初始位置：图片顶部对齐视口顶部（translateY = 0%）
-                    // 滚动到底部时：图片底部应该对齐视口底部
-                    // 图片高度120% = 视口高度100% + 超出20%
-                    // 所以图片最多可以向下移动20%（相对于视口高度）
-                    // 当scrollY从0到maxScroll时，图片应该从0%移动到-20%
-                    const parallaxIntensity = maxScroll > 0 ? (-20 / maxScroll) : 0;
-                    targetOffset = scrollY * parallaxIntensity;
-                    
-                    // 限制范围：图片顶部从0%（初始）到-20%（滚动到底部）
-                    // 负数表示向下移动（因为图片是绝对定位，top: 0，向下移动需要负值）
-                    const minOffset = -20;  // 最多向下移动20%
-                    const maxOffset = 0;    // 初始位置，不向上移动
-                    targetOffset = Math.max(targetOffset, minOffset); // 确保不小于-20%
-                    targetOffset = Math.min(targetOffset, maxOffset); // 确保不大于0%
-                    
-                    // 平滑插值，使滚动更流畅
-                    const smoothing = 0.25;
-                    currentOffset += (targetOffset - currentOffset) * smoothing;
-                    
-                    // 使用 translate3d 强制GPU加速
-                    // 初始位置：translateY = 0%（图片顶部在视口顶部）
-                    // 滚动时：translateY = currentOffset%（向下移动，显示图片下方部分）
-                    bgImage.style.transform = `translate3d(-50%, ${currentOffset}%, 0)`;
-                    
-                    lastScrollY = scrollY;
-                    ticking = false;
-                }
-                
-                function requestTick() {
-                    if (!ticking) {
-                        window.requestAnimationFrame(updateParallax);
-                        ticking = true;
-                    }
-                }
-                
-                // 使用节流优化性能，passive: true 提升滚动性能
-                window.addEventListener('scroll', requestTick, { passive: true });
-                
-                // 初始设置
-                updateParallax();
-                
-                // 窗口大小改变时重新计算
-                window.addEventListener('resize', () => {
-                    lastScrollY = window.pageYOffset || document.documentElement.scrollTop;
-                    updateParallax();
-                }, { passive: true });
+
+        .rail-card__head a {
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .rail-card__head a:hover {
+            color: var(--pico-primary);
+        }
+
+        .facts-list {
+            display: grid;
+            gap: 0.55rem;
+            margin: 0;
+        }
+
+        .facts-list > div {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+            font-size: 0.78rem;
+        }
+
+        .facts-list dt {
+            color: var(--demo-muted);
+            font-weight: 500;
+        }
+
+        .facts-list dd {
+            margin: 0;
+            color: var(--pico-color);
+            font-weight: 650;
+            text-align: right;
+        }
+
+        .fact-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            margin-top: 0.9rem;
+            padding-top: 0.85rem;
+            border-top: 1px solid var(--demo-line);
+        }
+
+        .fact-tags .tag-badge {
+            font-size: 0.68rem;
+            padding: 0.22rem 0.6rem;
+            margin: 0;
+        }
+
+        .recent-list {
+            display: grid;
+            gap: 0.72rem;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .recent-list li {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            min-width: 0;
+        }
+
+        .avatar-sm {
+            width: 27px;
+            height: 27px;
+            font-size: 0.62rem;
+        }
+
+        .recent-list__meta {
+            min-width: 0;
+        }
+
+        .recent-list__meta strong {
+            display: block;
+            overflow: hidden;
+            color: var(--pico-color);
+            font-size: 0.74rem;
+            font-weight: 650;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .recent-list__meta small {
+            display: block;
+            overflow: hidden;
+            color: var(--demo-muted);
+            font-size: 0.62rem;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .recent-list__score {
+            margin-left: auto;
+            color: var(--pico-primary);
+            font-size: 0.78rem;
+            font-weight: 750;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .similar-list {
+            display: grid;
+            gap: 0.45rem;
+        }
+
+        .similar-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.28rem;
+            border-radius: 9px;
+            color: inherit;
+            text-decoration: none;
+            transition: background-color var(--dur-1) var(--ease-out);
+        }
+
+        .similar-item:hover {
+            background: var(--demo-tint);
+        }
+
+        .similar-item img {
+            flex: 0 0 auto;
+            width: 36px;
+            height: 48px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+
+        .similar-item__meta {
+            min-width: 0;
+        }
+
+        .similar-item__meta strong {
+            display: block;
+            overflow: hidden;
+            color: var(--pico-color);
+            font-size: 0.74rem;
+            font-weight: 650;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .similar-item__meta small {
+            display: block;
+            color: var(--demo-muted);
+            font-size: 0.63rem;
+        }
+
+        .similar-item__score {
+            margin-left: auto;
+            color: var(--demo-muted);
+            font-size: 0.7rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .scale-card p {
+            margin: 0 0 0.5rem;
+            color: var(--demo-muted);
+            font-size: 0.72rem;
+            line-height: 1.6;
+        }
+
+        .scale-card details {
+            margin-top: 0.2rem;
+            padding: 0;
+            border: 0;
+        }
+
+        .scale-card summary {
+            padding: 0.3rem 0;
+            color: var(--pico-primary);
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .realm-table {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.25rem 0.8rem;
+            margin: 0.35rem 0 0;
+            padding: 0;
+            list-style: none;
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+        }
+
+        .realm-table li {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.4rem;
+        }
+
+        .realm-table b {
+            color: var(--pico-color);
+            font-weight: 600;
+        }
+
+        /* ---------- Rating dialog ---------- */
+        .rating-dialog {
+            padding: 0;
+            border: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .rating-dialog.is-warming {
+            visibility: hidden;
+        }
+
+        .rating-panel:focus {
+            outline: none;
+        }
+
+        body.rating-open {
+            overflow: hidden;
+        }
+
+        body.rating-open .score-panel,
+        body.rating-open .detail-tabs {
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+        body.rating-open .site-header,
+        body.rating-open main,
+        body.rating-open > footer,
+        body.rating-open .mobile-actions,
+        body.rating-open .global-background-layer {
+            visibility: hidden;
+        }
+
+        .rating-dialog::backdrop {
+            background:
+                radial-gradient(65% 55% at 50% 8%, rgba(66, 99, 235, 0.16), transparent 70%),
+                #090d15;
+        }
+
+        .rating-panel {
+            display: flex;
+            flex-direction: column;
+            width: min(680px, calc(100vw - 2rem));
+            max-width: 680px;
+            max-height: 90vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            border: 1px solid var(--demo-line);
+            border-radius: 20px;
+            background: var(--demo-card);
+            color: var(--pico-color);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+            contain: layout style;
+        }
+
+        .dialog-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid var(--demo-line);
+        }
+
+        .dialog-head p {
+            margin: 0;
+            color: var(--demo-muted);
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+        }
+
+        .dialog-head h2 {
+            margin: 0.12rem 0 0;
+            font-size: 1.18rem;
+            letter-spacing: -0.02em;
+        }
+
+        .dialog-close {
+            display: inline-grid;
+            place-items: center;
+            flex: 0 0 auto;
+            width: 2rem;
+            height: 2rem;
+            padding: 0;
+            border: 1px solid var(--demo-line);
+            border-radius: 9px;
+            background: var(--demo-tint);
+            color: var(--fg-muted);
+            cursor: pointer;
+        }
+
+        .dialog-close:hover {
+            color: var(--fg);
+            border-color: color-mix(in srgb, var(--pico-color) 30%, var(--demo-line));
+        }
+
+        .dialog-body {
+            flex: 0 1 auto;
+            min-height: 0;
+            padding: 1rem 1.2rem;
+            overflow-y: auto;
+        }
+
+        .dialog-tabs {
+            display: flex;
+            gap: 3px;
+            padding: 3px;
+            margin-bottom: 0.9rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 11px;
+            background: var(--demo-tint);
+        }
+
+        .dialog-tabs button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            flex: 1;
+            padding: 0.48rem 0.6rem;
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--fg-muted);
+            font-size: 0.78rem;
+            font-weight: 650;
+            cursor: pointer;
+        }
+
+        .dialog-tabs button.is-active {
+            background: color-mix(in srgb, var(--pico-primary) 9%, var(--demo-card));
+            color: var(--pico-primary);
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pico-primary) 18%, transparent);
+        }
+
+        .dialog-help {
+            margin: 0 0 0.35rem;
+            color: var(--demo-muted);
+            font-size: 0.72rem;
+            line-height: 1.55;
+        }
+
+        .scale-row {
+            padding: 0.75rem 0;
+            border-bottom: 1px dashed var(--demo-line);
+        }
+
+        .scale-row:last-of-type {
+            border-bottom: 0;
+        }
+
+        .scale-row__head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.6rem;
+            margin-bottom: 0.4rem;
+            font-size: 0.82rem;
+        }
+
+        .scale-row__head span:first-child {
+            font-weight: 650;
+        }
+
+        .scale-row__head output {
+            color: var(--pico-primary);
+            font-size: 0.74rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .scale {
+            display: grid;
+            grid-template-columns: repeat(10, minmax(0, 1fr));
+            gap: 4px;
+        }
+
+        .scale button {
+            width: auto;
+            padding: 0.38rem 0;
+            border: 1px solid var(--demo-line);
+            border-radius: 6px;
+            background: var(--demo-tint);
+            color: var(--fg-muted);
+            font-size: 0.68rem;
+            font-weight: 650;
+            line-height: 1.2;
+            cursor: pointer;
+            transition: background-color var(--dur-1) var(--ease-out),
+                border-color var(--dur-1) var(--ease-out),
+                color var(--dur-1) var(--ease-out);
+        }
+
+        .scale button:hover {
+            border-color: color-mix(in srgb, var(--pico-primary) 45%, var(--demo-line));
+            color: var(--pico-primary);
+        }
+
+        .scale button.is-active {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary);
+            color: var(--pico-primary-inverse);
+        }
+
+        .dialog-summary {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 0.85rem;
+            padding: 0.65rem 0.75rem;
+            border-radius: 10px;
+            background: var(--demo-tint);
+            color: var(--demo-muted);
+            font-size: 0.76rem;
+        }
+
+        .dialog-summary strong {
+            min-width: 7rem;
+            color: var(--pico-color);
+            font-size: 1.05rem;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .dialog-summary small {
+            color: var(--demo-muted);
+            font-size: 0.68rem;
+        }
+
+        .difficulty-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
+            margin: 0.2rem 0 0.75rem;
+        }
+
+        .difficulty-form-grid label {
+            margin: 0;
+            font-size: 0.72rem;
+            color: var(--demo-muted);
+        }
+
+        .difficulty-form-grid select {
+            margin: 0.25rem 0 0;
+            font-size: 0.78rem;
+        }
+
+        .range-row {
+            padding: 0.7rem 0;
+            border-bottom: 1px dashed var(--demo-line);
+        }
+
+        .range-row:last-of-type {
+            border-bottom: 0;
+        }
+
+        .range-row__head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.6rem;
+            margin-bottom: 0.3rem;
+            font-size: 0.82rem;
+        }
+
+        .range-row__head span:first-child {
+            font-weight: 650;
+        }
+
+        .range-row__head output {
+            min-width: 5.2rem;
+            color: var(--demo-difficulty);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Pointer-driven sliders for the quick rating controls. */
+        .demo-slider {
+            position: relative;
+            display: flex;
+            align-items: center;
+            height: 28px;
+            outline: none;
+            cursor: pointer;
+            touch-action: none;
+        }
+
+        .demo-slider--quality {
+            --slider-color: var(--pico-primary);
+        }
+
+        .demo-slider--difficulty {
+            --slider-color: var(--accent-500);
+        }
+
+        .demo-slider__track {
+            position: absolute;
+            top: 50%;
+            right: 8px;
+            left: 8px;
+            height: 7px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--pico-color) 9%, transparent);
+            transform: translateY(-50%);
+        }
+
+        .demo-slider__fill {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg,
+                var(--slider-color),
+                color-mix(in srgb, var(--slider-color) 45%, #ffd43b));
+            transform: scaleX(0);
+            transform-origin: left center;
+            will-change: transform;
+        }
+
+        .demo-slider--quality .demo-slider__fill {
+            background: linear-gradient(90deg, var(--brand-600), var(--brand-300));
+        }
+
+        .demo-slider__thumb {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            margin-left: -8px;
+            width: 16px;
+            height: 16px;
+            border: 3px solid var(--slider-color);
+            border-radius: 50%;
+            background: var(--demo-card);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+            transform: translate3d(0, -50%, 0);
+            will-change: transform;
+        }
+
+        .demo-slider:focus-visible .demo-slider__thumb {
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--slider-color) 24%, transparent),
+                0 2px 6px rgba(0, 0, 0, 0.18);
+        }
+
+        /* Static rail + compositor-friendly fill for the detail sliders. */
+        .demo-range {
+            position: relative;
+            display: flex;
+            align-items: center;
+            height: 26px;
+            margin-top: 0.35rem;
+        }
+
+        .demo-range__rail {
+            position: absolute;
+            top: 50%;
+            right: 8px;
+            left: 8px;
+            height: 7px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--pico-color) 9%, transparent);
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .demo-range__fill {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--accent-500), #ffd43b);
+            transform: scaleX(var(--fill, 0.49));
+            transform-origin: left center;
+            will-change: transform;
+        }
+
+        .demo-range input[type="range"] {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 26px;
+            margin: 0;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .demo-range input[type="range"]::-webkit-slider-runnable-track {
+            height: 7px;
+            border-radius: 999px;
+            background: transparent;
+        }
+
+        .demo-range input[type="range"]::-webkit-slider-thumb {
+            width: 16px;
+            height: 16px;
+            margin-top: -4.5px;
+            border: 3px solid var(--accent-500);
+            border-radius: 50%;
+            background: var(--demo-card);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .demo-range input[type="range"]::-moz-range-track {
+            height: 7px;
+            border-radius: 999px;
+            background: transparent;
+        }
+
+        .demo-range input[type="range"]::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            border: 3px solid var(--accent-500);
+            border-radius: 50%;
+            background: var(--demo-card);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+        }
+
+        .range-hints {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.2rem;
+            color: var(--demo-muted);
+            font-size: 0.58rem;
+        }
+
+        .dialog-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.8rem 1.2rem;
+            border-top: 1px solid var(--demo-line);
+            background: var(--demo-tint);
+        }
+
+        .dialog-foot__note {
+            color: var(--demo-muted);
+            font-size: 0.68rem;
+            line-height: 1.4;
+        }
+
+        .dialog-foot__actions {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            flex: 0 0 auto;
+        }
+
+        /* ---------- Coarse / fine rating ---------- */
+        .rating-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.95rem 1.2rem;
+            border-bottom: 1px solid var(--demo-line);
+        }
+
+        .rating-head__game {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            min-width: 0;
+        }
+
+        .rating-head__cover {
+            flex: 0 0 auto;
+            width: 42px;
+            height: 56px;
+            border: 1px solid var(--demo-line);
+            border-radius: 7px;
+            object-fit: cover;
+        }
+
+        .rating-head p {
+            margin: 0;
+            color: var(--demo-muted);
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+        }
+
+        .rating-head h2 {
+            margin: 0.1rem 0 0.15rem;
+            overflow: hidden;
+            font-size: 1.06rem;
+            letter-spacing: -0.02em;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .rating-head__community {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .rating-head__community b {
+            color: var(--pico-primary);
+            font-weight: 700;
+        }
+
+        .rating-mode {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            margin-bottom: 1rem;
+            padding: 4px;
+            border: 1px solid var(--demo-line);
+            border-radius: 12px;
+            background: var(--demo-tint);
+        }
+
+        .rating-mode button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            width: auto;
+            padding: 0.52rem 0.6rem;
+            border: 0;
+            border-radius: 9px;
+            background: transparent;
+            color: var(--fg-muted);
+            font-size: 0.78rem;
+            font-weight: 650;
+            cursor: pointer;
+        }
+
+        .rating-mode button.is-active {
+            background: color-mix(in srgb, var(--pico-primary) 10%, var(--demo-card));
+            color: var(--pico-primary);
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pico-primary) 20%, transparent);
+        }
+
+        .rating-mode button span {
+            padding: 0.08rem 0.38rem;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+            color: var(--pico-primary);
+            font-size: 0.58rem;
+            font-weight: 700;
+        }
+
+        .quick-stage {
+            position: relative;
+            overflow: hidden;
+            padding: 1.1rem 1rem 1rem;
+            border: 1px solid color-mix(in srgb, var(--pico-primary) 16%, var(--demo-line));
+            border-radius: 16px;
+            background:
+                radial-gradient(80% 120% at 50% -20%, color-mix(in srgb, var(--pico-primary) 14%, transparent), transparent 65%),
+                var(--demo-tint);
+            text-align: center;
+        }
+
+        .quick-stage__kicker {
+            display: block;
+            color: var(--demo-muted);
+            font-size: 0.64rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+        }
+
+        .quick-stage__score {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 0.15rem;
+            height: 3.15rem;
+            margin-top: 0.3rem;
+            line-height: 1;
+        }
+
+        .quick-stage__score strong {
+            background: linear-gradient(135deg, var(--pico-primary), var(--brand-300));
+            background-clip: text;
+            color: transparent;
+            font-size: 3.1rem;
+            font-weight: 780;
+            letter-spacing: -0.06em;
+            line-height: 0.92;
+            font-variant-numeric: tabular-nums;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .quick-stage__score > span {
+            color: var(--demo-muted);
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .quick-stage__label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 1.35rem;
+            margin: 0.35rem 0 0;
+            color: var(--pico-primary);
+            font-size: 0.8rem;
+            font-weight: 650;
+            line-height: 1.35;
+        }
+
+        .quick-stage__label.is-empty {
+            color: var(--demo-muted);
+            font-weight: 500;
+        }
+
+        .quick-quality-range {
+            margin-top: 0.5rem;
+        }
+
+        .quick-presets {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 4px;
+            margin-top: 0.5rem;
+        }
+
+        .quick-preset {
+            width: auto;
+            height: 30px;
+            padding: 0 0.15rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 7px;
+            background: var(--demo-tint);
+            color: var(--fg-muted);
+            font-size: 0.64rem;
+            font-weight: 650;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background-color var(--dur-1) var(--ease-out),
+                border-color var(--dur-1) var(--ease-out),
+                color var(--dur-1) var(--ease-out);
+        }
+
+        .quick-preset:hover {
+            border-color: color-mix(in srgb, var(--pico-primary) 45%, var(--demo-line));
+            color: var(--pico-primary);
+        }
+
+        .quick-preset.is-active {
+            border-color: transparent;
+            background: linear-gradient(180deg, var(--brand-500), var(--brand-700));
+            color: #fff;
+        }
+
+        .quick-scale-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.32rem;
+            color: var(--demo-muted);
+            font-size: 0.6rem;
+        }
+
+        .quick-stage__hint {
+            margin-top: 0.55rem;
+            color: var(--demo-muted);
+            font-size: 0.6rem;
+        }
+
+        .quick-difficulty {
+            margin-top: 0.9rem;
+            padding-top: 0.85rem;
+            border-top: 1px dashed var(--demo-line);
+        }
+
+        .quick-difficulty__head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+            font-size: 0.8rem;
+            font-weight: 650;
+        }
+
+        .quick-difficulty__head output {
+            min-width: 7rem;
+            color: var(--demo-muted);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .quick-realms {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 4px;
+            margin-top: 0.55rem;
+        }
+
+        .quick-realm {
+            width: auto;
+            padding: 0.48rem 0.15rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 8px;
+            background: var(--demo-tint);
+            color: var(--fg-muted);
+            font-size: 0.67rem;
+            font-weight: 650;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background-color var(--dur-1) var(--ease-out),
+                border-color var(--dur-1) var(--ease-out),
+                color var(--dur-1) var(--ease-out);
+        }
+
+        .quick-realm:hover {
+            border-color: color-mix(in srgb, var(--realm-color) 46%, var(--demo-line));
+            color: var(--realm-color);
+        }
+
+        .quick-realm.is-active {
+            border-color: var(--realm-color);
+            background: var(--realm-color);
+            color: #10141f;
+            font-weight: 700;
+        }
+
+        .quick-difficulty__hint {
+            margin: 0.5rem 0 0;
+            color: var(--demo-muted);
+            font-size: 0.62rem;
+        }
+
+        .quick-add-difficulty {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            width: auto;
+            margin: 0.85rem 0 0;
+            padding: 0.4rem 0.65rem;
+            border: 1px dashed var(--demo-line);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--fg-muted);
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .quick-add-difficulty:hover,
+        .quick-add-difficulty.is-open {
+            border-color: color-mix(in srgb, var(--accent-500) 48%, var(--demo-line));
+            color: var(--demo-difficulty);
+        }
+
+        .quick-add-difficulty small {
+            color: var(--demo-muted);
+            font-size: 0.6rem;
+            font-weight: 500;
+        }
+
+        .quick-add-difficulty svg {
+            width: 0.9em;
+            height: 0.9em;
+        }
+
+        .quick-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+
+        .quick-note {
+            margin: 0.65rem 0 0;
+            color: var(--demo-muted);
+            font-size: 0.64rem;
+            line-height: 1.5;
+        }
+
+        /* ---------- Mobile action bar & toast ---------- */
+        .mobile-actions {
+            display: none;
+        }
+
+        .demo-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 2rem;
+            z-index: 200;
+            min-width: 220px;
+            max-width: min(90vw, 420px);
+            padding: 0.7rem 1rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 11px;
+            background: var(--pico-contrast);
+            color: var(--pico-contrast-inverse);
+            box-shadow: var(--shadow-lg);
+            font-size: 0.8rem;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            transform: translate(-50%, 12px);
+            transition: opacity var(--dur-2) var(--ease-out),
+                transform var(--dur-2) var(--ease-out),
+                visibility 0s var(--dur-2);
+        }
+
+        .demo-toast.is-visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, 0);
+            transition: opacity var(--dur-2) var(--ease-out),
+                transform var(--dur-2) var(--ease-out);
+        }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 1080px) {
+            .game-hero__inner {
+                grid-template-columns: 190px minmax(0, 1fr);
+                gap: 1.6rem;
+            }
+
+            .score-panel {
+                grid-column: 1 / -1;
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                align-items: center;
+                gap: 1rem;
+                padding: 1rem 1.2rem;
+            }
+
+            .score-panel__divider {
+                display: none;
+            }
+
+            .score-quality {
+                padding-right: 1rem;
+                border-right: 1px solid rgba(255, 255, 255, 0.12);
+            }
+
+            .score-panel__foot {
+                grid-column: 1 / -1;
+                margin-top: 0;
+                padding-top: 0.6rem;
+            }
+
+            .detail-layout {
+                grid-template-columns: minmax(0, 1fr) 290px;
             }
         }
-    });
-</script>
-<script src="/static/vendor/chart.umd.min.js" defer></script>
-<script src="/static/vendor/chartjs-plugin-datalabels.min.js" defer></script>
-<script src="/static/js/game-details.js" defer></script>
+
+        @media (max-width: 920px) {
+            .detail-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-rail {
+                position: static;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .rail-card--wide {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .detail-demo {
+                padding-bottom: 5.5rem;
+            }
+
+            .demo-topline {
+                margin-top: 0.9rem;
+            }
+
+            .demo-flag {
+                width: 100%;
+                gap: 0.35rem;
+                padding: 0.4rem 0.6rem;
+                font-size: 0.68rem;
+                line-height: 1.4;
+            }
+
+            .demo-flag strong {
+                display: none;
+            }
+
+            .demo-flag a {
+                margin-left: auto;
+                white-space: nowrap;
+            }
+
+            .game-hero {
+                border-radius: 18px;
+            }
+
+            .game-hero__inner {
+                grid-template-columns: 92px minmax(0, 1fr);
+                align-items: start;
+                gap: 0.9rem 1rem;
+                padding: 1.2rem;
+            }
+
+            .game-hero__poster {
+                border-radius: 10px;
+                box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
+            }
+
+            .game-hero h1 {
+                font-size: clamp(1.55rem, 7.5vw, 2rem);
+            }
+
+            .game-hero__eyebrow {
+                margin-bottom: 0.35rem;
+                font-size: 0.62rem;
+            }
+
+            .game-hero__alt {
+                margin-top: 0.28rem;
+                font-size: 0.76rem;
+            }
+
+            .game-hero__tags {
+                margin-top: 0.7rem;
+                gap: 0.28rem;
+            }
+
+            .game-hero__tag {
+                padding: 0.18rem 0.5rem;
+                font-size: 0.65rem;
+            }
+
+            .game-hero__lede {
+                display: none;
+            }
+
+            .game-hero__actions {
+                grid-column: 1 / -1;
+                margin-top: 0.15rem;
+            }
+
+            .game-hero__actions .demo-btn--icon {
+                display: none;
+            }
+
+            .score-panel {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+                margin-top: 0.4rem;
+            }
+
+            .score-quality {
+                padding-right: 0;
+                padding-bottom: 0.75rem;
+                border-right: 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            }
+
+            .score-ring {
+                width: 66px;
+            }
+
+            .score-ring__value {
+                font-size: 1.3rem;
+            }
+
+            .score-difficulty__value {
+                font-size: 1.75rem;
+            }
+
+            .score-panel__foot {
+                margin-top: 0.25rem;
+            }
+
+            .detail-tabs {
+                top: 53px;
+                margin: 1rem 0;
+            }
+
+            #quality,
+            #difficulty,
+            #reviews {
+                scroll-margin-top: 118px;
+            }
+
+            .detail-tabs__score {
+                display: none;
+            }
+
+            .detail-tabs__links {
+                width: 100%;
+            }
+
+            .detail-tabs__links a {
+                padding: 0.42rem 0.65rem;
+                font-size: 0.75rem;
+            }
+
+            .panel {
+                border-radius: 16px;
+            }
+
+            .panel__head {
+                padding: 0.9rem 1rem;
+            }
+
+            .panel__title h2 {
+                font-size: 0.92rem;
+            }
+
+            .panel__meta strong {
+                font-size: 1.05rem;
+            }
+
+            .quality-grid {
+                grid-template-columns: 1fr;
+                gap: 0.8rem;
+                padding: 0.9rem 1rem 0.6rem;
+            }
+
+            .radar-wrap {
+                max-width: 230px;
+            }
+
+            .distribution {
+                padding: 0 1rem 0.5rem;
+            }
+
+            .histogram {
+                height: 72px;
+            }
+
+            .insight {
+                margin: 0.45rem 1rem 0.9rem;
+            }
+
+            .context-bar {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 0.55rem;
+                padding: 0.8rem 1rem 0.2rem;
+            }
+
+            .segmented {
+                width: 100%;
+                overflow-x: auto;
+            }
+
+            .segmented button {
+                flex: 1 0 auto;
+                white-space: nowrap;
+            }
+
+            .ship-filter {
+                width: 100%;
+            }
+
+            .ship-filter select {
+                flex: 1;
+                width: 100%;
+            }
+
+            .difficulty-grid {
+                grid-template-columns: 1fr;
+                gap: 0.9rem;
+                padding: 0.8rem 1rem 0.7rem;
+            }
+
+            .context-note {
+                padding: 0 1rem 0.9rem;
+            }
+
+            .review-list {
+                padding: 0 1rem;
+            }
+
+            .review {
+                grid-template-columns: 32px minmax(0, 1fr);
+                gap: 0.65rem;
+            }
+
+            .review__avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.72rem;
+            }
+
+            .review__head time {
+                width: 100%;
+                margin-left: 0;
+            }
+
+            .composer {
+                grid-template-columns: 32px minmax(0, 1fr);
+                gap: 0.65rem;
+                padding: 0.9rem 1rem 1rem;
+            }
+
+            .composer__avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.7rem;
+            }
+
+            .composer__hint {
+                display: none;
+            }
+
+            .demo-hint {
+                padding: 0.6rem 1rem 0.9rem;
+            }
+
+            .detail-rail {
+                grid-template-columns: 1fr;
+            }
+
+            .mobile-actions {
+                position: fixed;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                z-index: 60;
+                display: flex;
+                gap: 0.55rem;
+                padding: 0.65rem 1rem calc(0.65rem + env(safe-area-inset-bottom));
+                border-top: 1px solid var(--demo-line);
+                background: color-mix(in srgb, var(--pico-background-color) 88%, transparent);
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+            }
+
+            .mobile-actions .demo-btn {
+                flex: 1;
+            }
+
+            .demo-toast {
+                bottom: 5.2rem;
+            }
+
+            .rating-dialog {
+                align-items: flex-end;
+            }
+
+            .rating-panel {
+                width: 100%;
+                max-width: 100%;
+                max-height: 92vh;
+                margin: 0;
+                border-radius: 18px 18px 0 0;
+            }
+
+            .dialog-body {
+                max-height: none;
+                flex: 0 1 auto;
+                min-height: 0;
+            }
+
+            .rating-head {
+                padding: 0.8rem 1rem;
+            }
+
+            .rating-head__cover {
+                width: 36px;
+                height: 48px;
+            }
+
+            .rating-head h2 {
+                font-size: 1rem;
+            }
+
+            .rating-head__community {
+                font-size: 0.62rem;
+            }
+
+            .rating-mode {
+                margin-bottom: 0.8rem;
+            }
+
+            .quick-stage {
+                padding: 0.95rem 0.8rem 0.9rem;
+            }
+
+            .quick-stage__score {
+                height: 2.7rem;
+            }
+
+            .quick-stage__score strong {
+                font-size: 2.65rem;
+            }
+
+            .quick-presets {
+                gap: 3px;
+            }
+
+            .quick-preset {
+                height: 28px;
+                font-size: 0.58rem;
+            }
+
+            .quick-realms {
+                gap: 3px;
+            }
+
+            .quick-realm {
+                padding: 0.44rem 0.1rem;
+                font-size: 0.62rem;
+            }
+
+            .dialog-foot {
+                flex-wrap: wrap;
+                padding: 0.7rem 1rem calc(0.7rem + env(safe-area-inset-bottom));
+            }
+
+            .dialog-foot__note {
+                display: none;
+            }
+
+            .dialog-foot__actions {
+                flex: 1 1 auto;
+                justify-content: flex-end;
+            }
+
+            .difficulty-form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .scale {
+                gap: 3px;
+            }
+
+            .scale button {
+                font-size: 0.63rem;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .game-hero__inner {
+                grid-template-columns: 82px minmax(0, 1fr);
+                padding: 1rem;
+            }
+
+            .game-hero__alt {
+                display: -webkit-box;
+                overflow: hidden;
+                -webkit-box-orient: vertical;
+                -webkit-line-clamp: 2;
+            }
+
+            .score-panel {
+                padding: 0.85rem 0.95rem;
+            }
+
+            .realm-card__name {
+                font-size: 1.12rem;
+            }
+
+            .realm-card__score {
+                font-size: 1.3rem;
+            }
+
+            .review__head time {
+                font-size: 0.62rem;
+            }
+
+            .composer__count {
+                margin-left: 0;
+            }
+
+            .composer__submit {
+                margin-left: auto;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .detail-demo *,
+            .detail-demo *::before,
+            .detail-demo *::after {
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        @media print {
+            .detail-tabs,
+            .mobile-actions,
+            .demo-toast,
+            .game-hero__actions {
+                display: none !important;
+            }
+
+            .game-hero {
+                box-shadow: none;
+            }
+        }
+    
+
+        /* ---- production integration overrides ---- */
+        [hidden] { display: none !important; }
+        .review__actions { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
+        .link-button {
+            display: inline;
+            width: auto;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            background: none;
+            color: var(--demo-quality);
+            font: inherit;
+            font-size: 0.72rem;
+            text-decoration: underline;
+            text-underline-offset: 0.18em;
+            cursor: pointer;
+        }
+        .link-button:hover { color: var(--pico-primary-hover); }
+        .danger-text { color: var(--pico-color-red-500) !important; }
+        .my-ratings { display: flex; flex-direction: column; gap: 0.7rem; }
+        .my-rating-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding-bottom: 0.65rem;
+            border-bottom: 1px solid var(--demo-line);
+        }
+        .my-rating-row:last-child { border-bottom: 0; padding-bottom: 0; }
+        .my-rating-row__meta { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; min-width: 0; }
+        .my-rating-row__meta strong { font-size: 0.78rem; }
+        .my-rating-row__meta small { color: var(--demo-muted); font-size: 0.68rem; }
+        .rail-empty { margin: 0; color: var(--demo-muted); font-size: 0.78rem; }
+        .composer--login { align-items: center; }
+        .composer--login p { margin: 0 0 0.55rem; color: var(--demo-muted); font-size: 0.82rem; }
+        .composer--login .demo-btn { width: auto; margin: 0; }
+        .review-edit { margin: 0.4rem 0 0.55rem; }
+        .review-edit textarea { margin-bottom: 0.45rem; min-height: 5rem; }
+        .review-edit__actions { display: flex; gap: 0.5rem; }
+        .review-edit__actions .demo-btn { width: auto; margin: 0; }
+        .radar-label { fill: var(--demo-muted); font-size: 11px; }
+
+        /* =====================================================================
+           浅色主题重绘
+           hero 是「海报模糊图 + 深色遮罩 + 深色玻璃评分卡」的组合，
+           深色主题下很协调，切到亮色就整块发黑。这里只在浅色主题下重绘，
+           深色主题保持原样。
+           ===================================================================== */
+        :root:not([data-theme="dark"]) .detail-demo {
+            --demo-hero-ink: var(--pico-color);
+            --demo-hero-muted: var(--pico-muted-color);
+            --demo-hero-line: var(--pico-card-border-color);
+        }
+
+        :root:not([data-theme="dark"]) .game-hero {
+            border: 1px solid var(--pico-card-border-color);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* 海报模糊底图压淡成一层很浅的色晕 */
+        :root:not([data-theme="dark"]) .game-hero__media {
+            background: #e9eef9;
+        }
+
+        :root:not([data-theme="dark"]) .game-hero__media img {
+            filter: blur(38px) saturate(1.15) brightness(1.8);
+            opacity: 0.28;
+        }
+
+        :root:not([data-theme="dark"]) .game-hero::before {
+            background:
+                radial-gradient(60% 90% at 12% 18%, rgba(66, 99, 235, 0.12), transparent 62%),
+                radial-gradient(50% 80% at 92% 10%, rgba(240, 140, 0, 0.12), transparent 60%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(248, 250, 255, 0.92) 100%);
+        }
+
+        :root:not([data-theme="dark"]) .game-hero::after {
+            background-image:
+                linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+        }
+
+        :root:not([data-theme="dark"]) .game-hero__poster {
+            border-color: var(--pico-card-border-color);
+            box-shadow: var(--shadow-md);
+            background: #fff;
+        }
+
+        :root:not([data-theme="dark"]) .game-hero__tag {
+            border-color: var(--pico-card-border-color);
+            background: rgba(255, 255, 255, 0.82);
+            color: var(--pico-color);
+        }
+
+        :root:not([data-theme="dark"]) .game-hero__tag:hover {
+            border-color: var(--pico-primary);
+            background: #fff;
+            color: var(--pico-primary);
+        }
+
+        :root:not([data-theme="dark"]) .game-hero__lede {
+            color: var(--pico-muted-color);
+        }
+
+        /* hero 里的两个按钮：白底按钮在浅色 hero 上会消失，改成主色实心 */
+        :root:not([data-theme="dark"]) .demo-btn--light {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary);
+            color: var(--pico-primary-inverse);
+            box-shadow: none;
+        }
+
+        :root:not([data-theme="dark"]) .demo-btn--light:hover {
+            border-color: var(--pico-primary-hover);
+            background: var(--pico-primary-hover);
+            color: var(--pico-primary-inverse);
+        }
+
+        :root:not([data-theme="dark"]) .demo-btn--glass {
+            border-color: var(--pico-card-border-color);
+            background: rgba(255, 255, 255, 0.8);
+            /* 注意：Pico 在 button 内部把 --pico-color 重定义成反色（白），
+               这里必须读站点自己的 --fg，否则浅底白字看不见 */
+            color: var(--fg);
+        }
+
+        :root:not([data-theme="dark"]) .demo-btn--glass:hover {
+            border-color: var(--pico-primary);
+            background: #fff;
+            color: var(--pico-primary);
+        }
+
+        /* 右侧评分面板：深色玻璃 → 白色玻璃 */
+        :root:not([data-theme="dark"]) .score-panel {
+            border-color: var(--pico-card-border-color);
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: var(--shadow-sm);
+        }
+
+        :root:not([data-theme="dark"]) .score-ring {
+            background: conic-gradient(#4263eb calc(var(--pct)), rgba(15, 23, 42, 0.1) 0);
+        }
+
+        :root:not([data-theme="dark"]) .score-ring::before {
+            background: #fff;
+        }
+
+        :root:not([data-theme="dark"]) .score-quality__label,
+        :root:not([data-theme="dark"]) .score-difficulty__label {
+            color: var(--pico-color);
+        }
+
+        :root:not([data-theme="dark"]) .score-ring__value small,
+        :root:not([data-theme="dark"]) .score-quality__meta,
+        :root:not([data-theme="dark"]) .score-difficulty__value small,
+        :root:not([data-theme="dark"]) .score-difficulty__meta,
+        :root:not([data-theme="dark"]) .score-gauge__labels,
+        :root:not([data-theme="dark"]) .score-panel__foot {
+            color: var(--pico-muted-color);
+        }
+
+        :root:not([data-theme="dark"]) .score-panel__divider {
+            background: var(--pico-card-border-color);
+        }
+
+        :root:not([data-theme="dark"]) .score-panel__foot {
+            border-top-color: var(--pico-card-border-color);
+        }
+
+        :root:not([data-theme="dark"]) .score-difficulty__value {
+            color: #b35c00;
+        }
+
+        :root:not([data-theme="dark"]) .realm-pill {
+            border-color: rgba(240, 140, 0, 0.4);
+            background: rgba(240, 140, 0, 0.14);
+            color: #b35c00;
+        }
+
+        /* 雷达图无数据时，居中覆盖层会和 SVG 中心文字重叠，直接隐藏 */
+        .radar-wrap.is-empty .radar-average {
+            display: none;
+        }
+
+        :root:not([data-theme="dark"]) .score-gauge__marker {
+            border-color: #fff;
+            background: #1f2430;
+            box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.14);
+        }
+
+</style>
+<div class="detail-demo" data-game-id="{{ game.id }}">
+    <nav class="demo-crumbs" aria-label="面包屑">
+        <a href="/">主页</a>
+        <i data-lucide="chevron-right"></i>
+        <a href="/games">浏览作品</a>
+        <i data-lucide="chevron-right"></i>
+        <a href="/games?company={{ game.company|urlencode }}">{{ game.company }}</a>
+        <i data-lucide="chevron-right"></i>
+        <span aria-current="page">{{ game.title }}</span>
+    </nav>
+
+    <section class="game-hero" aria-labelledby="game-title">
+        {% if game.image_url %}
+        <div class="game-hero__media" aria-hidden="true">
+            <img src="{{ cover_thumb(game.image_url, 1600) }}" alt="" decoding="async">
+        </div>
+        {% endif %}
+
+        <div class="game-hero__inner">
+            {% if game.image_url %}
+            <figure class="game-hero__poster">
+                <img src="{{ cover_thumb(game.image_url, 800) }}" alt="{{ game.title }} 封面" decoding="async" fetchpriority="high">
+            </figure>
+            {% endif %}
+
+            <div class="game-hero__identity">
+                <p class="game-hero__eyebrow">
+                    <span>{{ game.company }}</span><i class="dot" aria-hidden="true"></i><span>收录 #{{ game.id }}</span>
+                </p>
+                <h1 id="game-title">{{ game.title }}</h1>
+                {% if alt_names %}
+                <p class="game-hero__alt">
+                    {% for name in alt_names %}{{ name }}{% if not loop.last %}<span>·</span>{% endif %}{% endfor %}
+                </p>
+                {% endif %}
+
+                {% if game.tags %}
+                <div class="game-hero__tags" aria-label="标签">
+                    {% for tag in game.tags %}
+                    <a class="game-hero__tag" href="/games?tag={{ tag.name|urlencode }}">{{ tag.name }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if game.description %}
+                <p class="game-hero__lede">{{ game.description|truncate(190, true, '…') }}</p>
+                {% endif %}
+
+                <div class="game-hero__actions">
+                    <button type="button" class="demo-btn demo-btn--light" data-open-rating="quick">
+                        <i data-lucide="star"></i>
+                        快速评价
+                    </button>
+                    <button type="button" class="demo-btn demo-btn--glass" data-write-review>
+                        <i data-lucide="message-circle"></i>
+                        写评论
+                    </button>
+                    <button type="button" class="demo-btn demo-btn--glass demo-btn--icon" data-share aria-label="复制页面链接">
+                        <i data-lucide="send"></i>
+                    </button>
+                    {% if request.state.user and (request.state.user.is_admin or game.created_by == request.state.user.id) %}
+                    <a href="/game/{{ game.id }}/edit" class="demo-btn demo-btn--glass">
+                        <i data-lucide="pencil"></i> 编辑
+                    </a>
+                    {% endif %}
+                    {% if request.state.user and request.state.user.is_admin %}
+                    <button type="button" class="demo-btn demo-btn--glass danger-text" id="delete-game-button" data-game-id="{{ game.id }}" data-game-title="{{ game.title }}">
+                        <i data-lucide="trash-2"></i> 删除
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <aside class="score-panel" aria-label="社区评分">
+                <div class="score-quality">
+                    <div class="score-ring" style="--pct: {{ (quality_avg / 10 * 100)|round(1) if quality_count else 0 }}%" aria-hidden="true">
+                        <span class="score-ring__value">
+                            {% if quality_count %}{{ "%.1f"|format(quality_avg) }}<small>/10</small>{% else %}—<small>/10</small>{% endif %}
+                        </span>
+                    </div>
+                    <div>
+                        <span class="score-quality__label">社区品质</span>
+                        <span class="score-quality__meta">{{ quality_count }} 人评分 · 5 个维度</span>
+                    </div>
+                </div>
+
+                <div class="score-panel__divider" aria-hidden="true"></div>
+
+                <div class="score-difficulty">
+                    <div class="score-difficulty__head">
+                        <span class="score-difficulty__label">社区难度</span>
+                        <span class="realm-pill" id="hero-realm">{{ difficulty_realm }}</span>
+                    </div>
+                    <div class="score-difficulty__value">
+                        <span id="hero-difficulty">{% if difficulty_count %}{{ "%.1f"|format(difficulty_avg) }}{% else %}—{% endif %}</span><small>/60</small>
+                    </div>
+                    <div class="score-gauge" aria-hidden="true">
+                        <div class="score-gauge__track">
+                            <span class="score-gauge__marker" id="hero-gauge-marker" style="left: {{ (difficulty_avg / 60 * 100)|round(1) if difficulty_count else 0 }}%"></span>
+                        </div>
+                        <div class="score-gauge__labels">
+                            <span>见习</span><span>新手</span><span>入门</span><span>进阶</span><span>上级</span><span>论外</span>
+                        </div>
+                    </div>
+                    <span class="score-difficulty__meta" id="hero-difficulty-meta">{{ difficulty_count }} 条难度记录 · 全部情境</span>
+                </div>
+
+                <div class="score-panel__foot">品质与难度分开评价 · 快速评分 / 细分评分</div>
+            </aside>
+        </div>
+    </section>
+
+    <nav class="detail-tabs" aria-label="页面导航">
+        <div class="detail-tabs__links">
+            <a href="#quality" class="is-active">品质评分</a>
+            <a href="#difficulty">难度评分</a>
+            <a href="#reviews">玩家评论 <span class="tab-count" id="review-count-tab">{{ comment_count }}</span></a>
+        </div>
+        <div class="detail-tabs__score" aria-hidden="true">
+            <span><i data-lucide="gem"></i><b class="score-quality-dot">{{ "%.1f"|format(quality_avg) if quality_count else '—' }}</b></span>
+            <span><i data-lucide="swords"></i><b class="score-difficulty-dot">{{ difficulty_realm }}</b></span>
+        </div>
+    </nav>
+
+    <div class="detail-layout">
+        <div class="detail-main">
+            <section class="panel" id="quality" aria-labelledby="quality-title">
+                <header class="panel__head">
+                    <div class="panel__title">
+                        <span class="icon-chip icon-chip--quality" aria-hidden="true"><i data-lucide="gem"></i></span>
+                        <div>
+                            <h2 id="quality-title">品质评分</h2>
+                            <p>5 个维度 · 每项 1–10 分</p>
+                        </div>
+                    </div>
+                    <div class="panel__meta">
+                        <strong class="quality-ink">{{ "%.1f"|format(quality_avg) if quality_count else '—' }}</strong>
+                        <small>/10 · {{ quality_count }} 人</small>
+                        <button type="button" class="demo-btn demo-btn--subtle" data-open-rating="quality">评价品质</button>
+                    </div>
+                </header>
+
+                <div class="quality-grid">
+                    <div class="radar-wrap" aria-hidden="true">
+                        <svg id="quality-radar" viewBox="0 0 260 260" role="img" aria-label="品质维度雷达图"></svg>
+                        <div class="radar-average">
+                            <strong>{{ "%.1f"|format(quality_avg) if quality_count else '—' }}</strong>
+                            <span>综合评分</span>
+                        </div>
+                    </div>
+
+                    <div class="dimension-list" aria-label="各维度评分">
+                        {% for dim in evaluation.quality_scores %}
+                        <div class="dim-row" data-category="{{ dim.category }}">
+                            <div class="dim-row__head">
+                                <span>{{ dim.category }}</span>
+                                <span><strong>{{ "%.1f"|format(dim.raw_value) if dim.count else '—' }}</strong><small>{{ dim.count }} 人</small></span>
+                            </div>
+                            <div class="bar-track"><span class="bar-fill" style="--v: {{ (dim.raw_value / 10 * 100)|round(1) if dim.count else 0 }}%"></span></div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {% set hist_counts = evaluation.quality_distribution|map(attribute='count')|list %}
+                {% set hist_max = (hist_counts|max) if hist_counts else 0 %}
+                <div class="distribution">
+                    <div class="distribution__head">
+                        <h3>评分分布</h3>
+                        <span>{{ quality_count }} 位玩家 · 平均 {{ "%.1f"|format(quality_avg) if quality_count else '—' }}</span>
+                    </div>
+                    <div class="histogram" role="img" aria-label="品质评分分布">
+                        {% for bucket in evaluation.quality_distribution %}
+                        <div class="hist-bar{% if hist_max and bucket.count == hist_max and bucket.count > 0 %} is-peak{% endif %}"
+                             style="--h: {{ (bucket.count / hist_max * 100)|round(1) if hist_max else 0 }}"
+                             title="{{ bucket.score }} 分：{{ bucket.count }} 人"><i></i><span>{{ bucket.score }}</span></div>
+                        {% endfor %}
+                        <span class="hist-marker" style="left: {{ (quality_avg / 10 * 100)|round(1) if quality_count else 0 }}%" aria-hidden="true"><span>{{ "%.1f"|format(quality_avg) if quality_count else '—' }}</span></span>
+                    </div>
+                </div>
+
+                {% set rated_dims = evaluation.quality_scores|selectattr('count', 'gt', 0)|list %}
+                {% if rated_dims|length >= 2 %}
+                {% set top_dim = rated_dims|max(attribute='raw_value') %}
+                {% set low_dim = rated_dims|min(attribute='raw_value') %}
+                <p class="insight">
+                    <i data-lucide="sparkles"></i>
+                    玩家最认可「{{ top_dim.category }}」（{{ "%.1f"|format(top_dim.raw_value) }}）；「{{ low_dim.category }}」相对较低（{{ "%.1f"|format(low_dim.raw_value) }}）。
+                </p>
+                {% endif %}
+            </section>
+
+            <section class="panel" id="difficulty" aria-labelledby="difficulty-title">
+                <header class="panel__head">
+                    <div class="panel__title">
+                        <span class="icon-chip icon-chip--difficulty" aria-hidden="true"><i data-lucide="swords"></i></span>
+                        <div>
+                            <h2 id="difficulty-title">难度评分</h2>
+                            <p>按难度与机体拆分 · 1–60 分</p>
+                        </div>
+                    </div>
+                    <div class="panel__meta">
+                        <strong class="difficulty-ink">{{ "%.1f"|format(difficulty_avg) if difficulty_count else '—' }}</strong>
+                        <small>/60 · {{ difficulty_count }} 条</small>
+                        <button type="button" class="demo-btn demo-btn--subtle" data-open-rating="difficulty">评价难度</button>
+                    </div>
+                </header>
+
+                <div class="context-bar">
+                    <div class="segmented" role="tablist" aria-label="难度情境">
+                        <button type="button" class="is-active" data-level="0" role="tab" aria-selected="true">游戏总体 <span>{{ difficulty_count }}</span></button>
+                        {% for level in game.difficulty_levels %}
+                        <button type="button" data-level="{{ level.id }}" role="tab" aria-selected="false">{{ level.name }} <span>{{ evaluation.difficulty_level_counts.get(level.id|string, 0) }}</span></button>
+                        {% endfor %}
+                    </div>
+                    <label class="ship-filter" for="ship-filter">
+                        机体
+                        <select id="ship-filter">
+                            <option value="0">全机体/角色</option>
+                            {% for ship in game.ship_types %}
+                            <option value="{{ ship.id }}">{{ ship.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                </div>
+
+                {% set d0 = global_ctx.categories[0] if global_ctx else None %}
+                {% set d1 = global_ctx.categories[1] if global_ctx else None %}
+                {% set d2 = global_ctx.categories[2] if global_ctx else None %}
+                <div class="difficulty-grid">
+                    <div class="difficulty-bars" aria-live="polite">
+                        <div class="diff-row" data-dim="dodge">
+                            <div class="diff-row__head">
+                                <span class="diff-row__name">避弹</span>
+                                <span class="diff-row__value"><strong>{{ "%.1f"|format(d0.raw_value) if d0 and d0.count else '—' }}</strong><small>{{ d0.value.split(' ')[0] if d0 and d0.count else '暂无' }}</small></span>
+                            </div>
+                            <div class="bar-track"><span class="bar-fill bar-fill--difficulty" style="--v: {{ (d0.raw_value / 60 * 100)|round(1) if d0 and d0.count else 0 }}%"></span></div>
+                        </div>
+                        <div class="diff-row" data-dim="strategy">
+                            <div class="diff-row__head">
+                                <span class="diff-row__name">策略</span>
+                                <span class="diff-row__value"><strong>{{ "%.1f"|format(d1.raw_value) if d1 and d1.count else '—' }}</strong><small>{{ d1.value.split(' ')[0] if d1 and d1.count else '暂无' }}</small></span>
+                            </div>
+                            <div class="bar-track"><span class="bar-fill bar-fill--difficulty" style="--v: {{ (d1.raw_value / 60 * 100)|round(1) if d1 and d1.count else 0 }}%"></span></div>
+                        </div>
+                        <div class="diff-row" data-dim="execution">
+                            <div class="diff-row__head">
+                                <span class="diff-row__name">执行</span>
+                                <span class="diff-row__value"><strong>{{ "%.1f"|format(d2.raw_value) if d2 and d2.count else '—' }}</strong><small>{{ d2.value.split(' ')[0] if d2 and d2.count else '暂无' }}</small></span>
+                            </div>
+                            <div class="bar-track"><span class="bar-fill bar-fill--difficulty" style="--v: {{ (d2.raw_value / 60 * 100)|round(1) if d2 and d2.count else 0 }}%"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="realm-card" aria-live="polite">
+                        <span class="realm-card__kicker">当前境界</span>
+                        <div class="realm-card__head">
+                            <strong class="realm-card__name" id="realm-name">{{ difficulty_realm }}</strong>
+                            <span class="realm-card__score"><span id="realm-score">{{ "%.1f"|format(difficulty_avg) if difficulty_count else '—' }}</span><small>/60</small></span>
+                        </div>
+                        <div class="realm-scale" aria-hidden="true">
+                            <div class="realm-scale__track">
+                                <span class="realm-scale__marker" id="realm-marker" style="left: {{ (difficulty_avg / 60 * 100)|round(1) if difficulty_count else 0 }}%"></span>
+                            </div>
+                            <div class="realm-scale__labels">
+                                <span>见习</span><span>新手</span><span>入门</span><span>进阶</span><span>上级</span><span>论外</span>
+                            </div>
+                        </div>
+                        <p class="realm-card__meta" id="realm-meta">全部 {{ difficulty_count }} 条记录 · 游戏总体</p>
+                    </div>
+                </div>
+
+                <p class="context-note">
+                    <i data-lucide="info"></i>
+                    选择「游戏总体」会汇总全部记录；切换到具体难度或机体，可以查看该情境下的分项难度。
+                </p>
+            </section>
+
+            <section class="panel" id="reviews" aria-labelledby="reviews-title">
+                <header class="panel__head">
+                    <div class="panel__title">
+                        <span class="icon-chip icon-chip--neutral" aria-hidden="true"><i data-lucide="message-circle"></i></span>
+                        <div>
+                            <h2 id="reviews-title">玩家评论</h2>
+                            <p>按最新排序 · 登录后可参与讨论</p>
+                        </div>
+                    </div>
+                    <div class="review-sort" role="group" aria-label="评论排序">
+                        <button type="button" class="is-active" data-sort="newest">最新</button>
+                        <button type="button" data-sort="oldest">最早</button>
+                    </div>
+                </header>
+
+                <div class="review-list" id="review-list">
+                    {% for comment in evaluation.comments %}
+                    <article class="review" data-comment-id="{{ comment.id }}">
+                        <span class="review__avatar" style="--hue: {{ (comment.id * 47) % 360 }}" aria-hidden="true">{{ (comment.user_name or '匿')[:1] }}</span>
+                        <div class="review__body">
+                            <div class="review__head">
+                                <strong>{% if comment.user_id %}<a href="/user/{{ comment.user_id }}">{{ comment.user_name }}</a>{% else %}{{ comment.user_name or '匿名玩家' }}{% endif %}</strong>
+                                <span class="review__meta">社区评论</span>
+                            </div>
+                            <p class="review__content">{{ comment.content|e }}</p>
+                            <div class="review__foot">
+                                <span class="review__meta">评论 #{{ comment.id }}</span>
+                                {% if request.state.user and (comment.user_id == request.state.user.id or request.state.user.is_admin) %}
+                                <span class="review__actions">
+                                    <button type="button" class="link-button edit-comment" data-comment-id="{{ comment.id }}">编辑</button>
+                                    <button type="button" class="link-button delete-comment" data-comment-id="{{ comment.id }}">删除</button>
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </article>
+                    {% else %}
+                    <div class="home-empty-panel">
+                        <i data-lucide="message-circle"></i>
+                        <p>还没有评论，来抢沙发吧。</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if request.state.user %}
+                <form class="composer" id="comment-form" data-game-id="{{ game.id }}">
+                    <span class="composer__avatar" aria-hidden="true">{{ (request.state.user.username or '我')[:1] }}</span>
+                    <div>
+                        <label class="visually-hidden" for="review-content" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">写下你的评论</label>
+                        <textarea id="review-content" name="content" maxlength="2000" placeholder="写下你对这部作品的评价…" required></textarea>
+                        <div class="composer__foot">
+                            <span class="composer__hint">支持换行 · 最多 2000 字</span>
+                            <span class="composer__count" id="review-count">0 / 2000</span>
+                            <button type="submit" class="demo-btn demo-btn--primary composer__submit" disabled>发表评论</button>
+                        </div>
+                    </div>
+                </form>
+                {% else %}
+                <div class="composer composer--login">
+                    <span class="composer__avatar" aria-hidden="true">访</span>
+                    <div>
+                        <p>登录后即可发表评论、参与评分。</p>
+                        <a href="/login?redirect=/game/{{ game.id }}" class="demo-btn demo-btn--primary">去登录</a>
+                    </div>
+                </div>
+                {% endif %}
+            </section>
+        </div>
+
+        <aside class="detail-rail" aria-label="作品资料与相关推荐">
+            <section class="panel rail-card">
+                <div class="rail-card__head">
+                    <h3>作品资料</h3>
+                    {% if request.state.user and (request.state.user.is_admin or game.created_by == request.state.user.id) %}
+                    <a href="/game/{{ game.id }}/edit">编辑</a>
+                    {% endif %}
+                </div>
+                <dl class="facts-list">
+                    <div><dt>公司</dt><dd>{{ game.company }}</dd></div>
+                    {% if game.release_year %}
+                    <div><dt>年份</dt><dd>{{ game.release_year }}</dd></div>
+                    {% endif %}
+                    {% if game.platform %}
+                    <div><dt>平台</dt><dd>{{ game.platform }}</dd></div>
+                    {% endif %}
+                    {% if game.series %}
+                    <div><dt>系列</dt><dd>{{ game.series }}</dd></div>
+                    {% endif %}
+                    <div><dt>收录编号</dt><dd>#{{ game.id }}</dd></div>
+                    <div><dt>品质评分</dt><dd>{{ quality_count }} 人</dd></div>
+                    <div><dt>难度记录</dt><dd>{{ difficulty_count }} 条</dd></div>
+                    <div><dt>玩家评论</dt><dd>{{ comment_count }} 条</dd></div>
+                    <div><dt>评分维度</dt><dd>5 品质 / 3 难度</dd></div>
+                </dl>
+                {% if game.tags %}
+                <div class="fact-tags" aria-label="标签">
+                    {% for tag in game.tags %}
+                    <a class="tag-badge" href="/games?tag={{ tag.name|urlencode }}">{{ tag.name }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </section>
+
+            {% if request.state.user %}
+            <section class="panel rail-card">
+                <div class="rail-card__head">
+                    <h3>我的评分</h3>
+                    <button type="button" class="link-button" data-open-rating="quick">去评分</button>
+                </div>
+                <div class="my-ratings">
+                    {% if user_quality %}
+                    <div class="my-rating-row">
+                        <span class="my-rating-row__meta">
+                            <strong>品质 · {{ '快速' if user_quality_mode == 'quick' else '细分' }}</strong>
+                            <small>{{ "%.1f"|format(user_quality_score) if user_quality_score is not none else '—' }} / 10</small>
+                        </span>
+                        <button type="button" class="link-button" data-open-rating="quality">修改</button>
+                        <button type="button" class="link-button danger-text" data-delete-quality>撤销</button>
+                    </div>
+                    {% endif %}
+                    {% for context_key, rating in user_ratings.difficulty.items() %}
+                    {% set ns = namespace(level='游戏总体', ship='全机体/角色', total=0, count=0) %}
+                    {% for level in game.difficulty_levels %}{% if level.id == rating.difficulty_level_id %}{% set ns.level = level.name %}{% endif %}{% endfor %}
+                    {% for ship in game.ship_types %}{% if ship.id == rating.ship_type_id %}{% set ns.ship = ship.name %}{% endif %}{% endfor %}
+                    {% if rating.mode == 'quick' and rating.overall is not none %}
+                        {% set ns.total = rating.overall %}
+                        {% set ns.count = 1 %}
+                    {% elif rating.dodge is not none and rating.strategy is not none and rating.execution is not none %}
+                        {% set ns.total = (rating.dodge + rating.strategy + rating.execution) / 3.0 %}
+                        {% set ns.count = 1 %}
+                    {% endif %}
+                    <div class="my-rating-row">
+                        <span class="my-rating-row__meta">
+                            <strong>难度 · {{ ns.level }} / {{ ns.ship }}</strong>
+                            <small>{{ "%.1f"|format(ns.total) if ns.count else '—' }} / 60 · {{ '快速' if rating.mode == 'quick' else '细分' }}</small>
+                        </span>
+                        <button type="button" class="link-button" data-open-rating="difficulty">修改</button>
+                        <button type="button" class="link-button danger-text" data-delete-difficulty data-level-id="{{ rating.difficulty_level_id or '' }}" data-ship-id="{{ rating.ship_type_id or '' }}">撤销</button>
+                    </div>
+                    {% endfor %}
+                    {% if not user_quality and not user_ratings.difficulty %}
+                    <p class="rail-empty">还没有评分，先打个整体分吧。</p>
+                    {% endif %}
+                </div>
+            </section>
+            {% endif %}
+
+            {% if evaluation.recent_quality_ratings %}
+            <section class="panel rail-card">
+                <div class="rail-card__head">
+                    <h3>最近评分</h3>
+                </div>
+                <ul class="recent-list">
+                    {% for recent in evaluation.recent_quality_ratings %}
+                    <li>
+                        <span class="avatar-sm" style="--hue: {{ (loop.index * 67) % 360 }}" aria-hidden="true">{{ (recent.user_name or '匿')[:1] }}</span>
+                        <span class="recent-list__meta">
+                            <strong>{{ recent.user_name }}</strong>
+                            <small>{{ '快速评分' if recent.mode == 'quick' else '细分评分' }}{% if recent.created_at %} · {{ recent.created_at }}{% endif %}</small>
+                        </span>
+                        <span class="recent-list__score">{{ "%.1f"|format(recent.score) }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            {% if similar_games %}
+            <section class="panel rail-card rail-card--wide">
+                <div class="rail-card__head">
+                    <h3>相似作品</h3>
+                    <a href="/games?company={{ game.company|urlencode }}">更多</a>
+                </div>
+                <div class="similar-list">
+                    {% for item in similar_games %}
+                    <a class="similar-item" href="/game/{{ item.game.id }}">
+                        {% if item.game.image_url %}
+                        <img src="{{ cover_thumb(item.game.image_url, 400) }}" alt="{{ item.game.title }} 封面" loading="lazy">
+                        {% endif %}
+                        <span class="similar-item__meta"><strong>{{ item.game.title }}</strong><small>{{ item.game.company }}</small></span>
+                        <span class="similar-item__score">{{ "%.1f"|format(item.avg_score) if item.avg_score is not none else '—' }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            <section class="panel rail-card scale-card">
+                <div class="rail-card__head">
+                    <h3>评分说明</h3>
+                </div>
+                <p>快速评分只打一个整体品质分，可顺便记录整体难度；细分评分再拆成 5 个品质维度和 3 个难度维度。</p>
+                <p>品质范围 1–10，难度范围 1–60，以境界展示。</p>
+                <details>
+                    <summary>查看境界表</summary>
+                    <ul class="realm-table">
+                        <li><span>见习</span><b>1–10</b></li>
+                        <li><span>新手</span><b>11–20</b></li>
+                        <li><span>入门</span><b>21–30</b></li>
+                        <li><span>进阶</span><b>31–40</b></li>
+                        <li><span>上级</span><b>41–55</b></li>
+                        <li><span>论外</span><b>56–60</b></li>
+                    </ul>
+                </details>
+            </section>
+        </aside>
+    </div>
+
+    <div class="mobile-actions" aria-label="快捷操作">
+        <button type="button" class="demo-btn demo-btn--primary" data-open-rating="quick">
+            <i data-lucide="star"></i> 快速评价
+        </button>
+        <button type="button" class="demo-btn demo-btn--ghost" data-write-review>
+            <i data-lucide="message-circle"></i> 写评论
+        </button>
+    </div>
+
+
+
+
+    <script id="evaluation-data" type="application/json">{{ evaluation|tojson }}</script>
+    <script id="user-ratings-data" type="application/json">{{ user_ratings|tojson }}</script>
+    <script id="session-data" type="application/json">{{ {"user_id": request.state.user.id if request.state.user else None, "username": request.state.user.username if request.state.user else None, "is_admin": request.state.user.is_admin if request.state.user else False}|tojson }}</script>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+    <dialog id="rating-dialog" class="rating-dialog" aria-labelledby="rating-dialog-title">
+        <article class="rating-panel" tabindex="-1">
+            <header class="rating-head">
+                <div class="rating-head__game">
+                    {% if game.image_url %}
+                    <img class="rating-head__cover" src="{{ cover_thumb(game.image_url, 400) }}" alt="">
+                    {% endif %}
+                    <div>
+                        <p>RATE THIS GAME</p>
+                        <h2 id="rating-dialog-title">{{ game.title }}</h2>
+                        <span class="rating-head__community">
+                            <i data-lucide="gem"></i> 社区品质 <b>{{ "%.1f"|format(quality_avg) if quality_count else '—' }}</b> / 10
+                            <span>·</span>
+                            <i data-lucide="swords"></i> {{ difficulty_realm }}
+                        </span>
+                    </div>
+                </div>
+                <button type="button" class="dialog-close" data-close-rating aria-label="关闭评分面板">
+                    <i data-lucide="x"></i>
+                </button>
+            </header>
+
+            <div class="dialog-body">
+                <div class="rating-mode" role="tablist" aria-label="评分方式">
+                    <button type="button" class="is-active" data-rating-mode="quick" role="tab" aria-selected="true">
+                        快速评分 <span>30 秒</span>
+                    </button>
+                    <button type="button" data-rating-mode="detail" role="tab" aria-selected="false">
+                        细分评分
+                    </button>
+                </div>
+
+                <section data-rating-panel="quick">
+                    <div class="quick-stage">
+                        <span class="quick-stage__kicker">你的整体评价</span>
+                        <div class="quick-stage__score">
+                            <strong id="quick-score-value">{{ "%.1f"|format(quick_quality_value) }}</strong>
+                            <span>/10</span>
+                        </div>
+                        <p class="quick-stage__label{% if user_quality_mode != 'quick' %} is-empty{% endif %}" id="quick-score-label">
+                            {% if user_quality_mode == 'quick' %}
+                                {% if quick_quality_value <= 2 %}不太行{% elif quick_quality_value <= 4 %}一般{% elif quick_quality_value <= 6 %}还不错{% elif quick_quality_value <= 8 %}佳作{% else %}神作{% endif %}
+                            {% else %}拖动滑杆或点选快捷词{% endif %}
+                        </p>
+
+                        <div class="demo-slider demo-slider--quality" id="quick-quality-slider" role="slider" tabindex="0" aria-label="整体品质" aria-valuemin="1" aria-valuemax="10" aria-valuenow="{{ '%.1f'|format(quick_quality_value) }}" data-min="1" data-max="10" data-step="0.5" data-value="{{ quick_quality_value }}">
+                            <div class="demo-slider__track" aria-hidden="true">
+                                <span class="demo-slider__fill"></span>
+                                <span class="demo-slider__thumb"></span>
+                            </div>
+                        </div>
+                        <div class="quick-scale-labels"><span>1 · 一般</span><span>10 · 神作</span></div>
+
+                        <div class="quick-presets" role="group" aria-label="品质快捷分">
+                            <button type="button" class="quick-preset" data-quick-quality-preset="2">不太行</button>
+                            <button type="button" class="quick-preset" data-quick-quality-preset="4">一般</button>
+                            <button type="button" class="quick-preset" data-quick-quality-preset="6">还不错</button>
+                            <button type="button" class="quick-preset" data-quick-quality-preset="8">佳作</button>
+                            <button type="button" class="quick-preset" data-quick-quality-preset="10">神作</button>
+                        </div>
+
+                        <div class="quick-stage__hint">拖动精确到 0.5；点快捷词快速定位</div>
+                    </div>
+
+                    <button type="button" class="quick-add-difficulty{% if quick_difficulty_open %} is-open{% endif %}" id="quick-difficulty-toggle" aria-expanded="{{ 'true' if quick_difficulty_open else 'false' }}" aria-controls="quick-difficulty-block">
+                        <i data-lucide="plus"></i>
+                        <span id="quick-difficulty-label">{{ '收起难度' if quick_difficulty_open else '也评整体难度' }}</span>
+                        <small>可选</small>
+                    </button>
+
+                    <div class="quick-difficulty" id="quick-difficulty-block" data-enabled="{{ '1' if quick_difficulty_enabled else '0' }}" {% if not quick_difficulty_open %}hidden{% endif %}>
+                        <div class="quick-difficulty__head">
+                            <span>整体难度</span>
+                            <output id="quick-difficulty-output">{{ quick_difficulty_value }} · {% if quick_difficulty_value <= 5 %}见习一{% elif quick_difficulty_value <= 10 %}见习二{% elif quick_difficulty_value <= 15 %}新手一{% elif quick_difficulty_value <= 20 %}新手二{% elif quick_difficulty_value <= 25 %}入门一{% elif quick_difficulty_value <= 30 %}入门二{% elif quick_difficulty_value <= 35 %}进阶一{% elif quick_difficulty_value <= 40 %}进阶二{% elif quick_difficulty_value <= 45 %}上级一{% elif quick_difficulty_value <= 50 %}上级二{% elif quick_difficulty_value <= 55 %}上级三{% else %}论外{% endif %}</output>
+                        </div>
+                        <div class="demo-slider demo-slider--difficulty" id="quick-difficulty-slider" role="slider" tabindex="0" aria-label="整体难度" aria-valuemin="1" aria-valuemax="60" aria-valuenow="{{ quick_difficulty_value }}" data-min="1" data-max="60" data-value="{{ quick_difficulty_value }}">
+                            <div class="demo-slider__track" aria-hidden="true">
+                                <span class="demo-slider__fill"></span>
+                                <span class="demo-slider__thumb"></span>
+                            </div>
+                        </div>
+                        <div class="range-hints"><span>1 · 见习</span><span>30 · 入门</span><span>60 · 论外</span></div>
+
+                        <div class="quick-realms" role="group" aria-label="难度快捷段位">
+                            <button type="button" class="quick-realm" data-quick-realm="5" style="--realm-color:#4dabf7">见习</button>
+                            <button type="button" class="quick-realm" data-quick-realm="15" style="--realm-color:#38d9a9">新手</button>
+                            <button type="button" class="quick-realm" data-quick-realm="25" style="--realm-color:#fcc419">入门</button>
+                            <button type="button" class="quick-realm" data-quick-realm="35" style="--realm-color:#ff922b">进阶</button>
+                            <button type="button" class="quick-realm" data-quick-realm="48" style="--realm-color:#fa5252">上级</button>
+                            <button type="button" class="quick-realm" data-quick-realm="58" style="--realm-color:#be4bdb">论外</button>
+                        </div>
+                        <p class="quick-difficulty__hint">拖动滑杆精确到 1–60；点段位可以快速定位。</p>
+                    </div>
+
+                    <p class="quick-note">快速评分只记录整体分；细分评分可逐项调整。</p>
+                </section>
+
+                <section data-rating-panel="detail" hidden>
+                    <div class="dialog-tabs" role="tablist" aria-label="评分类型">
+                        <button type="button" class="is-active" data-dialog-tab="quality" role="tab" aria-selected="true">
+                            <i data-lucide="gem"></i> 品质评分
+                        </button>
+                        <button type="button" data-dialog-tab="difficulty" role="tab" aria-selected="false">
+                            <i data-lucide="swords"></i> 难度评分
+                        </button>
+                    </div>
+
+                    <div data-dialog-panel="quality">
+                        <p class="dialog-help">每个维度 1–10 分；提交时需要选满 5 个维度。</p>
+
+                        {% for cat in ['趣味性', '核心设计', '深度', '演出', '剧情'] %}
+                        {% set score = detail_quality.get(cat, 0) %}
+                        <div class="scale-row" data-quality-dim="{{ cat }}" data-score="{{ score }}">
+                            <div class="scale-row__head"><span>{{ cat }}</span><output>{% if score %} {{ score }} / 10{% else %}未评分{% endif %}</output></div>
+                            <div class="scale" role="radiogroup" aria-label="{{ cat }}评分">
+                                {% for i in range(1, 11) %}
+                                <button type="button" data-value="{{ i }}" class="{% if i <= score %}is-active{% endif %}">{{ i }}</button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <div class="dialog-summary">
+                            <span>当前平均 <small id="quality-picked">已选 {{ detail_quality.values()|select('gt', 0)|list|length }} / 5 个维度</small></span>
+                            <strong id="quality-average">{{ "%.1f"|format(detail_quality_average) if detail_quality_average else '—' }}</strong>
+                        </div>
+                    </div>
+
+                    <div data-dialog-panel="difficulty" hidden>
+                        <p class="dialog-help">先选择难度与机体，再为三个维度打分。</p>
+
+                        <div class="difficulty-form-grid">
+                            <label>难度等级
+                                <select id="dialog-difficulty">
+                                    <option value="">游戏总体</option>
+                                    {% for level in game.difficulty_levels %}
+                                    <option value="{{ level.id }}">{{ level.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label>机体/角色
+                                <select id="dialog-ship">
+                                    <option value="">全机体/角色</option>
+                                    {% for ship in game.ship_types %}
+                                    <option value="{{ ship.id }}">{{ ship.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                        </div>
+
+                        <div class="range-row">
+                            <div class="range-row__head"><span>避弹</span><output>{{ detail_dodge }} · {% if detail_dodge <= 5 %}见习一{% elif detail_dodge <= 10 %}见习二{% elif detail_dodge <= 15 %}新手一{% elif detail_dodge <= 20 %}新手二{% elif detail_dodge <= 25 %}入门一{% elif detail_dodge <= 30 %}入门二{% elif detail_dodge <= 35 %}进阶一{% elif detail_dodge <= 40 %}进阶二{% elif detail_dodge <= 45 %}上级一{% elif detail_dodge <= 50 %}上级二{% elif detail_dodge <= 55 %}上级三{% else %}论外{% endif %}</output></div>
+                            <div class="demo-slider demo-slider--difficulty" data-diff-slider="dodge" role="slider" tabindex="0" aria-label="避弹难度" aria-valuemin="1" aria-valuemax="60" aria-valuenow="{{ detail_dodge }}" data-min="1" data-max="60" data-value="{{ detail_dodge }}">
+                                <div class="demo-slider__track" aria-hidden="true"><span class="demo-slider__fill"></span><span class="demo-slider__thumb"></span></div>
+                            </div>
+                            <div class="range-hints"><span>1 · 见习</span><span>30 · 入门</span><span>60 · 论外</span></div>
+                        </div>
+                        <div class="range-row">
+                            <div class="range-row__head"><span>策略</span><output>{{ detail_strategy }} · {% if detail_strategy <= 5 %}见习一{% elif detail_strategy <= 10 %}见习二{% elif detail_strategy <= 15 %}新手一{% elif detail_strategy <= 20 %}新手二{% elif detail_strategy <= 25 %}入门一{% elif detail_strategy <= 30 %}入门二{% elif detail_strategy <= 35 %}进阶一{% elif detail_strategy <= 40 %}进阶二{% elif detail_strategy <= 45 %}上级一{% elif detail_strategy <= 50 %}上级二{% elif detail_strategy <= 55 %}上级三{% else %}论外{% endif %}</output></div>
+                            <div class="demo-slider demo-slider--difficulty" data-diff-slider="strategy" role="slider" tabindex="0" aria-label="策略难度" aria-valuemin="1" aria-valuemax="60" aria-valuenow="{{ detail_strategy }}" data-min="1" data-max="60" data-value="{{ detail_strategy }}">
+                                <div class="demo-slider__track" aria-hidden="true"><span class="demo-slider__fill"></span><span class="demo-slider__thumb"></span></div>
+                            </div>
+                            <div class="range-hints"><span>1 · 见习</span><span>30 · 入门</span><span>60 · 论外</span></div>
+                        </div>
+                        <div class="range-row">
+                            <div class="range-row__head"><span>执行</span><output>{{ detail_execution }} · {% if detail_execution <= 5 %}见习一{% elif detail_execution <= 10 %}见习二{% elif detail_execution <= 15 %}新手一{% elif detail_execution <= 20 %}新手二{% elif detail_execution <= 25 %}入门一{% elif detail_execution <= 30 %}入门二{% elif detail_execution <= 35 %}进阶一{% elif detail_execution <= 40 %}进阶二{% elif detail_execution <= 45 %}上级一{% elif detail_execution <= 50 %}上级二{% elif detail_execution <= 55 %}上级三{% else %}论外{% endif %}</output></div>
+                            <div class="demo-slider demo-slider--difficulty" data-diff-slider="execution" role="slider" tabindex="0" aria-label="执行难度" aria-valuemin="1" aria-valuemax="60" aria-valuenow="{{ detail_execution }}" data-min="1" data-max="60" data-value="{{ detail_execution }}">
+                                <div class="demo-slider__track" aria-hidden="true"><span class="demo-slider__fill"></span><span class="demo-slider__thumb"></span></div>
+                            </div>
+                            <div class="range-hints"><span>1 · 见习</span><span>30 · 入门</span><span>60 · 论外</span></div>
+                        </div>
+
+                        <div class="dialog-summary">
+                            <span>当前情境 <small id="dialog-context">游戏总体 · 全机体/角色</small></span>
+                            <strong id="dialog-difficulty-average"><span id="dialog-difficulty-number">{{ "%.1f"|format(detail_difficulty_average) }}</span> <small>/60 · <span id="dialog-difficulty-realm">{% if detail_difficulty_average <= 5 %}见习一{% elif detail_difficulty_average <= 10 %}见习二{% elif detail_difficulty_average <= 15 %}新手一{% elif detail_difficulty_average <= 20 %}新手二{% elif detail_difficulty_average <= 25 %}入门一{% elif detail_difficulty_average <= 30 %}入门二{% elif detail_difficulty_average <= 35 %}进阶一{% elif detail_difficulty_average <= 40 %}进阶二{% elif detail_difficulty_average <= 45 %}上级一{% elif detail_difficulty_average <= 50 %}上级二{% elif detail_difficulty_average <= 55 %}上级三{% else %}论外{% endif %}</span></small></strong>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <footer class="dialog-foot">
+                <span class="dialog-foot__note" id="rating-foot-note">选择 1–10 分即可提交</span>
+                <div class="dialog-foot__actions">
+                    <button type="button" class="demo-btn demo-btn--ghost" data-close-rating>取消</button>
+                    <button type="button" class="demo-btn demo-btn--primary" id="save-rating" disabled>提交快速评分</button>
+                </div>
+            </footer>
+        </article>
+    </dialog>
+    <div class="demo-toast" id="demo-toast" role="status" aria-live="polite"></div>
+<script src="{{ asset_url('/static/js/game-details.js') }}" defer></script>
 {% endblock %}

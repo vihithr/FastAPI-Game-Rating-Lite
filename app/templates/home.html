@@ -3,264 +3,144 @@
 {% block title %}主页 - STG社区评价{% endblock %}
 
 {% block content %}
-<style>
-    /* Hero 区域背景效果 */
-    .hero-section {
-        position: relative;
-        text-align: center;
-        margin-bottom: 3rem;
-        padding: 3rem 2rem;
-        border-radius: var(--pico-border-radius);
-        background: 
-            linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%),
-            radial-gradient(ellipse at top, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-    
-    .hero-section::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
-        animation: heroRotate 20s linear infinite;
-        pointer-events: none;
-        will-change: transform;
-        transform: translateZ(0);
-        backface-visibility: hidden;
-    }
-    
-    @keyframes heroRotate {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-    
-    .hero-section hgroup {
-        position: relative;
-        z-index: 1;
-    }
-    
-    .hero-section h1 {
-        background: linear-gradient(135deg, var(--pico-primary) 0%, var(--pico-primary-hover) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-    }
-    
-    .hero-section h2 {
-        color: var(--pico-muted-color);
-        font-size: 1.2rem;
-        font-weight: 400;
-    }
-    
-    /* 暗色主题下的 Hero 调整 */
-    [data-theme="dark"] .hero-section {
-        background: 
-            linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%),
-            radial-gradient(ellipse at top, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-    
-    /* 卡片悬浮增强 */
-    .home-game-grid .game-link-container:hover .game-card {
-        transform: translateY(-6px) scale(1.02) translateZ(0);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-        border-color: var(--pico-primary);
-        transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
-        will-change: transform;
-    }
-    
-    .home-game-grid .game-card {
-        transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
-        transform: translateZ(0);
-        backface-visibility: hidden;
-    }
-    
-    [data-theme="dark"] .home-game-grid .game-link-container:hover .game-card {
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
-    }
-    
-    /* 减少动画偏好 */
-    @media (prefers-reduced-motion: reduce) {
-        .hero-section::before {
-            animation: none;
-        }
-        
-        .home-game-grid .game-link-container:hover .game-card {
-            transform: translateY(-4px);
-        }
-    }
-    
-    /* 移动端优化 */
-    @media (max-width: 768px) {
-        .hero-section {
-            padding: 2rem 1rem;
-        }
-        
-        .hero-section h1 {
-            font-size: 2rem;
-        }
-        
-        .hero-section h2 {
-            font-size: 1rem;
-        }
-    }
-</style>
-
-<!-- Hero 区域 -->
-<div class="hero-section">
-    <hgroup>
-        <h1>STG 社区评价</h1>
-        <h2>一个由社区驱动的STG游戏评价平台</h2>
-    </hgroup>
-</div>
-
-<!-- 平台统计 -->
-<div class="grid" style="margin-bottom: 2.5rem;">
-    <article style="text-align: center;">
-        <header>
-            <hgroup>
-                <h4><i data-lucide="gamepad-2"></i> 总游戏数</h4>
-                <p style="font-size: 2rem; font-weight: bold; color: var(--pico-primary); margin: 0.5rem 0;">
-                    {{ total_games }}
-                </p>
-            </hgroup>
-        </header>
-    </article>
-    <article style="text-align: center;">
-        <header>
-            <hgroup>
-                <h4><i data-lucide="star"></i> 总评分数</h4>
-                <p style="font-size: 2rem; font-weight: bold; color: var(--pico-primary); margin: 0.5rem 0;">
-                    {{ total_ratings }}
-                </p>
-            </hgroup>
-        </header>
-    </article>
-    <article style="text-align: center;">
-        <header>
-            <hgroup>
-                <h4><i data-lucide="users"></i> 社区成员</h4>
-                <p style="font-size: 2rem; font-weight: bold; color: var(--pico-primary); margin: 0.5rem 0;">
-                    {{ total_users }}
-                </p>
-            </hgroup>
-        </header>
-    </article>
-</div>
-
-<!-- 主要内容区域 -->
-<div class="grid">
-    <!-- 最近添加的作品 -->
-    <section>
-        <article>
-            <header>
-                <h3><i data-lucide="sparkles"></i> 最近添加的作品</h3>
-            </header>
-            {% if recent_games %}
-            <div id="recent-games-list" class="home-game-grid">
-                {% for game in recent_games %}
-                <div class="game-link-container">
-                    <a href="/game/{{ game.id }}" class="game-card">
-                        <div class="game-card-img-container">
-                            {% if game.image_url %}
-                                <img src="{{ game.image_url }}" alt="{{ game.title }}" class="game-card-img" loading="lazy">
-                            {% else %}
-                                <i data-lucide="image-off" class="img-placeholder"></i>
-                            {% endif %}
-                        </div>
-                        <div class="game-card-body">
-                            <strong>{{ game.title }}</strong>
-                            <small>{{ game.company }}</small>
-                        </div>
-                    </a>
-                </div>
-                {% endfor %}
-            </div>
+<!-- Hero：左文案 + 右封面拼贴 -->
+<section class="hero">
+    <div class="hero-copy">
+        <p class="hero-kicker">STG Community Database</p>
+        <h1>STG 社区评价<br><span class="hero-accent">为射击游戏留下可比较的记录</span></h1>
+        <p class="hero-sub">作品评分、难度统计、专栏文章与资源索引——由社区共同书写、长期可查的射击游戏档案库。</p>
+        <div class="hero-actions">
+            <a href="/games" role="button"><i data-lucide="grid-3x3"></i> 浏览作品</a>
+            {% if request.state.user %}
+            <a href="/add-game" role="button" class="secondary outline"><i data-lucide="plus-circle"></i> 添加作品</a>
             {% else %}
-            <p>还没有任何作品。</p>
+            <a href="/login?redirect=/add-game" role="button" class="secondary outline"><i data-lucide="log-in"></i> 登录后参与</a>
             {% endif %}
-        </article>
+        </div>
+        <dl class="hero-stats">
+            <div><dt>收录作品</dt><dd>{{ total_games }}</dd></div>
+            <div><dt>累计评分</dt><dd>{{ total_ratings }}</dd></div>
+            <div><dt>社区成员</dt><dd>{{ total_users }}</dd></div>
+        </dl>
+    </div>
+    {% set hero_covers = recent_games | selectattr('image_url') | list %}
+    {% if hero_covers %}
+    <div class="hero-art" aria-hidden="true">
+        {% for game in hero_covers[:3] %}
+        <img class="hero-cover hero-cover-{{ loop.index }}"
+             src="{{ cover_thumb(game.image_url, 400) }}" alt="" loading="{{ 'eager' if loop.first else 'lazy' }}" decoding="async">
+        {% endfor %}
+        <span class="hero-art-glow"></span>
+    </div>
+    {% endif %}
+</section>
+
+<!-- 主内容：最近添加 + 热门排行 -->
+<div class="home-main">
+    <section class="home-col-primary" aria-labelledby="recent-title">
+        <header class="section-head">
+            <span class="section-icon"><i data-lucide="sparkles"></i></span>
+            <h2 id="recent-title">最近添加的作品</h2>
+            <a class="section-more" href="/games">全部作品 <i data-lucide="arrow-right"></i></a>
+        </header>
+        {% if recent_games %}
+        <div id="recent-games-list" class="home-game-grid">
+            {% for game in recent_games %}
+            <div class="game-link-container">
+                <a href="/game/{{ game.id }}" class="game-card">
+                    <div class="game-card-img-container">
+                        {% if game.image_url %}
+                            <img src="{{ cover_thumb(game.image_url, 400) }}" alt="{{ game.title }}" class="game-card-img" loading="lazy" decoding="async">
+                        {% else %}
+                            <i data-lucide="image-off" class="img-placeholder"></i>
+                        {% endif %}
+                    </div>
+                    <div class="game-card-body">
+                        <strong>{{ game.title }}</strong>
+                        <small>{{ game.company }}</small>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="home-empty-panel">
+            <i data-lucide="gamepad-2"></i>
+            <p>还没有收录作品，来添加第一款吧。</p>
+            <a href="/add-game" role="button" class="secondary outline">添加作品</a>
+        </div>
+        {% endif %}
     </section>
 
-    <!-- 热门排行 -->
-    <section>
-        <article>
-            <header>
-                <h3><i data-lucide="trending-up"></i> 热门排行</h3>
-            </header>
-            {% if popular_games %}
-            <div id="popular-games-list" class="home-game-grid">
-                {% for item in popular_games %}
-                <div class="game-link-container">
-                    <a href="/game/{{ item.game.id }}" class="game-card">
-                        <div class="game-card-img-container">
-                            {% if item.game.image_url %}
-                                <img src="{{ item.game.image_url }}" alt="{{ item.game.title }}" class="game-card-img" loading="lazy">
-                            {% else %}
-                                <i data-lucide="image-off" class="img-placeholder"></i>
-                            {% endif %}
-                        </div>
-                        <div class="game-card-body">
-                            <strong>{{ item.game.title }}</strong>
-                            <small>{{ item.game.company }}</small>
-                            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--pico-primary);">
-                                <i data-lucide="star" style="width: 0.85rem; height: 0.85rem;"></i>
-                                {{ "%.1f"|format(item.avg_score) }} ({{ item.rating_count }}条评分)
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p>暂无热门游戏（需要至少3条品质评分）。</p>
-            {% endif %}
-        </article>
-    </section>
+    <aside class="home-col-rail" aria-labelledby="popular-title">
+        <header class="section-head">
+            <span class="section-icon"><i data-lucide="trending-up"></i></span>
+            <h2 id="popular-title">热门排行</h2>
+        </header>
+        {% if popular_games %}
+        <ol class="rank-list">
+            {% for item in popular_games %}
+            <li>
+                <a href="/game/{{ item.game.id }}">
+                    <span class="rank-no">{{ loop.index }}</span>
+                    <span class="rank-cover">
+                        {% if item.game.image_url %}
+                        <img src="{{ cover_thumb(item.game.image_url, 120) }}" alt="" loading="lazy" decoding="async">
+                        {% else %}
+                        <i data-lucide="image-off"></i>
+                        {% endif %}
+                    </span>
+                    <span class="rank-info">
+                        <strong>{{ item.game.title }}</strong>
+                        <small>{{ item.game.company }} · {{ item.rating_count }} 条评分</small>
+                    </span>
+                    <span class="rank-score"><i data-lucide="star"></i>{{ "%.1f"|format(item.avg_score) }}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <div class="home-empty-panel">
+            <i data-lucide="star"></i>
+            <p>还没有足够评分。<br>浏览作品并留下第一条评价，排行榜就会在这里出现。</p>
+            <a href="/games" role="button" class="secondary outline">去评分</a>
+        </div>
+        {% endif %}
+    </aside>
 </div>
 
-<!-- 热门标签 -->
-{% if popular_tags %}
-<section style="margin-top: 2rem;">
-    <article>
-        <header>
-            <h3><i data-lucide="tags"></i> 热门标签</h3>
+<!-- 标签 + 贡献 CTA -->
+<div class="home-duo">
+    {% if popular_tags %}
+    <section class="home-tags" aria-labelledby="tags-title">
+        <header class="section-head">
+            <span class="section-icon"><i data-lucide="tags"></i></span>
+            <h2 id="tags-title">热门标签</h2>
         </header>
         <div class="chip-row">
             {% for item in popular_tags %}
             <a href="/games?tag={{ item.tag.name }}" class="tag-badge">
                 {{ item.tag.name }}
-                <small style="opacity: 0.7; margin-left: 0.3rem;">({{ item.count }})</small>
+                <small class="tag-count">{{ item.count }}</small>
             </a>
             {% endfor %}
         </div>
-    </article>
-</section>
-{% endif %}
+    </section>
+    {% endif %}
 
-<!-- 贡献内容 -->
-<section style="margin-top: 2rem;">
-    <article>
-        <header>
-            <h3><i data-lucide="file-plus-2"></i> 贡献内容</h3>
-        </header>
-        <p>没有找到你心仪的作品？</p>
-        <a href="/add-game" role="button">立即添加新作品</a>
-    </article>
-</section>
+    <section class="cta-panel" aria-labelledby="cta-title">
+        <span class="cta-icon"><i data-lucide="file-plus-2"></i></span>
+        <div>
+            <h2 id="cta-title">没有找到心仪的作品？</h2>
+            <p>补充封面、标签与难度数据，让下一位玩家少走弯路。</p>
+        </div>
+        {% if request.state.user %}
+        <a href="/add-game" role="button">立即添加</a>
+        {% else %}
+        <a href="/login?redirect=/add-game" role="button">登录后添加</a>
+        {% endif %}
+    </section>
+</div>
 {% endblock %}
 
 {% block scripts %}

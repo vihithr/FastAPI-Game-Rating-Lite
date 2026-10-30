@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, selectinload
 from pydantic import BaseModel
 from typing import List, Optional  # <-- 关键修改：导入 List 和 Optional
 from .. import auth, models, database
+from ..services.ratings import build_user_ratings
 
 router = APIRouter(
     prefix="/api/v1",
@@ -153,35 +154,5 @@ def get_my_ratings(
     """
     [API] 获取当前用户对指定游戏的评分
     """
-    user_ratings = {}
-    
-    # 获取品质评分
-    quality_rating = db.query(models.QualityRating).filter_by(
-        game_id=game_id, user_id=current_user.id
-    ).first()
-    if quality_rating:
-        user_ratings['quality'] = {
-            'fun': quality_rating.fun,
-            'core': quality_rating.core,
-            'depth': quality_rating.depth,
-            'performance': quality_rating.performance,
-            'story': quality_rating.story
-        }
-    
-    # 获取所有难度评分
-    difficulty_ratings = db.query(models.DifficultyRating).filter_by(
-        game_id=game_id, user_id=current_user.id
-    ).all()
-    if difficulty_ratings:
-        user_ratings['difficulty'] = {}
-        for rating in difficulty_ratings:
-            context_key = f"d{rating.difficulty_level_id or 0}_s{rating.ship_type_id or 0}"
-            user_ratings['difficulty'][context_key] = {
-                'dodge': rating.dodge,
-                'strategy': rating.strategy,
-                'execution': rating.execution,
-                'difficulty_level_id': rating.difficulty_level_id,
-                'ship_type_id': rating.ship_type_id
-            }
-    
+    user_ratings = build_user_ratings(db, game_id, current_user.id)
     return {"status": "success", "ratings": user_ratings}

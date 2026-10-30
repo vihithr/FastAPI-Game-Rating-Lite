@@ -1,16 +1,18 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import JSONResponse
+from app.config.templates import templates as jinja_templates
 from app.routers import ratings
 from . import models, database, auth
-from .routers import authentication, pages, api, admin, articles, bounties, password_reset, resources
-from starlette.middleware.sessions import SessionMiddleware
-import secrets
-import os
-from app.config.constants import BASE_DIR
+from .routers import authentication, pages, api, admin, articles, bounties, password_reset, resources, library
+from contextlib import asynccontextmanager
+import logging
+from app.config.constants import BASE_DIR, SITE_BASE_URL
+from app.core.middleware import SameOriginMiddleware, StaticCacheMiddleware
 from jose import jwt
 
-# 创建所有数据库表
-models.Base.metadata.create_all(bind=database.engine)
+logger = logging.getLogger(__name__)
 
 # 初始化悬赏板块
 def init_bounty_categories():
@@ -35,17 +37,22 @@ def init_bounty_categories():
             db.add(category)
         
         db.commit()
-        print("悬赏板块初始化完成")
-    except Exception as e:
+        logger.info("悬赏板块初始化完成")
+    except Exception:
         db.rollback()
-        print(f"初始化悬赏板块时出错: {e}")
+        logger.exception("初始化悬赏板块时出错")
     finally:
         db.close()
 
-# 初始化悬赏板块
-init_bounty_categories()
 
-app = FastAPI(title="STG Community Ratings")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    models.Base.metadata.create_all(bind=database.engine)
+    init_bounty_categories()
+    yield
+
+
+app = FastAPI(title="STG Community Ratings", lifespan=lifespan)
 
 @app.get("/health")
 async def health_check():
@@ -55,29 +62,16 @@ async def health_check():
 # BASE_DIR 已经是项目根目录，所以直接使用 app/static
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
 
-# 添加 SessionMiddleware
-# 从环境变量读取会话密钥，如果未设置则生成随机密钥（仅用于开发）
-SESSION_SECRET_KEY = os.getenv("STG_SESSION_SECRET_KEY")
-if not SESSION_SECRET_KEY:
-    SESSION_SECRET_KEY = secrets.token_urlsafe(32)
-
-# 从环境变量读取HTTPS设置，生产环境应设为True
-HTTPS_ONLY = os.getenv("STG_HTTPS_ONLY", "False").lower() == "true"
-
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=SESSION_SECRET_KEY,
-    session_cookie="session_id",
-    max_age=3600 * 24 * 7,  # 会话有效期 7 天
-    same_site="lax",
-    https_only=HTTPS_ONLY
-)
+app.add_middleware(SameOriginMiddleware, site_base_url=SITE_BASE_URL)
+app.add_middleware(StaticCacheMiddleware)
 
 # 中间件：在每个请求中检查cookie，并将用户信息附加到request.state
 # 这是为了模板可以访问 request.state.user
 @app.middleware("http")
 async def add_user_to_state(request: Request, call_next):
     """将用户信息附加到 request.state，供模板使用"""
+    if request.url.path.startswith("/static/"):
+        return await call_next(request)
     request.state.user = None
     token = request.cookies.get("access_token")
     if token:
@@ -86,11 +80,12 @@ async def add_user_to_state(request: Request, call_next):
             token = token[7:] if token.startswith("Bearer ") else token
             payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
             username: str = payload.get("sub")
+            token_version = int(payload.get("ver", 0))
             if username:
                 db = database.SessionLocal()
                 try:
                     user = auth.get_user(db, username)
-                    if user:
+                    if user and user.token_version == token_version:
                         request.state.user = user
                 finally:
                     db.close()
@@ -99,6 +94,20 @@ async def add_user_to_state(request: Request, call_next):
             pass
     response = await call_next(request)
     return response
+
+
+# HTML 请求返回友好错误页，API 请求保持 JSON
+@app.exception_handler(StarletteHTTPException)
+async def friendly_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if "text/html" not in request.headers.get("accept", ""):
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+    detail = exc.detail if isinstance(exc.detail, str) else "页面出错了"
+    return jinja_templates.TemplateResponse(
+        "error.html",
+        {"request": request, "status_code": exc.status_code, "detail": detail},
+        status_code=exc.status_code,
+    )
+
 
 # 包含来自其他文件的路由
 app.include_router(authentication.router)
@@ -110,3 +119,4 @@ app.include_router(articles.router)
 app.include_router(bounties.router)
 app.include_router(password_reset.router)
 app.include_router(resources.router)
+app.include_router(library.router)

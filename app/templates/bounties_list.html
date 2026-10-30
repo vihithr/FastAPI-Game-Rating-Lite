@@ -1,125 +1,189 @@
 {% extends "base.html" %}
 
-{% block title %}悬赏 - STG社区评价{% endblock %}
+{% block title %}悬赏板 - STG社区评价{% endblock %}
+{% block description %}STG Ratings 悬赏板：技术求助、资源求档、合作邀约，用悬赏金额或奖品换取社区响应。{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ asset_url('/static/css/pages.css') }}">
+{% endblock %}
 
 {% block content %}
-<h2><i data-lucide="award"></i> 悬赏</h2>
+<div class="pg">
 
-{% if request.state.user %}
-<p><a href="/bounty/new" role="button" class="contrast outline">发布悬赏</a></p>
-{% else %}
-<p><small>请<a href="/login">登录</a>后发布悬赏</small></p>
-{% endif %}
+    <nav class="pg-crumbs" aria-label="面包屑">
+        <a href="/">主页</a>
+        <i data-lucide="chevron-right"></i>
+        <span aria-current="page">悬赏</span>
+    </nav>
 
-<!-- 筛选器 -->
-<div style="margin-bottom: 1.5rem;">
-    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-        <!-- 板块筛选 -->
-        <div>
-            <label for="category-filter">板块筛选：</label>
-            <select id="category-filter" onchange="filterBounties()">
-                <option value="">全部板块</option>
-                {% for cat in categories %}
-                <option value="{{ cat.id }}" {% if current_category_id == cat.id %}selected{% endif %}>
-                    {{ cat.name }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        
-        <!-- 状态筛选 -->
-        <div>
-            <label for="status-filter">状态筛选：</label>
-            <select id="status-filter" onchange="filterBounties()">
-                <option value="all" {% if current_status == "all" %}selected{% endif %}>全部</option>
-                <option value="active" {% if current_status == "active" %}selected{% endif %}>进行中</option>
-                <option value="completed" {% if current_status == "completed" %}selected{% endif %}>已完成</option>
-            </select>
-        </div>
-    </div>
-</div>
-
-<!-- 悬赏列表 -->
-{% if bounties %}
-<div class="grid bounties-list" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-    {% for bounty in bounties %}
-    <article class="card" style="border: 1px solid var(--pico-card-border-color); padding: 1rem; border-radius: var(--pico-border-radius); height: 100%; display: flex; flex-direction: column; gap: 0.5rem; {% if bounty.is_completed %}opacity: 0.7;{% endif %}">
-        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-            <a href="/bounty/{{ bounty.id }}" style="font-weight: 700; font-size: 1.05rem; flex: 1;">
-                {{ bounty.title }}
-            </a>
-            {% if bounty.is_completed %}
-            <span style="color: var(--pico-success); font-size: 0.9rem;">
-                <i data-lucide="check-circle"></i> 已完成
-            </span>
-            {% else %}
-            <span style="color: var(--pico-primary); font-size: 0.9rem;">
-                <i data-lucide="clock"></i> 进行中
-            </span>
-            {% endif %}
-        </div>
-        
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-            <span class="tag-badge">{{ bounty.category.name }}</span>
-            <span style="color: var(--pico-primary); font-weight: 600;">
-                <i data-lucide="gift"></i> {{ bounty.reward }}
-            </span>
-            {% if bounty.game_name %}
-            <span style="color: var(--pico-secondary-foreground); font-size: 0.9rem;">
-                <i data-lucide="gamepad-2"></i> {{ bounty.game_name }}
-            </span>
-            {% endif %}
-        </div>
-        
-        {% if bounty.bounty_tags %}
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
-            {% for tag in bounty.bounty_tags %}
-            <span class="tag-badge" style="font-size: 0.8rem;">{{ tag.name }}</span>
-            {% endfor %}
-        </div>
-        {% endif %}
-        
-        <p style="color: var(--pico-muted-color); margin: 0; flex: 1;">
-            {{ bounty.content[:100] }}{% if bounty.content|length > 100 %}...{% endif %}
-        </p>
-        
-        <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--pico-muted-color);">
-            <span>
-                <i data-lucide="user"></i> <a href="/user/{{ bounty.creator.id }}">{{ bounty.creator.username }}</a>
-            </span>
-            <span>
-                <i data-lucide="message-circle"></i> {{ bounty.comments|length }} 条评论
-            </span>
-            <span>{{ bounty.created_at.strftime('%Y-%m-%d') }}</span>
-        </div>
-    </article>
+    {% set ns = namespace(active=0, done=0) %}
+    {% for b in bounties %}
+        {% if b.is_completed %}{% set ns.done = ns.done + 1 %}{% else %}{% set ns.active = ns.active + 1 %}{% endif %}
     {% endfor %}
-</div>
-{% else %}
-<p>暂无悬赏{% if current_category_id or current_status != "all" %}（请尝试调整筛选条件）{% endif %}。</p>
-{% endif %}
 
-<script>
-function filterBounties() {
-    const categoryId = document.getElementById('category-filter').value;
-    const status = document.getElementById('status-filter').value;
-    
-    let url = '/bounties?';
-    if (categoryId) {
-        url += `category_id=${categoryId}&`;
-    }
-    if (status !== 'all') {
-        url += `status_filter=${status}&`;
-    }
-    
-    window.location.href = url.replace(/&$/, '');
-}
-</script>
+    <header class="pg-hero">
+        <div class="pg-hero__inner">
+            <div>
+                <p class="pg-hero__eyebrow">
+                    <span>Bounty</span>
+                    <span class="dot"></span>
+                    <span>社区悬赏</span>
+                </p>
+                <h1>悬赏板</h1>
+                <p class="pg-hero__lede">
+                    技术求助、资源求档、合作邀约——把需求写清楚，用金额或奖品换一次靠谱的回应。
+                </p>
+            </div>
+            <div class="pg-hero__aside">
+                <div class="pg-hero__stat">
+                    <b>{{ bounties|length }}</b>
+                    <small>当前筛选</small>
+                </div>
+                <div class="pg-hero__stat">
+                    <b>{{ ns.active }}</b>
+                    <small>进行中</small>
+                </div>
+                <div class="pg-hero__stat">
+                    <b>{{ ns.done }}</b>
+                    <small>已完成</small>
+                </div>
+                {% if request.state.user %}
+                <a href="/bounty/new" class="pg-hero__cta">
+                    <i data-lucide="plus"></i>
+                    发布悬赏
+                </a>
+                {% else %}
+                <a href="/login?redirect=/bounty/new" class="pg-hero__cta">
+                    <i data-lucide="log-in"></i>
+                    登录后发布
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <section class="pg-panel" style="margin-top: 1.1rem;">
+        <div class="pg-panel__head">
+            <h3><i data-lucide="filter"></i> 筛选</h3>
+            <small>{% if current_status == 'active' %}只看进行中{% elif current_status == 'completed' %}只看已完成{% else %}全部状态{% endif %}</small>
+        </div>
+        <div class="pg-panel__body">
+            <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0.6rem; align-items: end;">
+                <label class="pg-field" for="category-filter">
+                    <span class="pg-label">板块</span>
+                    <select id="category-filter" onchange="filterBounties()">
+                        <option value="">全部板块</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if current_category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="pg-field" for="status-filter">
+                    <span class="pg-label">状态</span>
+                    <select id="status-filter" onchange="filterBounties()">
+                        <option value="all" {% if current_status == "all" %}selected{% endif %}>全部</option>
+                        <option value="active" {% if current_status == "active" %}selected{% endif %}>进行中</option>
+                        <option value="completed" {% if current_status == "completed" %}selected{% endif %}>已完成</option>
+                    </select>
+                </label>
+
+                <a href="/bounties" class="pg-btn pg-btn--ghost" style="margin-bottom: 0.1rem;">
+                    <i data-lucide="rotate-ccw"></i> 重置
+                </a>
+            </div>
+        </div>
+    </section>
+
+    {% if bounties %}
+
+    <div class="pg-bounty-grid">
+        {% for bounty in bounties %}
+        <article class="pg-bounty {% if bounty.is_completed %}pg-bounty--done{% endif %}">
+
+            <div class="pg-bounty__top">
+                <h2 class="pg-bounty__title">
+                    <a href="/bounty/{{ bounty.id }}">{{ bounty.title }}</a>
+                </h2>
+                {% if bounty.is_completed %}
+                <span class="pg-status pg-status--done"><i data-lucide="check-circle"></i> 已完成</span>
+                {% else %}
+                <span class="pg-status pg-status--active"><i data-lucide="clock"></i> 进行中</span>
+                {% endif %}
+            </div>
+
+            <div class="pg-chip-row">
+                <span class="pg-reward"><i data-lucide="gift"></i>{{ bounty.reward }}</span>
+                <span class="pg-chip">{{ bounty.category.name }}</span>
+                {% if bounty.game_name %}
+                <span class="pg-chip"><i data-lucide="gamepad-2" style="width:.9em;height:.9em;"></i>{{ bounty.game_name }}</span>
+                {% endif %}
+            </div>
+
+            {# 截断交给 CSS 的 line-clamp，手动截断会和它叠加，多出一行省略号 #}
+            <p class="pg-bounty__excerpt">{{ bounty.content }}</p>
+
+            {% if bounty.bounty_tags %}
+            <div class="pg-bounty__tags">
+                {% for tag in bounty.bounty_tags %}
+                <span class="pg-chip">#{{ tag.name }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="pg-bounty__foot">
+                <i data-lucide="user" style="width:.95em;height:.95em;"></i>
+                <a href="/user/{{ bounty.creator.id }}">{{ bounty.creator.username }}</a>
+                <span class="sep">·</span>
+                <span>{{ bounty.created_at.strftime('%Y-%m-%d') }}</span>
+                <a class="pg-bounty__comments" href="/bounty/{{ bounty.id }}">
+                    <i data-lucide="message-circle"></i>{{ bounty.comments|length }}
+                </a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+
+    {% else %}
+
+    <div class="pg-empty" style="margin-top: 1.1rem;">
+        <i data-lucide="gift"></i>
+        <p>
+            {% if current_category_id or current_status != "all" %}
+            当前筛选下没有悬赏，换个条件试试。
+            {% else %}
+            还没有人发布悬赏。
+            {% endif %}
+        </p>
+        {% if request.state.user %}
+        <a href="/bounty/new" class="pg-btn pg-btn--sm" style="margin-top: 0.4rem;">发布第一个悬赏</a>
+        {% else %}
+        <a href="/login?redirect=/bounties" class="pg-btn pg-btn--sm" style="margin-top: 0.4rem;">登录后发布悬赏</a>
+        {% endif %}
+    </div>
+
+    {% endif %}
+
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     lucide.createIcons();
+
+    function filterBounties() {
+        const categoryId = document.getElementById('category-filter').value;
+        const status = document.getElementById('status-filter').value;
+
+        let url = '/bounties?';
+        if (categoryId) {
+            url += `category_id=${categoryId}&`;
+        }
+        if (status !== 'all') {
+            url += `status_filter=${status}&`;
+        }
+
+        window.location.href = url.replace(/&$/, '');
+    }
 </script>
 {% endblock %}
-

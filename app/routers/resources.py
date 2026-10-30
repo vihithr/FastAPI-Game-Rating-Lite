@@ -1,20 +1,23 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, status, File, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, or_
+from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional
-from pathlib import Path
-import secrets
 
 from app import models, database, auth
 from app.config.templates import templates
 from app.config.constants import BASE_DIR
+from app.services.uploads import delete_static_file, save_cover_image
 
 
 router = APIRouter(
     prefix="/resources",
     tags=["Resources"],
 )
+logger = logging.getLogger(__name__)
 
 
 # --- 辅助函数 ---
@@ -55,38 +58,14 @@ def process_resource_tags(db: Session, resource: models.Resource, tags_str: str)
 def save_resource_cover(image_file: UploadFile) -> Optional[str]:
     """
     保存资源封面图到静态目录，返回存入数据库的相对路径。
-    限制：<1MB，JPG/PNG/WEBP/GIF
+    限制：<1MB，JPG/PNG/WEBP/GIF，且文件内容必须与声明的图片类型匹配。
     """
     if not image_file or not image_file.filename:
         return None
 
     contents = image_file.file.read()
-    file_size = len(contents)
-    if file_size > 1 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="图片文件大小不能超过 1MB")
-
-    if image_file.content_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
-        raise HTTPException(status_code=400, detail="只支持上传 JPG, PNG, GIF, WebP 格式的图片")
-
     upload_dir = BASE_DIR / "app" / "static" / "uploads" / "covers"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    token = secrets.token_hex(16)
-    file_extension = Path(image_file.filename).suffix
-    if not file_extension:
-        content_type_map = {
-            "image/jpeg": ".jpg",
-            "image/png": ".png",
-            "image/gif": ".gif",
-            "image/webp": ".webp",
-        }
-        file_extension = content_type_map.get(image_file.content_type, ".jpg")
-
-    save_path = upload_dir / f"{token}{file_extension}"
-    with open(save_path, "wb") as buffer:
-        buffer.write(contents)
-
-    return f"/static/uploads/covers/{token}{file_extension}"
+    return save_cover_image(image_file, contents, upload_dir)
 
 
 # --- 页面路由 ---
@@ -230,9 +209,17 @@ async def resource_submit(
         db.add(new_resource)
         db.commit()
         db.refresh(new_resource)
-    except Exception as e:
+    except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"创建资源失败: {e}")
+        if cover_path:
+            delete_static_file(cover_path)
+        logger.exception("创建资源失败")
+        raise HTTPException(status_code=500, detail="创建资源失败，请稍后重试")
+    except Exception:
+        db.rollback()
+        if cover_path:
+            delete_static_file(cover_path)
+        raise
 
     return RedirectResponse(
         url=f"/resources/{new_resource.id}", status_code=status.HTTP_303_SEE_OTHER
@@ -369,8 +356,14 @@ async def resource_delete(
     if not (is_owner or current_user.is_admin):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="没有权限删除该资源")
 
+    cover_url = resource.cover_image
+    db.query(models.ResourceVote).filter(
+        models.ResourceVote.resource_id == resource.id
+    ).delete(synchronize_session=False)
+    resource.tags.clear()
     db.delete(resource)
     db.commit()
+    delete_static_file(cover_url)
 
     return RedirectResponse(url="/resources", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -447,13 +440,29 @@ async def resource_edit(
     resource.content = content.strip()
     resource.intro = intro.strip() or None
 
-    # 可选更新封面
+    old_cover = resource.cover_image
+    new_cover = None
     if cover and cover.filename:
         new_cover = save_resource_cover(cover)
         resource.cover_image = new_cover
 
-    process_resource_tags(db, resource, tags)
-    db.commit()
+    try:
+        process_resource_tags(db, resource, tags)
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        if new_cover:
+            delete_static_file(new_cover)
+        logger.exception("更新资源失败: id=%s", resource_id)
+        raise HTTPException(status_code=500, detail="更新资源失败，请稍后重试")
+    except Exception:
+        db.rollback()
+        if new_cover:
+            delete_static_file(new_cover)
+        raise
+
+    if new_cover and old_cover:
+        delete_static_file(old_cover)
 
     return RedirectResponse(
         url=f"/resources/{resource.id}", status_code=status.HTTP_303_SEE_OTHER

@@ -1,70 +1,433 @@
-/* /app/static/css/style.css */
+/* ==========================================================================
+   STG Ratings — design system
+   Layered on top of a self-hosted Pico v2.1.1 (vendor/pico.min.css).
+   Order: tokens -> Pico overrides -> base -> components -> states -> motion.
+   ========================================================================== */
 
-/* 覆盖 Pico.css 的默认 ul 样式，确保导航栏间距正确 */
-.site-nav ul,
-.site-nav ul.nav-primary,
-.site-nav ul.nav-meta,
-ul.nav-primary,
-ul.nav-meta {
-	gap: 1rem !important;
-}
-
+/* --------------------------------------------------------------------------
+   1. Tokens
+   -------------------------------------------------------------------------- */
 :root {
-	font-size: 13.5px;
-	line-height: 1.5;
+	/* Type */
+	--font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+		"Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
+		"Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+		"Liberation Mono", "Courier New", monospace;
+
+	/* Fluid type scale (major third, clamped so mobile never gets too small) */
+	--text-xs: 0.75rem;
+	--text-sm: 0.8125rem;
+	--text-base: 0.9375rem;
+	--text-md: 1.0625rem;
+	--text-lg: 1.25rem;
+	--text-xl: 1.5rem;
+	--text-2xl: clamp(1.75rem, 1.3rem + 1.6vw, 2.25rem);
+	--text-3xl: clamp(2rem, 1.4rem + 2.4vw, 2.75rem);
+
+	/* Spacing */
 	--space-1: 0.35rem;
 	--space-2: 0.65rem;
 	--space-3: 1rem;
+	--space-4: 1.5rem;
+	--space-5: 2rem;
+	--space-6: 3rem;
+
+	/* Radii */
+	--radius-sm: 0.4rem;
+	--radius-md: 0.65rem;
+	--radius-lg: 0.9rem;
+	--radius-pill: 999px;
+
+	/* Elevation — two-tone shadows read softer than a single black blur */
+	--shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
+	--shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 12px rgba(15, 23, 42, 0.05);
+	--shadow-md: 0 2px 6px rgba(15, 23, 42, 0.06), 0 14px 32px rgba(15, 23, 42, 0.1);
+	--shadow-lg: 0 4px 10px rgba(15, 23, 42, 0.08), 0 24px 48px rgba(15, 23, 42, 0.14);
+
+	/* Motion */
+	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+	--dur-1: 120ms;
+	--dur-2: 200ms;
+	--dur-3: 320ms;
+
+	/* Brand */
+	--brand-500: #4263eb;
+	--brand-600: #3b5bdb;
+	--brand-700: #364fc7;
+	--brand-300: #91a7ff;
+	--brand-200: #bac8ff;
+	--accent-500: #f08c00;
+	--accent-400: #ffa94d;
+
+	/* Legacy aliases kept for templates that still reference them */
 	--touch-min: 44px;
+
+	/* Pico redefines --pico-color inside buttons (to the inverse colour), so
+	   controls that need body ink must read their own token instead. */
+	--fg: #1f2430;
+	--fg-muted: #5d6675;
+
+	font-size: 15px;
+	line-height: 1.65;
 }
 
-main.container, header.container, footer.container {
-	max-width: 1200px;
+/* --------------------------------------------------------------------------
+   2. Pico token overrides — light
+   -------------------------------------------------------------------------- */
+:root:not([data-theme="dark"]) {
+	--pico-font-family: var(--font-sans);
+	--pico-font-family-sans-serif: var(--font-sans);
+	--pico-font-family-monospace: var(--font-mono);
+
+	--pico-primary: var(--brand-600);
+	--pico-primary-background: var(--brand-600);
+	--pico-primary-border: var(--brand-600);
+	--pico-primary-hover: var(--brand-700);
+	--pico-primary-hover-background: var(--brand-700);
+	--pico-primary-hover-border: var(--brand-700);
+	--pico-primary-focus: rgba(59, 91, 219, 0.3);
+	--pico-primary-inverse: #fff;
+
+	--pico-secondary: #475569;
+	--pico-secondary-background: #e2e8f0;
+	--pico-secondary-border: #cbd5e1;
+	--pico-secondary-hover: #334155;
+	--pico-secondary-hover-background: #d7dee8;
+	--pico-secondary-hover-border: #b6c2d2;
+	--pico-secondary-focus: rgba(71, 85, 105, 0.25);
+	--pico-secondary-inverse: #fff;
+
+	--pico-background-color: #f6f7fb;
+	--pico-color: #1f2430;
+	--pico-muted-color: #5d6675;
+	--pico-card-background-color: #fff;
+	--pico-card-border-color: #e3e6ee;
+	--pico-card-box-shadow: var(--shadow-sm);
+	--pico-card-border-radius: var(--radius-lg);
+	--pico-card-sectioning-background-color: #fbfbfd;
+	--pico-border-color: #dfe3ec;
+	--pico-muted-border-color: #e6e9f1;
+	--pico-form-element-background-color: #fbfbfd;
+	--pico-form-element-border-color: #cfd5e1;
+	--pico-form-element-focus-color: var(--pico-primary-focus);
+	--pico-h1-color: #14171f;
+	--pico-h2-color: #191d27;
+	--pico-h3-color: #1f2430;
+	--pico-h4-color: #262b38;
+	--pico-h5-color: #2d3341;
+	--pico-h6-color: #343a49;
+	--pico-ins-color: #1b7f4b;
+	--pico-del-color: #c22f2f;
 }
 
-header.container {
-	padding-top: 1rem;
-	padding-bottom: 0;
+/* --------------------------------------------------------------------------
+   2b. Pico token overrides — dark
+   Deep slate with a slight blue cast; never pure black, so shadows and
+   elevation still read.
+   -------------------------------------------------------------------------- */
+:root[data-theme="dark"] {
+	--pico-font-family: var(--font-sans);
+	--pico-font-family-sans-serif: var(--font-sans);
+	--pico-font-family-monospace: var(--font-mono);
+
+	--pico-primary: var(--brand-300);
+	--pico-primary-background: var(--brand-500);
+	--pico-primary-border: var(--brand-500);
+	--pico-primary-hover: var(--brand-200);
+	--pico-primary-hover-background: #4c6ef5;
+	--pico-primary-hover-border: #4c6ef5;
+	--pico-primary-focus: rgba(145, 167, 255, 0.35);
+	--pico-primary-inverse: #fff;
+
+	--pico-secondary: #b6c2d6;
+	--pico-secondary-background: #2a3140;
+	--pico-secondary-border: #3a4356;
+	--pico-secondary-hover: #dbe3f0;
+	--pico-secondary-hover-background: #333b4c;
+	--pico-secondary-hover-border: #4a5468;
+	--pico-secondary-focus: rgba(182, 194, 214, 0.25);
+	--pico-secondary-inverse: #fff;
+
+	--pico-background-color: #0f1219;
+	--pico-color: #d7dce6;
+	--pico-muted-color: #97a0b3;
+	--pico-card-background-color: #171b25;
+	--pico-card-border-color: #262c3a;
+	--pico-card-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.28);
+	--pico-card-border-radius: var(--radius-lg);
+	--pico-card-sectioning-background-color: #141822;
+	--pico-border-color: #262c3a;
+	--pico-muted-border-color: #212734;
+	--pico-form-element-background-color: #12161f;
+	--pico-form-element-border-color: #333b4c;
+	--pico-form-element-focus-color: var(--pico-primary-focus);
+	--pico-h1-color: #f2f5fa;
+	--pico-h2-color: #e8ecf4;
+	--pico-h3-color: #dfe4ee;
+	--pico-h4-color: #d7dce6;
+	--pico-h5-color: #cfd5e1;
+	--pico-h6-color: #c6ccda;
+
+	--fg: #d7dce6;
+	--fg-muted: #97a0b3;
+
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.26);
+	--shadow-md: 0 2px 8px rgba(0, 0, 0, 0.44), 0 16px 36px rgba(0, 0, 0, 0.34);
+	--shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.5), 0 28px 56px rgba(0, 0, 0, 0.42);
+}
+
+/* --------------------------------------------------------------------------
+   3. Base
+   -------------------------------------------------------------------------- */
+html {
+	scroll-behavior: smooth;
+	scroll-padding-top: 1.5rem;
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
 	position: relative;
+	min-height: 100vh;
+	background-color: var(--pico-background-color);
+	font-family: var(--font-sans);
+	/* Slight tracking helps CJK text breathe at small sizes */
+	letter-spacing: 0.005em;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	overflow-wrap: break-word;
+}
+
+main.container,
+header.container,
+footer.container {
+	max-width: 1180px;
+}
+
+main.container {
+	position: relative;
+	z-index: 1;
+	min-height: 60vh;
+	padding-bottom: var(--space-5);
+}
+
+h1, h2, h3, h4, h5, h6 {
+	letter-spacing: -0.015em;
+	text-wrap: balance;
+	font-weight: 650;
+}
+
+p, li, td, th {
+	text-wrap: pretty;
+}
+
+/* Tabular figures keep score columns and stat numbers from jittering */
+.stat-value,
+.score-value,
+.home-rating,
+table,
+time,
+.tag-count {
+	font-variant-numeric: tabular-nums;
+}
+
+a {
+	color: var(--pico-primary);
+	text-decoration-color: color-mix(in srgb, var(--pico-primary) 35%, transparent);
+	text-underline-offset: 0.18em;
+	transition: color var(--dur-1) var(--ease-out);
+}
+
+a:hover {
+	color: var(--pico-primary-hover);
+	text-decoration-color: currentColor;
+}
+
+/* Links that are styled as buttons/cards must not inherit body-text hover */
+a[role="button"]:hover,
+.nav-link:hover,
+.game-card:hover,
+.tag-badge:hover,
+.brand-link:hover,
+.game-link-container:hover {
+	text-decoration: none;
+}
+
+hr {
+	border: 0;
+	border-top: 1px solid var(--pico-muted-border-color);
+	margin: var(--space-4) 0;
+}
+
+small {
+	font-size: var(--text-sm);
+}
+
+code, kbd, pre {
+	font-family: var(--font-mono);
+	font-size: 0.9em;
+}
+
+:where(a, button, [role="button"], summary, input, select, textarea,
+	[tabindex]):focus-visible {
+	outline: 2px solid var(--pico-primary);
+	outline-offset: 2px;
+	border-radius: var(--radius-sm);
+}
+
+/* Skip link — first focusable element, hidden until used */
+.skip-link {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 200;
+	padding: 0.6rem 1rem;
+	background: var(--pico-primary);
+	color: var(--pico-primary-inverse);
+	border-radius: 0 0 var(--radius-md) 0;
+	font-weight: 600;
+	text-decoration: none;
+	transform: translateY(-110%);
+	transition: transform var(--dur-2) var(--ease-out);
+}
+
+.skip-link:focus-visible {
+	transform: translateY(0);
+	outline-offset: -4px;
+}
+
+::selection {
+	background: color-mix(in srgb, var(--pico-primary) 26%, transparent);
+}
+
+/* Reserve a box for every icon placeholder so nothing shifts when it renders */
+[data-lucide],
+.lucide,
+svg.lucide {
+	width: 1em;
+	height: 1em;
+	flex-shrink: 0;
+	stroke-width: 2;
+	vertical-align: -0.14em;
+}
+
+/* --------------------------------------------------------------------------
+   4. Ambient background
+   Cheap, static, and layered so it never competes with content.
+   -------------------------------------------------------------------------- */
+.global-background-layer {
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	overflow: hidden;
+}
+
+.global-background-gradient {
+	position: absolute;
+	inset: 0;
+	background:
+		radial-gradient(90rem 40rem at 12% -10%,
+			color-mix(in srgb, var(--pico-primary) 13%, transparent), transparent 60%),
+		radial-gradient(70rem 34rem at 96% 4%,
+			color-mix(in srgb, var(--accent-500) 8%, transparent), transparent 58%);
+	opacity: 0.75;
+}
+
+[data-theme="dark"] .global-background-gradient {
+	background:
+		radial-gradient(90rem 40rem at 12% -10%,
+			color-mix(in srgb, var(--pico-primary) 22%, transparent), transparent 60%),
+		radial-gradient(70rem 34rem at 96% 4%,
+			color-mix(in srgb, var(--accent-500) 10%, transparent), transparent 58%);
+	opacity: 0.5;
+}
+
+/* Hairline grid, masked so it fades out instead of tiling to the horizon */
+.global-background-grid {
+	position: absolute;
+	inset: 0;
+	background-image:
+		linear-gradient(color-mix(in srgb, var(--pico-primary) 7%, transparent) 1px, transparent 1px),
+		linear-gradient(90deg, color-mix(in srgb, var(--pico-primary) 7%, transparent) 1px, transparent 1px);
+	background-size: 56px 56px;
+	-webkit-mask-image: radial-gradient(80rem 44rem at 50% -6%, #000 0%, transparent 78%);
+	mask-image: radial-gradient(80rem 44rem at 50% -6%, #000 0%, transparent 78%);
+	opacity: 0.6;
+}
+
+[data-theme="dark"] .global-background-grid {
+	background-image:
+		linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+	opacity: 0.5;
+}
+
+/* Kept as a no-op so templates can still emit the node without visual noise */
+.global-background-particles {
+	display: none;
+}
+
+/* --------------------------------------------------------------------------
+   5. Header & navigation
+   -------------------------------------------------------------------------- */
+header.container {
+	position: sticky;
+	top: 0;
 	z-index: 100;
+	padding-top: 0.65rem;
+	padding-bottom: 0;
 }
 
 .site-header {
 	position: relative;
-	/* 固定的卡片式背景容器 */
-	background: var(--pico-card-background-color);
+	background: color-mix(in srgb, var(--pico-card-background-color) 86%, transparent);
+	backdrop-filter: blur(14px) saturate(160%);
+	-webkit-backdrop-filter: blur(14px) saturate(160%);
 	border: 1px solid var(--pico-card-border-color);
-	border-radius: var(--pico-card-border-radius);
-	padding: 1rem 1.25rem;
-	margin-bottom: 1.5rem;
-	/* 柔和的阴影 */
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-/* 降级方案 */
-@supports not (color-mix(in srgb, black, white)) {
-	.site-header {
-		background: var(--pico-card-background-color);
-		border: 1px solid var(--pico-card-border-color);
-		border-radius: var(--pico-card-border-radius);
-	}
+	border-radius: var(--radius-lg);
+	padding: 0.7rem 1rem;
+	margin-bottom: var(--space-4);
+	box-shadow: var(--shadow-sm);
 }
 
 .header-bar {
-	display: flex;
+	display: none;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--space-2);
-	margin-bottom: 0.75rem;
 }
 
 .brand-link {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.4rem;
+	gap: 0.5rem;
 	white-space: nowrap;
-	font-size: 1em;
-	font-weight: 600;
+	font-size: var(--text-md);
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	color: var(--pico-h1-color);
+	text-decoration: none;
+}
+
+.brand-mark {
+	display: grid;
+	place-items: center;
+	width: 1.9rem;
+	height: 1.9rem;
+	border-radius: var(--radius-md);
+	background: linear-gradient(140deg, var(--brand-500), color-mix(in srgb, var(--brand-500) 55%, var(--accent-500)));
+	color: #fff;
+	box-shadow: var(--shadow-xs);
+}
+
+.brand-mark svg,
+.brand-mark [data-lucide] {
+	width: 1.05rem;
+	height: 1.05rem;
+	stroke-width: 2.4;
 }
 
 .nav-toggle {
@@ -73,33 +436,26 @@ header.container {
 	justify-content: center;
 	width: var(--touch-min);
 	height: var(--touch-min);
+	margin: 0;
+	padding: 0;
 	border: 1px solid var(--pico-card-border-color);
-	border-radius: var(--pico-border-radius);
+	border-radius: var(--radius-md);
 	background: var(--pico-muted-background-color);
-	color: var(--pico-color);
+	color: var(--fg);
+	cursor: pointer;
 }
 
 .site-nav {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 1.5rem;
+	gap: var(--space-3);
 	flex-wrap: wrap;
 }
 
 .site-nav ul,
 nav.site-nav ul,
-.site-header .site-nav ul {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 1rem !important;
-	margin: 0 !important;
-	padding: 0 !important;
-	list-style: none;
-}
-
-/* --- 专用导航栏样式 --- */
+.site-header .site-nav ul,
 .nav-primary,
 .nav-meta,
 ul.nav-primary,
@@ -108,7 +464,8 @@ ul.nav-meta,
 .site-nav .nav-meta {
 	display: flex;
 	align-items: center;
-	gap: 1rem !important;
+	flex-wrap: wrap;
+	gap: 0.3rem !important;
 	margin: 0 !important;
 	padding: 0 !important;
 	list-style: none;
@@ -123,105 +480,58 @@ ul.nav-meta,
 	flex-shrink: 0;
 }
 
-/* 导航链接基础样式 - 磨砂玻璃效果 */
-.nav-link {
+.nav-link,
+.nav-user-link {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 0.75rem !important;
-	padding: 0.55rem 1.2rem !important;
+	gap: 0.45rem !important;
+	padding: 0.4rem 0.8rem !important;
 	margin: 0 !important;
-	min-height: var(--touch-min);
-	height: var(--touch-min);
-	border-radius: var(--pico-border-radius);
+	min-height: 38px;
+	border-radius: var(--radius-md);
+	border: 1px solid transparent;
+	background: transparent;
+	color: var(--pico-muted-color);
+	font-weight: 550;
+	font-size: var(--text-base);
 	text-decoration: none;
-	transition: all 0.2s ease-in-out;
-	background: color-mix(in srgb, var(--pico-card-background-color) 70%, transparent);
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
-	border: 1px solid color-mix(in srgb, var(--pico-card-border-color) 20%, transparent);
-	color: var(--pico-color);
-	font-weight: 500;
-	font-size: 1em;
-	position: relative;
-	overflow: hidden;
 	white-space: nowrap;
 	box-sizing: border-box;
+	transition: color var(--dur-1) var(--ease-out),
+		background-color var(--dur-1) var(--ease-out),
+		border-color var(--dur-1) var(--ease-out);
 }
 
-/* 降级方案：不支持 color-mix 的浏览器 */
-@supports not (color-mix(in srgb, black, white)) {
-	.nav-link {
-		background: var(--pico-card-background-color);
-		opacity: 0.9;
-		border: 1px solid var(--pico-card-border-color);
-	}
-}
-
-.nav-link::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: -100%;
-	width: 100%;
-	height: 100%;
-	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-	transition: left 0.5s ease-in-out;
-}
-
-.nav-link:hover::before {
-	left: 100%;
-}
-
-.nav-link:hover {
-	background: color-mix(in srgb, var(--pico-card-background-color) 85%, transparent);
-	border-color: var(--pico-primary);
+.nav-link:hover,
+.nav-user-link:hover {
+	background: color-mix(in srgb, var(--pico-primary) 9%, transparent);
+	border-color: color-mix(in srgb, var(--pico-primary) 22%, transparent);
 	color: var(--pico-primary);
-	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-@supports not (color-mix(in srgb, black, white)) {
-	.nav-link:hover {
-		background: var(--pico-card-background-color);
-		opacity: 1;
-	}
-}
-
-.nav-link:active {
-	transform: translateY(0);
+.nav-link:active,
+.nav-user-link:active {
+	transform: translateY(1px);
 }
 
 .nav-link i,
+.nav-link svg,
+.nav-user-link i,
+.nav-user-link svg,
 .nav-button i,
-.nav-user-link i {
-	width: 1.1em;
-	height: 1.1em;
-	flex-shrink: 0;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
+.nav-button svg {
+	width: 1.05em;
+	height: 1.05em;
 }
 
-/* 确保所有导航按钮垂直居中对齐 */
-.nav-link,
-.nav-button,
-.nav-user-link,
-.nav-button-icon {
-	vertical-align: middle;
-}
-
-.nav-link span {
-	position: relative;
-	z-index: 1;
-}
-
-/* 当前页面高亮 */
+/* Current page: filled pill rather than a shouty solid block */
 .nav-link[aria-current="page"],
 .nav-link.active {
 	background: var(--pico-primary);
-	color: var(--pico-primary-inverse);
 	border-color: var(--pico-primary);
+	color: var(--pico-primary-inverse);
+	font-weight: 600;
 }
 
 .nav-link[aria-current="page"]:hover,
@@ -231,238 +541,125 @@ ul.nav-meta,
 	color: var(--pico-primary-inverse);
 }
 
-/* 导航按钮样式 */
 .nav-button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 0.7rem;
-	padding: 0.55rem 1.1rem;
-	min-height: var(--touch-min);
-	height: var(--touch-min);
-	border-radius: var(--pico-border-radius);
-	text-decoration: none;
-	transition: all 0.2s ease-in-out;
+	gap: 0.45rem;
+	padding: 0.4rem 0.9rem;
+	min-height: 38px;
+	border-radius: var(--radius-md);
 	background: var(--pico-primary);
-	color: var(--pico-primary-inverse);
 	border: 1px solid var(--pico-primary);
-	font-weight: 500;
-	font-size: 1em;
-	cursor: pointer;
+	color: var(--pico-primary-inverse);
+	font-weight: 600;
+	font-size: var(--text-base);
+	text-decoration: none;
 	white-space: nowrap;
+	cursor: pointer;
 	box-sizing: border-box;
+	transition: background-color var(--dur-1) var(--ease-out),
+		border-color var(--dur-1) var(--ease-out),
+		transform var(--dur-1) var(--ease-out);
 }
 
 .nav-button:hover {
 	background: var(--pico-primary-hover);
 	border-color: var(--pico-primary-hover);
-	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	color: var(--pico-primary-inverse);
 }
-
 
 .nav-button-outline {
 	background: transparent;
-	color: var(--pico-secondary-foreground);
+	color: var(--pico-secondary);
 	border-color: var(--pico-secondary-border);
 }
 
 .nav-button-outline:hover {
 	background: var(--pico-secondary-hover-background);
-	color: var(--pico-secondary-hover-foreground);
+	color: var(--pico-secondary-hover);
 	border-color: var(--pico-secondary-hover-border);
 }
 
 .nav-button-secondary {
 	background: var(--pico-secondary-background);
-	color: var(--pico-secondary-foreground);
+	color: var(--pico-secondary);
 	border-color: var(--pico-secondary-border);
 }
 
 .nav-button-secondary:hover {
 	background: var(--pico-secondary-hover-background);
-	color: var(--pico-secondary-hover-foreground);
+	color: var(--pico-secondary-hover);
 	border-color: var(--pico-secondary-hover-border);
 }
 
-/* 用户链接样式 */
-.nav-user-link {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: 0.4rem;
-	padding: 0.55rem 0.95rem;
-	min-height: var(--touch-min);
-	border-radius: var(--pico-border-radius);
-	text-decoration: none;
-	transition: all 0.2s ease-in-out;
-	background: color-mix(in srgb, var(--pico-card-background-color) 70%, transparent);
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
-	border: 1px solid color-mix(in srgb, var(--pico-card-border-color) 20%, transparent);
-	color: var(--pico-color);
-	font-weight: 500;
-	font-size: 1em;
-	white-space: nowrap;
-}
-
-@supports not (color-mix(in srgb, black, white)) {
-	.nav-user-link {
-		background: var(--pico-card-background-color);
-		opacity: 0.9;
-		border: 1px solid var(--pico-card-border-color);
-	}
-}
-
-.nav-user-link:hover {
-	background: color-mix(in srgb, var(--pico-card-background-color) 85%, transparent);
-	border-color: var(--pico-primary);
-	color: var(--pico-primary);
-	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-@supports not (color-mix(in srgb, black, white)) {
-	.nav-user-link:hover {
-		background: var(--pico-card-background-color);
-		opacity: 1;
-	}
-}
-
-
-/* 主题切换按钮图标样式 */
+/* Theme toggle: icon swaps with a small cross-fade, no layout jump */
 .nav-button-icon {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--touch-min);
-	height: var(--touch-min);
-	min-width: var(--touch-min);
-	min-height: var(--touch-min);
+	position: relative;
+	width: 38px;
+	height: 38px;
+	min-width: 38px;
+	min-height: 38px;
 	padding: 0;
-	border-radius: var(--pico-border-radius);
-	background: color-mix(in srgb, var(--pico-card-background-color) 70%, transparent);
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
-	border: 1px solid color-mix(in srgb, var(--pico-card-border-color) 20%, transparent);
-	color: var(--pico-color);
-	transition: all 0.2s ease-in-out;
+	margin: 0;
+	border-radius: var(--radius-md);
+	border: 1px solid var(--pico-muted-border-color);
+	background: transparent;
+	color: var(--fg-muted);
 	cursor: pointer;
-	flex-shrink: 0;
 	box-sizing: border-box;
+	transition: color var(--dur-1) var(--ease-out),
+		background-color var(--dur-1) var(--ease-out),
+		border-color var(--dur-1) var(--ease-out);
 }
 
 .nav-button-icon:hover {
-	background: color-mix(in srgb, var(--pico-card-background-color) 85%, transparent);
-	border-color: var(--pico-primary);
+	background: color-mix(in srgb, var(--pico-primary) 9%, transparent);
+	border-color: color-mix(in srgb, var(--pico-primary) 26%, transparent);
 	color: var(--pico-primary);
-	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-@supports not (color-mix(in srgb, black, white)) {
-	.nav-button-icon {
-		background: var(--pico-card-background-color);
-		opacity: 0.9;
-		border: 1px solid var(--pico-card-border-color);
-	}
-	.nav-button-icon:hover {
-		opacity: 1;
-	}
+.nav-button-icon svg,
+.nav-button-icon [data-lucide] {
+	width: 1.1rem;
+	height: 1.1rem;
 }
 
-.nav-button-icon i {
-	width: 1.15em;
-	height: 1.15em;
-	flex-shrink: 0;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
+#theme-switcher {
+	position: relative;
 }
 
-/* 暗色主题下的调整 */
-[data-theme="dark"] .nav-link,
-[data-theme="dark"] .nav-user-link,
-[data-theme="dark"] .nav-button-icon {
-	background: color-mix(in srgb, var(--pico-card-background-color) 80%, transparent);
-	border-color: color-mix(in srgb, var(--pico-card-border-color) 30%, transparent);
+#theme-switcher .light-icon,
+#theme-switcher .dark-icon {
+	position: absolute;
+	inset: 0;
+	margin: auto;
+	transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
 }
 
-[data-theme="dark"] .nav-link:hover,
-[data-theme="dark"] .nav-user-link:hover,
-[data-theme="dark"] .nav-button-icon:hover {
-	background: color-mix(in srgb, var(--pico-card-background-color) 90%, transparent);
-	border-color: var(--pico-primary);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-/* 暗色主题下的导航栏分隔 */
-[data-theme="dark"] .site-header {
-	background: var(--pico-card-background-color);
-	border: 1px solid var(--pico-card-border-color);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.15);
-}
-
-@supports not (color-mix(in srgb, black, white)) {
-	[data-theme="dark"] .nav-link,
-	[data-theme="dark"] .nav-user-link,
-	[data-theme="dark"] .nav-button-icon {
-		background: var(--pico-card-background-color);
-		opacity: 0.85;
-	}
-	[data-theme="dark"] .nav-link:hover,
-	[data-theme="dark"] .nav-user-link:hover,
-	[data-theme="dark"] .nav-button-icon:hover {
-		opacity: 0.95;
-	}
-	[data-theme="dark"] .site-header {
-		background: var(--pico-card-background-color);
-		border: 1px solid var(--pico-card-border-color);
-		border-radius: var(--pico-card-border-radius);
-	}
-}
-
-/* 移动端导航栏调整 */
-@media (max-width: 768px) {
-	.nav-link,
-	.nav-button {
-		width: 100%;
-		justify-content: flex-start;
-		padding: 0.7rem 1rem;
-		min-height: 2.75rem;
-	}
-	
-	.nav-link span,
-	.nav-button span {
-		flex: 1;
-	}
-	
-	.nav-button-icon {
-		width: 100%;
-		height: 2.75rem;
-		min-height: 2.75rem;
-		justify-content: center;
-	}
-	
-	.site-nav {
-		gap: 1rem;
-	}
-	
-	.site-nav ul {
-		gap: 0.6rem;
-	}
+/* The inline `display` set by theme-switcher.js wins, so animate only opacity */
+#theme-switcher .light-icon[style*="none"],
+#theme-switcher .dark-icon[style*="none"] {
+	opacity: 0;
+	transform: rotate(-40deg) scale(0.8);
 }
 
 .nav-hello {
-	white-space: nowrap;
 	display: flex;
 	align-items: center;
+	white-space: nowrap;
 }
 
 .nav-overlay {
 	display: none;
 }
 
+/* --------------------------------------------------------------------------
+   6. Layout helpers
+   -------------------------------------------------------------------------- */
 .stack-sm {
 	display: flex;
 	flex-direction: column;
@@ -472,19 +669,30 @@ ul.nav-meta,
 .scroll-x {
 	overflow-x: auto;
 	-webkit-overflow-scrolling: touch;
+	scrollbar-width: thin;
+	scrollbar-color: var(--pico-muted-border-color) transparent;
+}
+
+.scroll-x::-webkit-scrollbar {
+	height: 8px;
+}
+
+.scroll-x::-webkit-scrollbar-thumb {
+	background: var(--pico-muted-border-color);
+	border-radius: var(--radius-pill);
 }
 
 .chip-row {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.5rem;
+	gap: 0.4rem;
 	align-items: center;
-	padding: 0.25rem 0;
+	padding: 0.2rem 0;
 }
 
 .chip-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
 	gap: 0.35rem;
 	align-items: stretch;
 }
@@ -492,38 +700,33 @@ ul.nav-meta,
 .chip-grid button,
 .chip-grid a[role="button"] {
 	width: 100%;
-	min-height: 30px;
+	min-height: 34px;
+	margin: 0;
 	padding: 0.3rem 0.45rem;
 	display: inline-flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 	text-align: center;
-	line-height: 1.2;
+	line-height: 1.25;
 	white-space: normal;
-	gap: 0.08rem;
+	gap: 0.1rem;
 	text-decoration: none;
-	font-size: 0.8rem;
+	font-size: var(--text-sm);
+	font-weight: 500;
+	border-radius: var(--radius-sm);
 }
 
 .chip-grid button small,
 .chip-grid a[role="button"] small {
 	display: block;
-	margin-top: 0.03rem;
-	font-size: 0.7em;
-}
-
-.chip-row::-webkit-scrollbar {
-	height: 6px;
-}
-
-.chip-row::-webkit-scrollbar-thumb {
-	background: var(--pico-muted-border-color);
-	border-radius: 999px;
+	margin-top: 0.05rem;
+	font-size: 0.85em;
+	opacity: 0.75;
 }
 
 .chip-meta {
-	opacity: 0.7;
+	opacity: 0.72;
 }
 
 .filters-grid {
@@ -534,26 +737,610 @@ ul.nav-meta,
 	grid-column: span 2;
 }
 
-.view-switcher button {
-	min-height: var(--touch-min);
+.view-switcher button,
+#view-switcher button {
+	min-height: 38px;
+	padding: 0.4rem 0.95rem;
+	background: transparent;
+	border: 1px solid var(--pico-muted-border-color);
+	color: var(--fg-muted);
+	box-shadow: none;
+}
+
+.view-switcher button:hover,
+#view-switcher button:hover {
+	background: color-mix(in srgb, var(--pico-primary) 9%, transparent);
+	border-color: color-mix(in srgb, var(--pico-primary) 30%, transparent);
+	color: var(--pico-primary);
+}
+
+.view-switcher button.active,
+#view-switcher button.active {
+	background: var(--pico-primary);
+	border-color: var(--pico-primary);
+	color: var(--pico-primary-inverse);
 }
 
 .filter-details {
-	margin-top: 1rem;
+	margin-top: var(--space-3);
 }
 
-/* 筛选区域：展开时根据内容自适应，标签已变小 */
 .filter-details .chip-grid {
 	position: relative;
+}
+
+/* Filters live inside one card: summaries become ghost rows, not pills */
+.filters-card {
+	padding: var(--space-3);
+	margin-bottom: var(--space-4);
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--radius-lg);
+	background: var(--pico-card-background-color);
+	box-shadow: var(--shadow-sm);
+}
+
+.filters-card #games-filter-form {
+	padding: 0;
+	margin-bottom: 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.filters-card .filter-details {
+	margin-top: var(--space-3);
+	padding-top: var(--space-2);
+	border-top: 1px solid var(--pico-muted-border-color);
+}
+
+.filters-card .filter-summary,
+.filters-card .filter-summary[role="button"] {
+	width: 100%;
+	margin: 0;
+	padding: 0.4rem 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--fg);
+	--pico-color: var(--fg);
+	font-weight: 600;
+}
+
+.filters-card .filter-summary:hover,
+.filters-card .filter-summary[role="button"]:hover {
+	background: transparent;
+	color: var(--pico-primary);
+	--pico-color: var(--pico-primary);
+}
+
+.filter-summary .filter-chevron {
+	margin-left: auto;
+	transition: transform var(--dur-2) var(--ease-out);
+}
+
+/* Pico draws its own details caret; we use a lucide chevron instead */
+.filter-summary::after,
+.filter-summary[role="button"]::after {
+	content: none;
+	display: none;
+}
+
+.filter-details[open] .filter-chevron {
+	transform: rotate(180deg);
+}
+
+.filters-card .actions-row {
+	margin-top: var(--space-3);
+	padding-top: var(--space-3);
+	border-top: 1px solid var(--pico-muted-border-color);
+}
+
+.filters-card .actions-row:empty {
+	display: none;
+}
+
+/* Rating badge overlaid on cover art */
+.card-score {
+	position: absolute;
+	top: 0.45rem;
+	right: 0.45rem;
+	z-index: 2;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.15rem 0.5rem;
+	border-radius: var(--radius-pill);
+	background: rgba(15, 18, 25, 0.72);
+	color: #ffd43b;
+	font-size: var(--text-xs);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+	pointer-events: none;
+}
+
+.card-score svg {
+	width: 0.75rem;
+	height: 0.75rem;
+	fill: currentColor;
+}
+
+/* Numbered pager */
+.page-btn,
+.page-num {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 2.25rem;
+	height: 2.25rem;
+	margin: 0;
+	padding: 0 0.5rem;
+	border: 1px solid var(--pico-border-color);
+	border-radius: var(--radius-md);
+	background: var(--pico-card-background-color);
+	color: var(--pico-color);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	text-decoration: none;
+	transition: color var(--dur-1) var(--ease-out),
+		border-color var(--dur-1) var(--ease-out),
+		background-color var(--dur-1) var(--ease-out);
+}
+
+.page-btn:hover,
+.page-num:hover {
+	border-color: var(--pico-primary);
+	color: var(--pico-primary);
+}
+
+.page-num.current {
+	background: var(--pico-primary);
+	border-color: var(--pico-primary);
+	color: var(--pico-primary-inverse);
+}
+
+.page-gap {
+	padding: 0 0.25rem;
+	color: var(--pico-muted-color);
+}
+
+/* Stats page: filter card + table polish */
+.stats-filters .section-head {
+	margin-bottom: var(--space-3);
+}
+
+.stats-filter-actions {
+	margin-top: var(--space-3);
+	padding-top: var(--space-3);
+	border-top: 1px solid var(--pico-muted-border-color);
+}
+
+.stats-table tbody tr {
+	transition: background-color var(--dur-1) var(--ease-out);
+}
+
+.stats-table tbody tr:hover {
+	background: color-mix(in srgb, var(--pico-primary) 6%, transparent);
+}
+
+.table-action {
+	display: inline-block;
+	padding: 0.2rem 0.7rem;
+	border: 1px solid var(--pico-border-color);
+	border-radius: var(--radius-pill);
+	color: var(--pico-muted-color);
+	font-size: var(--text-xs);
+	font-weight: 600;
+	text-decoration: none;
+	white-space: nowrap;
+	transition: color var(--dur-1) var(--ease-out),
+		border-color var(--dur-1) var(--ease-out);
+}
+
+.table-action:hover {
+	border-color: var(--pico-primary);
+	color: var(--pico-primary);
+}
+
+/* Form sections: grouped fieldsets with icon legends */
+input[type="file"] {
+	padding: 0.55rem;
+	border: 1px dashed var(--pico-form-element-border-color);
+	border-radius: var(--radius-md);
+	background: var(--pico-form-element-background-color);
+}
+
+input[type="file"]::file-selector-button {
+	margin-right: 0.75rem;
+	padding: 0.4rem 0.9rem;
+	border: 0;
+	border-radius: var(--radius-sm);
+	background: var(--pico-secondary-background);
+	color: var(--pico-color);
+	font: inherit;
+	cursor: pointer;
+	transition: background-color var(--dur-1) var(--ease-out);
+}
+
+input[type="file"]::file-selector-button:hover {
+	background: var(--pico-secondary-hover-background);
+}
+
+.form-section {
+	margin: 0 0 var(--space-3);
+	padding: var(--space-3);
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--radius-md);
+	background: var(--pico-card-sectioning-background-color);
+}
+
+.form-section legend {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0 0.5rem;
+	margin-left: -0.5rem;
+	color: var(--pico-color);
+	font-size: var(--text-sm);
+	font-weight: 650;
+	letter-spacing: 0.04em;
+}
+
+.form-section legend svg {
+	width: 1rem;
+	height: 1rem;
+	color: var(--pico-primary);
+}
+
+.form-section > label:last-of-type,
+.form-section > div:last-of-type {
+	margin-bottom: 0;
+}
+
+/* Page head: icon chip + title (+ optional right action) */
+.page-head {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+	margin-bottom: var(--space-3);
+	padding-bottom: var(--space-3);
+	border-bottom: 1px solid var(--pico-muted-border-color);
+}
+
+.page-head h1,
+.page-head h2 {
+	margin: 0;
+	font-size: var(--text-xl);
+}
+
+.page-head p {
+	margin: 0.15rem 0 0;
+	color: var(--pico-muted-color);
+	font-size: var(--text-sm);
+}
+
+.page-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.4rem;
+	height: 2.4rem;
+	flex-shrink: 0;
+	border-radius: var(--radius-md);
+	color: var(--pico-primary);
+	background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+	border: 1px solid color-mix(in srgb, var(--pico-primary) 20%, transparent);
+}
+
+.page-icon svg {
+	width: 1.2rem;
+	height: 1.2rem;
+}
+
+.page-action {
+	margin: 0 0 0 auto;
+}
+
+/* SVG radar charts (dependency-free) */
+.radar-holder {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.radar-svg {
+	width: 100%;
+	height: 100%;
+	max-height: 340px;
+	display: block;
+}
+
+.radar-grid polygon,
+.radar-grid line {
+	fill: none;
+	stroke: var(--pico-muted-border-color);
+	stroke-width: 1;
+}
+
+.radar-area {
+	fill: color-mix(in srgb, currentColor 18%, transparent);
+	stroke: currentColor;
+	stroke-width: 2;
+	stroke-linejoin: round;
+}
+
+.radar-dots circle {
+	fill: currentColor;
+}
+
+.radar-svg text {
+	fill: var(--pico-color);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.radar-svg text.radar-value {
+	font-size: 11px;
+	font-weight: 700;
+	fill: currentColor;
+}
+
+/* Articles */
+.articles-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 1rem;
+}
+
+.article-card {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 1rem;
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--radius-lg);
+	background: var(--pico-card-background-color);
+	box-shadow: var(--shadow-xs);
+	transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out);
+}
+
+.article-card:hover {
+	transform: translateY(-3px);
+	box-shadow: var(--shadow-md);
+	border-color: color-mix(in srgb, var(--pico-primary) 35%, var(--pico-card-border-color));
+}
+
+.article-card-head {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
+.article-card-head a {
+	font-size: 1.05rem;
+	font-weight: 700;
+}
+
+.article-card-meta {
+	color: var(--pico-muted-color);
+}
+
+.article-card-excerpt {
+	margin: 0;
+	color: var(--pico-muted-color);
+}
+
+.article-card .article-more {
+	margin-top: auto;
+}
+
+/* Rendered markdown / html content */
+.prose {
+	line-height: 1.75;
+}
+
+.prose img {
+	max-width: 100%;
+	height: auto;
+	border-radius: var(--radius-md);
+}
+
+.prose h2,
+.prose h3,
+.prose h4 {
+	margin-top: 1.6em;
+}
+
+.prose blockquote {
+	margin: 1.2em 0;
+	padding: 0.6em 1.2em;
+	border-left: 3px solid color-mix(in srgb, var(--pico-primary) 50%, transparent);
+	border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+	background: color-mix(in srgb, var(--pico-primary) 6%, transparent);
+	color: var(--pico-muted-color);
+}
+
+.prose pre {
+	padding: 0.9rem 1.1rem;
+	border-radius: var(--radius-md);
+	background: var(--pico-code-background-color);
+	overflow-x: auto;
+}
+
+.prose table {
+	display: block;
+	overflow-x: auto;
+}
+
+/* Static entry callout */
+.static-entry {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+	margin-top: var(--space-4);
+	padding: var(--space-3);
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--radius-md);
+	background: var(--pico-card-sectioning-background-color);
+}
+
+.static-entry div {
+	min-width: 0;
+}
+
+.static-entry small {
+	display: block;
+	color: var(--pico-muted-color);
+}
+
+.static-entry a {
+	margin-left: auto;
+}
+
+.admin-row {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+	margin-top: var(--space-4);
+	padding-top: var(--space-3);
+	border-top: 1px solid var(--pico-muted-border-color);
+}
+
+.admin-row form {
+	margin: 0;
+}
+
+/* Bounty detail */
+.status-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.3rem 0.8rem;
+	border-radius: 999px;
+	font-size: var(--text-sm);
+	font-weight: 650;
+	margin-left: auto;
+}
+
+.status-pill svg {
+	width: 1rem;
+	height: 1rem;
+}
+
+.status-done {
+	color: var(--pico-success);
+	background: color-mix(in srgb, var(--pico-success) 12%, transparent);
+	border: 1px solid color-mix(in srgb, var(--pico-success) 30%, transparent);
+}
+
+.status-active {
+	color: var(--pico-primary);
+	background: color-mix(in srgb, var(--pico-primary) 10%, transparent);
+	border: 1px solid color-mix(in srgb, var(--pico-primary) 28%, transparent);
+}
+
+.meta-row {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	flex-wrap: wrap;
+	margin-bottom: var(--space-4);
+}
+
+.meta-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	color: var(--pico-muted-color);
+	font-weight: 600;
+}
+
+.meta-item svg {
+	width: 1rem;
+	height: 1rem;
+}
+
+.meta-reward {
+	color: var(--pico-primary);
+}
+
+.bounty-section {
+	margin-bottom: var(--space-4);
+}
+
+.pre-wrap {
+	white-space: pre-wrap;
+	line-height: 1.7;
+}
+
+.break-all {
+	word-break: break-all;
+}
+
+.required-mark {
+	color: var(--pico-del-color);
+}
+
+.danger-text {
+	color: var(--pico-del-color);
+}
+
+.form-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+	margin-top: var(--space-3);
+}
+
+/* Comments */
+.comment-form {
+	margin-bottom: var(--space-4);
+}
+
+.comment-list {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.comment-card {
+	padding: 1rem;
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--radius-md);
+	background: var(--pico-card-sectioning-background-color);
+}
+
+.comment-card-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.75rem;
+	margin-bottom: 0.5rem;
+}
+
+.comment-card-head small {
+	color: var(--pico-muted-color);
 }
 
 .filter-summary {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.35rem;
+	gap: 0.4rem;
+	font-weight: 600;
 }
 
-.filter-summary i {
+.filter-summary svg,
+.filter-summary [data-lucide] {
 	width: 1em;
 	height: 1em;
 }
@@ -561,74 +1348,1460 @@ ul.nav-meta,
 .actions-row {
 	display: flex;
 	justify-content: flex-start;
+	gap: var(--space-2);
+	flex-wrap: wrap;
 }
 
 .clear-filters {
-	min-height: var(--touch-min);
+	min-height: 38px;
 }
 
 .game-list-wrap {
-	margin-top: 1rem;
 	position: relative;
+	margin-top: var(--space-3);
 }
 
+/* --------------------------------------------------------------------------
+   7. Cards & the game list
+   -------------------------------------------------------------------------- */
+article {
+	border-radius: var(--radius-lg);
+}
+
+article > header h3,
+article > header h2 {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 0;
+}
+
+.game-link-container {
+	display: block;
+	text-decoration: none;
+	border-radius: var(--pico-card-border-radius);
+}
+
+.game-card {
+	display: flex;
+	width: 100%;
+	height: 100%;
+	background-color: var(--pico-card-background-color);
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--pico-card-border-radius);
+	overflow: hidden;
+	text-decoration: none;
+	transition: transform var(--dur-2) var(--ease-out),
+		box-shadow var(--dur-2) var(--ease-out),
+		border-color var(--dur-2) var(--ease-out);
+}
+
+.game-card-img-container {
+	position: relative;
+	flex-shrink: 0;
+	aspect-ratio: 3 / 4;
+	overflow: hidden;
+	background-color: var(--pico-muted-background-color);
+}
+
+.game-card-img,
+.img-placeholder {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.game-card-img {
+	display: block;
+	transition: transform var(--dur-3) var(--ease-out), opacity var(--dur-3) var(--ease-out);
+}
+
+/* Fade the cover in once decoded instead of popping from blank */
+.game-card-img[loading="lazy"] {
+	background: var(--pico-muted-background-color);
+}
+
+.img-placeholder {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--pico-muted-color);
+	background:
+		repeating-linear-gradient(135deg,
+			color-mix(in srgb, var(--pico-muted-color) 6%, transparent) 0 8px,
+			transparent 8px 16px);
+}
+
+.img-placeholder svg,
+.img-placeholder[data-lucide] {
+	width: 1.6rem;
+	height: 1.6rem;
+	opacity: 0.55;
+}
+
+.game-card-body {
+	display: flex;
+	flex-direction: column;
+	padding: var(--pico-card-body-padding, 0.85rem);
+	overflow: hidden;
+}
+
+.game-card-body strong {
+	display: block;
+	color: var(--pico-color);
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.game-card-body small {
+	color: var(--pico-muted-color);
+	margin-top: 0.2rem;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Hover: lift the card and zoom the art slightly — no 3D rotation */
+.game-link-container:hover .game-card,
+.game-link-container:focus-visible .game-card {
+	transform: translateY(-3px);
+	box-shadow: var(--shadow-md);
+	border-color: color-mix(in srgb, var(--pico-primary) 45%, var(--pico-card-border-color));
+}
+
+.game-link-container:hover .game-card-img {
+	transform: scale(1.045);
+}
+
+.game-link-container:active .game-card {
+	transform: translateY(-1px);
+}
+
+/* --- View: cards (default) --- */
+#game-list {
+	transition: opacity var(--dur-2) var(--ease-out);
+}
+
+#game-list.view-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
+	gap: 0.9rem;
+}
+
+#game-list.view-cards .game-card {
+	flex-direction: column;
+}
+
+#game-list.view-cards .game-card-img-container {
+	width: 100%;
+	aspect-ratio: 3 / 4;
+}
+
+#game-list.view-cards .game-card-body {
+	flex-grow: 1;
+	justify-content: flex-start;
+}
+
+/* --- View: list --- */
+#game-list.view-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+}
+
+#game-list.view-list .game-link-container:hover .game-card {
+	transform: none;
+	box-shadow: var(--shadow-sm);
+}
+
+#game-list.view-list .game-card {
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 0.85rem;
+	padding: 0.65rem 0.85rem;
+}
+
+#game-list.view-list .game-card-img-container {
+	width: 76px;
+	height: 102px;
+	aspect-ratio: auto;
+	border-radius: var(--radius-sm);
+	flex-shrink: 0;
+}
+
+#game-list.view-list .game-card-body {
+	justify-content: flex-start;
+	align-items: flex-start;
+	gap: 0.25rem;
+	padding: 0.15rem 0;
+}
+
+#game-list.view-list .game-card-body strong {
+	font-size: var(--text-md);
+}
+
+#game-list.view-list .game-card-body .list-meta {
+	color: var(--pico-muted-color);
+	font-size: var(--text-sm);
+	line-height: 1.5;
+	max-width: 74ch;
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+#game-list.view-list .game-card-body strong {
+	max-width: 74ch;
+}
+
+/* --- View: compact --- */
+#game-list.view-compact {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(204px, 1fr));
+	gap: 0.4rem;
+}
+
+#game-list.view-compact .game-link-container {
+	width: 100%;
+}
+
+#game-list.view-compact .game-link-container:hover .game-card {
+	transform: none;
+	box-shadow: none;
+	border-color: var(--pico-primary);
+}
+
+#game-list.view-compact .game-card {
+	flex-direction: row;
+	align-items: center;
+	padding: 0.3rem 0.65rem;
+	width: 100%;
+}
+
+#game-list.view-compact .game-card-img-container {
+	display: block;
+	width: 30px;
+	height: 40px;
+	aspect-ratio: auto;
+	margin-right: 0.7rem;
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+}
+
+#game-list.view-compact .game-link-container:hover .game-card-img {
+	transform: none;
+}
+
+#game-list.view-compact .game-card-body {
+	padding: 0;
+	justify-content: center;
+}
+
+#game-list.view-compact .game-card-body strong {
+	font-size: var(--text-base);
+}
+
+#game-list.view-compact .game-card-body small {
+	display: none;
+}
+
+/* --- Section headers (shared) --- */
+.section-head {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	margin-bottom: var(--space-3);
+}
+
+.section-head h2 {
+	margin: 0;
+	font-size: var(--text-lg);
+	font-weight: 650;
+	letter-spacing: -0.01em;
+}
+
+.section-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
+	flex-shrink: 0;
+	border-radius: var(--radius-md);
+	color: var(--pico-primary);
+	background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+	border: 1px solid color-mix(in srgb, var(--pico-primary) 20%, transparent);
+}
+
+.section-icon svg {
+	width: 1.05rem;
+	height: 1.05rem;
+}
+
+.section-more {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	font-size: var(--text-sm);
+	font-weight: 600;
+	color: var(--pico-muted-color);
+	text-decoration: none;
+	transition: color var(--dur-1) var(--ease-out);
+}
+
+.section-more svg {
+	width: 0.9rem;
+	height: 0.9rem;
+	transition: transform var(--dur-1) var(--ease-out);
+}
+
+.section-more:hover {
+	color: var(--pico-primary);
+}
+
+.section-more:hover svg {
+	transform: translateX(2px);
+}
+
+/* --- Home: hero --- */
+.hero {
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+	gap: var(--space-5);
+	align-items: center;
+	margin-bottom: var(--space-5);
+	padding: clamp(2rem, 4.5vw, 3.5rem) clamp(1.25rem, 3.5vw, 3rem);
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: calc(var(--radius-lg) + 0.35rem);
+	background:
+		radial-gradient(48rem 26rem at 6% -24%, color-mix(in srgb, var(--pico-primary) 16%, transparent), transparent 62%),
+		radial-gradient(40rem 22rem at 102% 128%, color-mix(in srgb, var(--accent-500) 13%, transparent), transparent 60%),
+		var(--pico-card-background-color);
+	box-shadow: var(--shadow-md);
+	overflow: hidden;
+}
+
+.hero-kicker {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	margin: 0 0 var(--space-3);
+	padding: 0.28rem 0.75rem;
+	border-radius: var(--radius-pill);
+	border: 1px solid color-mix(in srgb, var(--pico-primary) 26%, transparent);
+	background: color-mix(in srgb, var(--pico-primary) 9%, transparent);
+	color: var(--pico-primary);
+	font-size: var(--text-xs);
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.hero-kicker::before {
+	content: "";
+	width: 0.4rem;
+	height: 0.4rem;
+	border-radius: 50%;
+	background: var(--accent-500);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-500) 22%, transparent);
+}
+
+.hero h1 {
+	margin: 0 0 var(--space-3);
+	font-size: clamp(2.1rem, 4.4vw, 3.1rem);
+	line-height: 1.14;
+	letter-spacing: -0.028em;
+}
+
+.hero-accent {
+	display: block;
+	margin-top: 0.35rem;
+	font-size: 0.56em;
+	font-weight: 600;
+	letter-spacing: -0.015em;
+	background: linear-gradient(92deg, var(--pico-primary) 0%, #7048e8 55%, var(--accent-500) 100%);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+.hero-sub {
+	margin: 0;
+	max-width: 46ch;
+	color: var(--pico-muted-color);
+	font-size: var(--text-md);
+}
+
+.hero-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	margin-top: var(--space-4);
+}
+
+.hero-actions [role="button"] {
+	margin: 0;
+}
+
+.hero-actions [role="button"] svg {
+	margin-right: 0.35rem;
+}
+
+.hero-stats {
+	display: flex;
+	margin: var(--space-4) 0 0;
+}
+
+.hero-stats > div {
+	padding: 0 var(--space-4);
+	border-left: 1px solid var(--pico-muted-border-color);
+}
+
+.hero-stats > div:first-child {
+	padding-left: 0;
+	border-left: 0;
+}
+
+.hero-stats dt {
+	margin: 0;
+	color: var(--pico-muted-color);
+	font-size: var(--text-xs);
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.hero-stats dd {
+	margin: 0;
+	color: var(--pico-color);
+	font-size: var(--text-xl);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Cover collage — three tilted sleeves over a soft glow */
+.hero-art {
+	position: relative;
+	height: clamp(240px, 24vw, 330px);
+}
+
+.hero-art-glow {
+	position: absolute;
+	inset: 10% 4%;
+	z-index: 1;
+	background: radial-gradient(closest-side, color-mix(in srgb, var(--pico-primary) 32%, transparent), transparent 72%);
+	filter: blur(20px);
+}
+
+.hero-cover {
+	position: absolute;
+	width: 45%;
+	aspect-ratio: 3 / 4;
+	object-fit: cover;
+	border-radius: var(--radius-md);
+	border: 1px solid color-mix(in srgb, var(--pico-card-border-color) 70%, transparent);
+	box-shadow: var(--shadow-lg);
+	background: var(--pico-muted-background-color);
+}
+
+.hero-cover-1 {
+	left: 3%;
+	top: 8%;
+	z-index: 3;
+	transform: rotate(-6deg);
+}
+
+.hero-cover-2 {
+	left: 29%;
+	top: 0;
+	z-index: 4;
+	transform: rotate(2deg) scale(1.07);
+}
+
+.hero-cover-3 {
+	right: 2%;
+	top: 13%;
+	z-index: 2;
+	transform: rotate(7deg);
+}
+
+/* --- Home: main two-column band --- */
+.home-main {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+	gap: var(--space-5);
+	align-items: start;
+	margin-bottom: var(--space-5);
+}
+
+.home-game-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.9rem;
+}
+
+.home-game-grid .game-link-container {
+	display: block;
+	text-decoration: none;
+	border-radius: var(--pico-card-border-radius);
+}
+
+.home-game-grid .game-card {
+	flex-direction: column;
+}
+
+.home-game-grid .game-card-img-container {
+	width: 100%;
+	aspect-ratio: 3 / 4;
+}
+
+.home-game-grid .game-card-body {
+	flex-grow: 1;
+}
+
+/* Ranked list — reads well even with only a handful of entries */
+.rank-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+}
+
+.rank-list a {
+	display: grid;
+	grid-template-columns: auto auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 0.65rem;
+	padding: 0.5rem 0.6rem;
+	border: 1px solid transparent;
+	border-radius: var(--radius-md);
+	text-decoration: none;
+	transition: background-color var(--dur-1) var(--ease-out),
+		border-color var(--dur-1) var(--ease-out);
+}
+
+.rank-list a:hover {
+	background: color-mix(in srgb, var(--pico-primary) 7%, transparent);
+	border-color: color-mix(in srgb, var(--pico-primary) 20%, transparent);
+}
+
+.rank-no {
+	width: 1.4rem;
+	text-align: center;
+	color: var(--pico-muted-color);
+	font-size: var(--text-sm);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.rank-list li:nth-child(-n+3) .rank-no {
+	color: var(--accent-500);
+}
+
+.rank-cover {
+	width: 34px;
+	height: 45px;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	border-radius: var(--radius-sm);
+	background: var(--pico-muted-background-color);
+	color: var(--pico-muted-color);
+}
+
+.rank-cover img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.rank-info strong {
+	display: block;
+	color: var(--pico-color);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.rank-info small {
+	display: block;
+	color: var(--pico-muted-color);
+	font-size: var(--text-xs);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.rank-score {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	color: var(--accent-500);
+	font-size: var(--text-sm);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.rank-score svg {
+	width: 0.85rem;
+	height: 0.85rem;
+	fill: currentColor;
+}
+
+.home-empty-panel {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-5) var(--space-3);
+	border: 1px dashed var(--pico-border-color);
+	border-radius: var(--radius-lg);
+	background: color-mix(in srgb, var(--pico-card-background-color) 55%, transparent);
+	color: var(--pico-muted-color);
+	text-align: center;
+}
+
+.home-empty-panel > svg {
+	width: 1.6rem;
+	height: 1.6rem;
+	opacity: 0.6;
+}
+
+.home-empty-panel p {
+	margin: 0;
+}
+
+.home-empty-panel [role="button"] {
+	margin: var(--space-1) 0 0;
+}
+
+/* --- Home: tags + contribute CTA --- */
+.home-duo {
+	display: grid;
+	grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+	gap: var(--space-4);
+	align-items: stretch;
+}
+
+.home-tags {
+	padding: var(--space-4);
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--radius-lg);
+	background: var(--pico-card-background-color);
+	box-shadow: var(--shadow-sm);
+}
+
+.home-tags .section-head {
+	margin-bottom: var(--space-3);
+}
+
+.cta-panel {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-4);
+	border: 1px solid color-mix(in srgb, var(--pico-primary) 28%, transparent);
+	border-radius: var(--radius-lg);
+	background:
+		linear-gradient(135deg,
+			color-mix(in srgb, var(--pico-primary) 14%, var(--pico-card-background-color)),
+			color-mix(in srgb, var(--accent-500) 10%, var(--pico-card-background-color)));
+	box-shadow: var(--shadow-sm);
+}
+
+.cta-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	flex-shrink: 0;
+	border-radius: var(--radius-md);
+	background: var(--pico-primary);
+	color: var(--pico-primary-inverse);
+	box-shadow: var(--shadow-sm);
+}
+
+.cta-icon svg {
+	width: 1.3rem;
+	height: 1.3rem;
+}
+
+.cta-panel h2 {
+	margin: 0 0 0.2rem;
+	font-size: var(--text-md);
+}
+
+.cta-panel p {
+	margin: 0;
+	color: var(--pico-muted-color);
+	font-size: var(--text-sm);
+}
+
+.cta-panel [role="button"] {
+	margin: 0 0 0 auto;
+	white-space: nowrap;
+}
+
+/* --- Home: detail polish ------------------------------------------------
+   首页卡片比 /games 窄得多（约 265px），标题单行 nowrap 会把长标题硬切、
+   连省略号都来不及出现。改成两行 clamp，并预留两行高度让所有卡片正文
+   顶端对齐，扫读时标题基线不会忽高忽低。 */
+.home-game-grid .game-card-body strong {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	line-height: 1.35;
+	/* 不要预留两行高度：实际宽度下绝大多数标题一行就放得下，
+	   硬留会让标题与公司名之间空出一整行，反而显得松散。
+	   卡片等高由 .game-card 的 height:100% + grid stretch 保证。 */
+}
+
+/* 前三名给实体徽章，而不是只换个数字颜色 */
+.rank-list li:nth-child(-n+3) .rank-no {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.45rem;
+	height: 1.45rem;
+	border-radius: 50%;
+	color: var(--accent-500);
+	background: color-mix(in srgb, var(--accent-500) 16%, transparent);
+	border: 1px solid color-mix(in srgb, var(--accent-500) 34%, transparent);
+	font-size: var(--text-xs);
+}
+
+.rank-list li:first-child .rank-no {
+	color: var(--pico-primary-inverse);
+	background: var(--accent-500);
+	border-color: var(--accent-500);
+}
+
+/* 评分做成胶囊，与全站的 .pg-status / .pg-reward 语言对齐 */
+.rank-score {
+	padding: 0.12em 0.5em;
+	border-radius: var(--radius-pill);
+	background: color-mix(in srgb, var(--accent-500) 13%, transparent);
+	border: 1px solid color-mix(in srgb, var(--accent-500) 24%, transparent);
+	line-height: 1.4;
+}
+
+/* .chip-row 已有 gap，.tag-badge 自带的右外边距会叠成双倍间距 */
+.chip-row .tag-badge {
+	margin: 0;
+}
+
+@media (max-width: 980px) {
+	.hero {
+		grid-template-columns: 1fr;
+		gap: var(--space-4);
+	}
+
+	.hero-art {
+		display: none;
+	}
+
+	.home-main,
+	.home-duo {
+		grid-template-columns: 1fr;
+	}
+
+	.home-game-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 600px) {
+	.hero {
+		padding: 1.75rem 1.1rem;
+	}
+
+	.hero-stats > div {
+		padding: 0 var(--space-3);
+	}
+
+	.cta-panel {
+		flex-wrap: wrap;
+	}
+
+	.cta-panel [role="button"] {
+		margin-left: 0;
+		width: 100%;
+	}
+}
+
+/* Article / bounty list cards */
+.article-more {
+	margin-top: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	padding-top: 0.35rem;
+	font-size: var(--text-sm);
+	font-weight: 600;
+	text-decoration: none;
+	color: var(--pico-muted-color);
+	transition: color var(--dur-1) var(--ease-out);
+}
+
+.article-more svg {
+	width: 0.9rem;
+	height: 0.9rem;
+	transition: transform var(--dur-1) var(--ease-out);
+}
+
+.article-more:hover {
+	color: var(--pico-primary);
+}
+
+.article-more:hover svg {
+	transform: translateX(2px);
+}
+
+.articles-list article.card,
+.bounties-list article.card {
+	position: relative;
+	transition: transform var(--dur-2) var(--ease-out),
+		box-shadow var(--dur-2) var(--ease-out),
+		border-color var(--dur-2) var(--ease-out);
+}
+
+.articles-list article.card:hover,
+.bounties-list article.card:hover {
+	transform: translateY(-3px);
+	box-shadow: var(--shadow-md);
+	border-color: color-mix(in srgb, var(--pico-primary) 40%, var(--pico-card-border-color));
+}
+
+/* --------------------------------------------------------------------------
+   8. Badges, tags, chips
+   -------------------------------------------------------------------------- */
+.tag-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	padding: 0.28em 0.7em;
+	font-size: var(--text-sm);
+	font-weight: 600;
+	line-height: 1.35;
+	white-space: nowrap;
+	vertical-align: baseline;
+	border-radius: var(--radius-pill);
+	text-decoration: none;
+	background-color: color-mix(in srgb, var(--pico-primary) 10%, transparent);
+	color: var(--pico-primary);
+	border: 1px solid color-mix(in srgb, var(--pico-primary) 22%, transparent);
+	transition: background-color var(--dur-1) var(--ease-out),
+		border-color var(--dur-1) var(--ease-out),
+		color var(--dur-1) var(--ease-out);
+	margin: 0 0.2rem 0.25rem 0;
+}
+
+.tag-badge:hover {
+	background-color: color-mix(in srgb, var(--pico-primary) 18%, transparent);
+	border-color: color-mix(in srgb, var(--pico-primary) 45%, transparent);
+	color: var(--pico-primary-hover);
+}
+
+.tag-count {
+	opacity: 0.72;
+	margin-left: 0.15rem;
+	font-weight: 500;
+}
+
+/* Status dots — emoji glyphs are not available on every platform */
+.badge-ok::before,
+.badge-bad::before {
+	content: "";
+	display: inline-block;
+	width: 0.5rem;
+	height: 0.5rem;
+	border-radius: 50%;
+	margin-right: 0.4rem;
+	vertical-align: 0.05rem;
+}
+
+.badge-ok::before {
+	background: #2f9e44;
+}
+
+.badge-bad::before {
+	background: #e03131;
+}
+
+/* Game detail: per-axis difficulty legend replaces overlapping radar labels */
+.chart-legend {
+	display: flex;
+	justify-content: center;
+	gap: 0.4rem 1.5rem;
+	flex-wrap: wrap;
+	margin: 0.75rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.chart-legend li {
+	display: flex;
+	align-items: baseline;
+	gap: 0.4rem;
+	margin: 0;
+	font-size: var(--text-sm);
+}
+
+.chart-legend .legend-cat {
+	color: var(--pico-muted-color);
+	font-weight: 600;
+}
+
+.chart-legend .legend-val {
+	color: var(--pico-color);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Game detail: score band — one designed panel instead of two loose columns */
+.score-band {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	padding: 0;
+}
+
+.score-cell {
+	padding: var(--space-4) var(--space-3);
+	text-align: center;
+}
+
+.score-cell + .score-cell {
+	border-left: 1px solid var(--pico-muted-border-color);
+}
+
+.score-cell > header {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	margin-bottom: var(--space-2);
+}
+
+.score-cell > header h4 {
+	margin: 0;
+	color: var(--pico-muted-color);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	letter-spacing: 0.05em;
+}
+
+.score-cell .score-value {
+	margin: 0;
+	font-size: clamp(1.6rem, 3vw, 2.1rem);
+	font-weight: 700;
+	line-height: 1.2;
+	color: var(--pico-primary);
+	font-variant-numeric: tabular-nums;
+}
+
+.realm-badge {
+	display: inline-block;
+	margin-left: 0.4rem;
+	padding: 0.15rem 0.65rem;
+	border-radius: var(--radius-pill);
+	background: color-mix(in srgb, var(--accent-500) 14%, transparent);
+	color: var(--accent-500);
+	font-size: var(--text-sm);
+	font-weight: 700;
+	vertical-align: 0.35em;
+}
+
+.score-context-row {
+	display: flex;
+	justify-content: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+	margin-top: var(--space-2);
+}
+
+.score-context-row select {
+	width: auto;
+	margin: 0;
+}
+
+@media (max-width: 768px) {
+	.score-band {
+		grid-template-columns: 1fr;
+	}
+
+	.score-cell + .score-cell {
+		border-left: 0;
+		border-top: 1px solid var(--pico-muted-border-color);
+	}
+}
+
+/* Game detail: rating form rows read as a table instead of stacked blocks */
+.rating-field {
+	display: grid;
+	grid-template-columns: 6.5rem minmax(0, 1fr);
+	align-items: center;
+	gap: 0.25rem 0.75rem;
+	margin-bottom: 0;
+	padding: 0.55rem 0;
+	border-bottom: 1px dashed var(--pico-muted-border-color);
+}
+
+.rating-field:last-of-type {
+	border-bottom: 0;
+}
+
+.rating-field > label {
+	margin: 0;
+	font-weight: 600;
+}
+
+.rating-field .star-rating-wrapper {
+	margin: 0;
+}
+
+@media (max-width: 600px) {
+	.rating-field {
+		grid-template-columns: 1fr;
+		gap: 0.35rem;
+	}
+}
+
+/* Game detail: comments as cards with an initial avatar */
+#comments-section blockquote {
+	position: relative;
+	margin: 0 0 var(--space-3);
+	padding: var(--space-3) var(--space-3) var(--space-2) var(--space-4);
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--radius-md);
+	background: var(--pico-card-sectioning-background-color);
+}
+
+#comments-section blockquote::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 3px;
+	border-radius: 3px 0 0 3px;
+	background: color-mix(in srgb, var(--pico-primary) 55%, transparent);
+}
+
+#comments-section blockquote > p {
+	margin: 0 0 var(--space-2);
+	white-space: pre-wrap;
+}
+
+#comments-section blockquote footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+}
+
+#comments-section cite {
+	font-style: normal;
+	font-size: var(--text-sm);
+	color: var(--pico-muted-color);
+}
+
+.comment-meta {
+	display: inline-flex;
+	align-items: center;
+}
+
+.comment-avatar {
+	display: inline-grid;
+	place-items: center;
+	width: 1.6rem;
+	height: 1.6rem;
+	margin-right: 0.45rem;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--pico-primary) 14%, transparent);
+	color: var(--pico-primary);
+	font-size: 0.8rem;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+/* Game detail: meta strip fills the column beside tall cover art */
+.detail-meta {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: var(--space-2);
+	margin: var(--space-4) 0 0;
+	padding: var(--space-3) 0 0;
+	border-top: 1px solid var(--pico-muted-border-color);
+}
+
+.detail-meta > div {
+	min-width: 0;
+}
+
+.detail-meta dt {
+	margin: 0;
+	color: var(--pico-muted-color);
+	font-size: var(--text-xs);
+	font-weight: 600;
+	letter-spacing: 0.06em;
+}
+
+.detail-meta dd {
+	margin: 0.15rem 0 0;
+	color: var(--pico-color);
+	font-size: var(--text-md);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+/* Back chip sits on the blurred banner — keep it legible.
+   Pico redefines --pico-color inside .secondary buttons, so use explicit tokens. */
+.back-button[role="button"],
+.back-button {
+	background-color: color-mix(in srgb, var(--pico-card-background-color) 90%, transparent);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	border: 1px solid var(--pico-card-border-color);
+	box-shadow: var(--shadow-xs);
+	color: var(--fg);
+	--pico-color: var(--fg);
+}
+
+.back-button[role="button"]:hover,
+.back-button:hover {
+	background-color: var(--pico-card-background-color);
+	color: var(--pico-primary);
+	--pico-color: var(--pico-primary);
+}
+
+/* Browse filters: chip-style toggles instead of default buttons */
+#tag-filters button,
+#tag-filters a,
+#company-filters button,
+#company-filters a {
+	border-radius: var(--radius-pill);
+	padding: 0.3rem 0.85rem;
+	font-size: var(--text-sm);
+	font-weight: 500;
+}
+
+@media (max-width: 600px) {
+	.detail-meta {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+#tag-filters button.active,
+#tag-filters a.active,
+#company-filters button.active {
+	background-color: var(--pico-primary);
+	color: var(--pico-primary-inverse);
+	border-color: var(--pico-primary);
+}
+
+/* --------------------------------------------------------------------------
+   9. Forms
+   -------------------------------------------------------------------------- */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="url"],
+input[type="search"],
+input[type="number"],
+input[type="date"],
+textarea,
+select {
+	transition: border-color var(--dur-1) var(--ease-out),
+		box-shadow var(--dur-1) var(--ease-out),
+		background-color var(--dur-1) var(--ease-out);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+	border-color: var(--pico-primary);
+}
+
+article form,
+article[role="article"] form {
+	background: var(--pico-card-background-color);
+	padding: var(--space-4);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-sm);
+	border: 1px solid var(--pico-card-border-color);
+}
+
+button[type="submit"],
+input[type="submit"],
+button.primary {
+	transition: background-color var(--dur-1) var(--ease-out),
+		border-color var(--dur-1) var(--ease-out),
+		box-shadow var(--dur-1) var(--ease-out),
+		transform var(--dur-1) var(--ease-out);
+}
+
+button[type="submit"]:hover,
+input[type="submit"]:hover,
+button.primary:hover {
+	box-shadow: var(--shadow-sm);
+}
+
+button[type="submit"]:active,
+input[type="submit"]:active,
+button.primary:active {
+	transform: translateY(1px);
+	box-shadow: none;
+}
+
+/* Disabled / busy submit state */
+form.loading button[type="submit"],
+form.loading input[type="submit"] {
+	position: relative;
+	color: transparent;
+	pointer-events: none;
+}
+
+form.loading button[type="submit"]::after,
+form.loading input[type="submit"]::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 20px;
+	height: 20px;
+	margin: -10px 0 0 -10px;
+	border: 2px solid var(--pico-primary-inverse);
+	border-top-color: transparent;
+	border-radius: 50%;
+	animation: spin 0.7s linear infinite;
+}
+
+input[type="file"] {
+	padding: 0.7rem;
+	border: 1.5px dashed var(--pico-muted-border-color);
+	border-radius: var(--radius-md);
+	background: color-mix(in srgb, var(--pico-muted-background-color) 45%, transparent);
+	cursor: pointer;
+	transition: border-color var(--dur-1) var(--ease-out),
+		background-color var(--dur-1) var(--ease-out);
+}
+
+input[type="file"]:hover {
+	border-color: var(--pico-primary);
+	background: color-mix(in srgb, var(--pico-primary) 5%, transparent);
+}
+
+input[type="file"]:focus {
+	border-color: var(--pico-primary);
+	box-shadow: 0 0 0 3px var(--pico-primary-focus);
+}
+
+/* Tag input widget */
+.tag-input-container {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.2rem;
+	padding: 0.35rem;
+	border: 1.5px solid var(--pico-form-element-border-color);
+	border-radius: var(--radius-md);
+	background-color: var(--pico-form-element-background-color);
+	transition: border-color var(--dur-1) var(--ease-out),
+		box-shadow var(--dur-1) var(--ease-out);
+	margin-bottom: var(--pico-form-element-spacing-vertical, 0.75rem);
+}
+
+.tag-input-container:focus-within {
+	border-color: var(--pico-primary);
+	box-shadow: 0 0 0 3px var(--pico-primary-focus);
+}
+
+.tag-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	background-color: color-mix(in srgb, var(--pico-primary) 14%, transparent);
+	color: var(--pico-primary);
+	border: 1px solid color-mix(in srgb, var(--pico-primary) 28%, transparent);
+	border-radius: var(--radius-sm);
+	padding: 0.2em 0.55em;
+	margin: 2px;
+	font-size: var(--text-sm);
+	font-weight: 550;
+	white-space: nowrap;
+}
+
+.tag-remove-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	margin: 0;
+	padding: 0;
+	background: none;
+	border: none;
+	border-radius: 50%;
+	color: inherit;
+	opacity: 0.65;
+	font-weight: bold;
+	line-height: 1;
+	cursor: pointer;
+	transition: opacity var(--dur-1) var(--ease-out),
+		background-color var(--dur-1) var(--ease-out);
+}
+
+.tag-remove-btn:hover {
+	opacity: 1;
+	background: color-mix(in srgb, var(--pico-primary) 18%, transparent);
+}
+
+.tag-input-container input[type="text"] {
+	flex-grow: 1;
+	min-width: 140px;
+	border: none !important;
+	padding: 0.35rem !important;
+	outline: none !important;
+	background: transparent !important;
+	color: var(--pico-color) !important;
+	box-shadow: none !important;
+	margin-bottom: 0 !important;
+}
+
+/* Auth pages: keep credential forms at a readable measure, centred */
+article.auth-card {
+	max-width: 27rem;
+	margin: var(--space-5) auto var(--space-4);
+}
+
+article.auth-card > header {
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.6rem;
+}
+
+.auth-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.8rem;
+	height: 2.8rem;
+	border-radius: 50%;
+	color: var(--pico-primary);
+	background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+	border: 1px solid color-mix(in srgb, var(--pico-primary) 22%, transparent);
+}
+
+.auth-icon svg {
+	width: 1.35rem;
+	height: 1.35rem;
+}
+
+.form-alert {
+	padding: 0.7rem 1rem;
+	margin-bottom: var(--space-3);
+	border: 1px solid color-mix(in srgb, var(--pico-del-color) 40%, transparent);
+	border-radius: var(--radius-md);
+	background: color-mix(in srgb, var(--pico-del-color) 10%, transparent);
+	color: var(--pico-del-color);
+	font-size: var(--text-sm);
+	font-weight: 600;
+}
+
+article.auth-card > header h2 {
+	justify-content: center;
+}
+
+article.auth-card footer {
+	text-align: center;
+	color: var(--pico-muted-color);
+	font-size: var(--text-sm);
+}
+
+@media (max-width: 600px) {
+	article.auth-card { margin-top: var(--space-3); }
+}
+
+/* Inline validation hint */
+.field-error {
+	color: var(--pico-del-color);
+	font-size: var(--text-sm);
+	margin-top: 0.25rem;
+}
+
+/* --------------------------------------------------------------------------
+   10. Loading, skeleton, empty states
+   -------------------------------------------------------------------------- */
 .loading-overlay {
 	display: none;
 	position: absolute;
 	inset: 0;
-	background: rgba(var(--pico-background-color-rgb, 255, 255, 255), 0.85);
-	backdrop-filter: blur(4px);
-	-webkit-backdrop-filter: blur(4px);
+	background: color-mix(in srgb, var(--pico-background-color) 82%, transparent);
+	backdrop-filter: blur(3px);
+	-webkit-backdrop-filter: blur(3px);
 	z-index: 10;
 	align-items: center;
 	justify-content: center;
-	animation: fadeIn 0.3s ease-out;
-}
-
-[data-theme="dark"] .loading-overlay {
-	background: rgba(var(--pico-background-color-rgb, 0, 0, 0), 0.85);
+	animation: fadeIn var(--dur-2) var(--ease-out);
+	border-radius: var(--radius-md);
 }
 
 .loading-card {
 	width: auto;
-	padding: 2rem;
+	padding: var(--space-4) var(--space-5);
 	position: relative;
 }
 
-/* 美观的加载动画 - Spinner */
 .loading-spinner {
-	width: 48px;
-	height: 48px;
-	border: 4px solid var(--pico-muted-border-color);
+	width: 40px;
+	height: 40px;
+	border: 3px solid var(--pico-muted-border-color);
 	border-top-color: var(--pico-primary);
 	border-radius: 50%;
-	animation: spin 0.8s linear infinite;
+	animation: spin 0.75s linear infinite;
 	margin: 0 auto;
 }
 
-/* 骨架屏加载效果 */
+.loading-text {
+	text-align: center;
+	color: var(--pico-muted-color);
+	margin-top: var(--space-3);
+	font-size: var(--text-sm);
+	animation: pulse 1.6s var(--ease-in-out) infinite;
+}
+
 .skeleton {
-	background: linear-gradient(
-		90deg,
+	background: linear-gradient(90deg,
 		var(--pico-muted-background-color) 25%,
-		color-mix(in srgb, var(--pico-muted-background-color) 50%, transparent) 50%,
-		var(--pico-muted-background-color) 75%
-	);
+		color-mix(in srgb, var(--pico-muted-background-color) 45%, transparent) 50%,
+		var(--pico-muted-background-color) 75%);
 	background-size: 200% 100%;
-	animation: skeleton-loading 1.5s ease-in-out infinite;
-	border-radius: var(--pico-border-radius);
+	animation: skeleton-loading 1.4s var(--ease-in-out) infinite;
+	border-radius: var(--radius-sm);
 }
 
-@keyframes skeleton-loading {
-	0% {
-		background-position: 200% 0;
-	}
-	100% {
-		background-position: -200% 0;
-	}
-}
-
-/* 游戏卡片骨架屏 */
 .skeleton-card {
 	display: flex;
 	flex-direction: column;
@@ -647,1173 +2820,542 @@ ul.nav-meta,
 }
 
 .skeleton-card-body {
-	padding: 1rem;
+	padding: 0.85rem;
 	display: flex;
 	flex-direction: column;
-	gap: 0.5rem;
+	gap: 0.45rem;
 }
 
 .skeleton-line {
-	height: 1rem;
-	border-radius: 4px;
+	height: 0.9rem;
+	border-radius: var(--radius-sm);
 }
 
-.skeleton-line.short {
-	width: 60%;
-}
+.skeleton-line.short { width: 60%; }
+.skeleton-line.medium { width: 80%; }
 
-.skeleton-line.medium {
-	width: 80%;
-}
-
-/* 加载文本 */
-.loading-text {
+/* Empty state — used by lists with no results */
+.empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-6) var(--space-4);
 	text-align: center;
 	color: var(--pico-muted-color);
-	margin-top: 1rem;
-	font-size: 0.9rem;
-	animation: pulse 1.5s ease-in-out infinite;
+	border: 1px dashed var(--pico-muted-border-color);
+	border-radius: var(--radius-lg);
+	background: color-mix(in srgb, var(--pico-card-background-color) 55%, transparent);
 }
 
-@keyframes pulse {
-	0%, 100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.5;
-	}
+.empty-state svg,
+.empty-state [data-lucide] {
+	width: 2rem;
+	height: 2rem;
+	opacity: 0.5;
 }
 
-@media (max-width: 1200px) {
-	:root { font-size: 13.5px; }
+.empty-state strong {
+	color: var(--pico-color);
+	font-size: var(--text-md);
+}
+
+.home-empty {
+	color: var(--pico-muted-color);
+	padding: var(--space-4) 0;
+	text-align: center;
+	border: 1px dashed var(--pico-muted-border-color);
+	border-radius: var(--radius-md);
+}
+
+/* --------------------------------------------------------------------------
+   11. Back to top
+   -------------------------------------------------------------------------- */
+.back-to-top {
+	position: fixed;
+	right: 1.25rem;
+	bottom: 1.25rem;
+	z-index: 90;
+	display: grid;
+	place-items: center;
+	width: 44px;
+	height: 44px;
+	border-radius: var(--radius-pill);
+	border: 1px solid var(--pico-card-border-color);
+	background: color-mix(in srgb, var(--pico-card-background-color) 88%, transparent);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	color: var(--pico-muted-color);
+	box-shadow: var(--shadow-md);
+	cursor: pointer;
+	opacity: 0;
+	visibility: hidden;
+	transform: translateY(8px);
+	transition: opacity var(--dur-2) var(--ease-out),
+		transform var(--dur-2) var(--ease-out),
+		visibility var(--dur-2),
+		color var(--dur-1) var(--ease-out),
+		border-color var(--dur-1) var(--ease-out);
+}
+
+.back-to-top.is-visible {
+	opacity: 1;
+	visibility: visible;
+	transform: translateY(0);
+}
+
+.back-to-top:hover {
+	color: var(--pico-primary);
+	border-color: color-mix(in srgb, var(--pico-primary) 45%, transparent);
+}
+
+.back-to-top svg,
+.back-to-top [data-lucide] {
+	width: 1.15rem;
+	height: 1.15rem;
+}
+
+/* --------------------------------------------------------------------------
+   12. Footer
+   -------------------------------------------------------------------------- */
+footer.container {
+	position: relative;
+	z-index: 1;
+	padding-bottom: var(--space-4);
+	color: var(--pico-muted-color);
+}
+
+.site-footer {
+	display: grid;
+	grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
+	gap: var(--space-5);
+	padding: var(--space-5) 0 var(--space-4);
+	font-size: var(--text-sm);
+}
+
+.footer-brand {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+
+.footer-brand .brand-row {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--pico-color);
+	font-weight: 650;
+}
+
+.footer-brand .brand-row .brand-mark {
+	width: 1.75rem;
+	height: 1.75rem;
+}
+
+.footer-brand p {
+	margin: 0;
+	max-width: 34ch;
+	color: var(--pico-muted-color);
+}
+
+.footer-col {
+	display: block;
+}
+
+.footer-col h3 {
+	margin: 0 0 var(--space-2);
+	color: var(--pico-color);
+	font-size: var(--text-sm);
+	font-weight: 650;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.footer-col ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.45rem;
+}
+
+.footer-col ul li {
+	margin: 0;
+	padding: 0;
+}
+
+.site-footer a {
+	color: var(--pico-muted-color);
+	text-decoration: none;
+}
+
+.site-footer a:hover {
+	color: var(--pico-primary);
+	text-decoration: underline;
+}
+
+.footer-base {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	flex-wrap: wrap;
+	padding: var(--space-3) 0 0;
+	border-top: 1px solid var(--pico-muted-border-color);
+	font-size: var(--text-xs);
+	color: var(--pico-muted-color);
 }
 
 @media (max-width: 768px) {
-	:root { font-size: 13px; }
-	main.container, header.container, footer.container { max-width: 100%; padding-left: 0.9rem; padding-right: 0.9rem; }
-
-	.chip-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
-	.chip-grid button,
-	.chip-grid a[role="button"] { min-height: 28px; padding: 0.25rem 0.4rem; font-size: 0.75rem; }
-
-	.nav-toggle { display: inline-flex; }
-	.site-header {
-		padding: 0.85rem 1rem;
-		margin-bottom: 1rem;
+	.site-footer {
+		grid-template-columns: 1fr 1fr;
+		gap: var(--space-4);
 	}
+
+	.footer-brand {
+		grid-column: 1 / -1;
+	}
+}
+
+/* --------------------------------------------------------------------------
+   12b. Flash toast & error page
+   -------------------------------------------------------------------------- */
+.flash-toast {
+	position: fixed;
+	left: 50%;
+	bottom: 2rem;
+	z-index: 300;
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	max-width: min(90vw, 30rem);
+	padding: 0.7rem 1.15rem;
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: var(--radius-pill);
+	background: var(--pico-card-background-color);
+	box-shadow: var(--shadow-lg);
+	color: var(--pico-color);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	opacity: 0;
+	transform: translate(-50%, 0.75rem);
+	pointer-events: none;
+	transition: opacity var(--dur-2) var(--ease-out),
+		transform var(--dur-2) var(--ease-out);
+}
+
+.flash-toast::before {
+	content: "";
+	width: 0.55rem;
+	height: 0.55rem;
+	flex-shrink: 0;
+	border-radius: 50%;
+	background: var(--pico-primary);
+}
+
+.flash-toast.success::before {
+	background: #2f9e44;
+}
+
+.flash-toast.error::before {
+	background: #e03131;
+}
+
+.flash-toast.show {
+	opacity: 1;
+	transform: translate(-50%, 0);
+}
+
+.error-page {
+	max-width: 34rem;
+	margin: var(--space-6) auto;
+	padding: var(--space-5) var(--space-4);
+	text-align: center;
+	border: 1px solid var(--pico-card-border-color);
+	border-radius: calc(var(--radius-lg) + 0.35rem);
+	background:
+		radial-gradient(30rem 16rem at 50% -30%, color-mix(in srgb, var(--pico-primary) 14%, transparent), transparent 65%),
+		var(--pico-card-background-color);
+	box-shadow: var(--shadow-md);
+}
+
+.error-code {
+	margin: 0;
+	font-size: clamp(3rem, 8vw, 4.5rem);
+	font-weight: 800;
+	line-height: 1;
+	letter-spacing: -0.04em;
+	background: linear-gradient(120deg, var(--pico-primary), var(--accent-500));
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	font-variant-numeric: tabular-nums;
+}
+
+.error-page h1 {
+	margin: var(--space-3) 0 var(--space-2);
+	font-size: var(--text-xl);
+}
+
+.error-hint {
+	margin: 0 auto var(--space-4);
+	max-width: 30ch;
+	color: var(--pico-muted-color);
+}
+
+.error-actions {
+	display: flex;
+	justify-content: center;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+}
+
+.error-actions [role="button"] {
+	margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   13. Keyframes
+   -------------------------------------------------------------------------- */
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.55; }
+}
+
+@keyframes fadeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+	from { opacity: 0; transform: translateY(10px); }
+	to { opacity: 1; transform: none; }
+}
+
+@keyframes skeleton-loading {
+	0% { background-position: 200% 0; }
+	100% { background-position: -200% 0; }
+}
+
+/* 页面进入不做整体动画：装饰性入场动画曾在长页面上停在第 0 帧导致内容不可见 */
+
+/* --------------------------------------------------------------------------
+   14. Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 1200px) {
+	:root { font-size: 14.5px; }
+	.nav-link, .nav-user-link { padding: 0.4rem 0.65rem !important; }
+}
+
+@media (max-width: 992px) {
+	.site-nav { justify-content: flex-start; }
+	.nav-primary { flex: 1 1 100%; }
+	.nav-meta { margin-left: auto; }
+}
+
+@media (max-width: 768px) {
+	:root { font-size: 14px; }
+
+	main.container,
+	header.container,
+	footer.container {
+		max-width: 100%;
+		padding-left: 0.85rem;
+		padding-right: 0.85rem;
+	}
+
+	header.container {
+		position: sticky;
+		top: 0;
+		padding-top: 0.5rem;
+	}
+
+	.site-header {
+		padding: 0.5rem 0.65rem;
+		margin-bottom: var(--space-3);
+	}
+
+	.header-bar {
+		display: flex;
+		margin-bottom: 0;
+	}
+
+	.nav-toggle {
+		display: inline-flex;
+	}
+
+	/* Off-canvas drawer. `visibility: hidden` while closed keeps it out of the
+	   tab order so keyboard users never land on off-screen links. */
 	.site-nav {
 		position: fixed;
 		top: 0;
 		left: 0;
 		bottom: 0;
-		width: 78%;
+		width: 80%;
 		max-width: 320px;
 		padding: 1rem;
 		background: var(--pico-card-background-color);
 		flex-direction: column;
-		align-items: flex-start;
-		gap: 1rem;
-		transform: translateX(-100%);
-		transition: transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
-		box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+		align-items: stretch;
+		gap: var(--space-3);
+		transform: translateX(calc(-100% - 1px));
+		visibility: hidden;
+		transition: transform var(--dur-3) var(--ease-out),
+			visibility 0s linear var(--dur-3),
+			box-shadow var(--dur-3) var(--ease-out);
+		box-shadow: none;
 		z-index: 99;
 		border-right: 1px solid var(--pico-card-border-color);
+		overflow-y: auto;
+		overscroll-behavior: contain;
 	}
+
 	.site-nav ul {
 		width: 100%;
 		flex-direction: column;
 		align-items: stretch;
-		gap: 0.4rem;
+		gap: 0.3rem !important;
 	}
+
 	.site-nav a,
 	.site-nav button {
 		width: 100%;
 	}
+
+	.nav-link,
+	.nav-user-link,
+	.nav-button {
+		justify-content: flex-start;
+		min-height: var(--touch-min);
+		padding: 0.65rem 0.85rem !important;
+	}
+
+	.nav-button-icon {
+		width: 100%;
+		min-height: var(--touch-min);
+		justify-content: center;
+	}
+
 	.nav-overlay {
 		display: block;
 		position: fixed;
 		inset: 0;
-		background: rgba(0,0,0,0.35);
+		background: rgba(8, 10, 16, 0.5);
+		backdrop-filter: blur(2px);
+		-webkit-backdrop-filter: blur(2px);
 		z-index: 98;
 		opacity: 0;
+		visibility: hidden;
 		pointer-events: none;
-		transition: opacity 0.2s ease-in-out;
+		transition: opacity var(--dur-2) var(--ease-out), visibility var(--dur-2);
 	}
-	body.nav-open .site-nav { transform: translateX(0); }
-	body.nav-open .nav-overlay { opacity: 1; pointer-events: auto; }
-	.header-bar { margin-bottom: 0.35rem; }
-	.brand-link { font-size: 1rem; }
+
+	body.nav-open .site-nav {
+		transform: translateX(0);
+		visibility: visible;
+		transition: transform var(--dur-3) var(--ease-out),
+			visibility 0s,
+			box-shadow var(--dur-3) var(--ease-out);
+		box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+	}
+
+	body.nav-open .nav-overlay {
+		opacity: 1;
+		visibility: visible;
+		pointer-events: auto;
+	}
+
+	body.nav-open {
+		overflow: hidden;
+	}
+
+	.brand-link { font-size: var(--text-base); }
 
 	.filters-grid { grid-template-columns: 1fr; }
 	.grid-span-2 { grid-column: span 1; }
-	.chip-row { flex-wrap: nowrap; gap: 0.4rem; }
+	.chip-row { flex-wrap: wrap; gap: 0.35rem; }
+	.chip-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
 
-	#view-switcher { gap: 0.35rem; }
-	#view-switcher button { padding: 0.3rem 0.45rem; min-width: 2.75rem; }
-	#game-list.view-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.8rem; }
-	#game-list.view-list .game-card { padding: 0.65rem; gap: 0.6rem; }
-	#game-list.view-list .game-card-img-container { width: 72px; height: 100px; }
-	#game-list.view-list .game-card-body strong { font-size: 1rem; }
-	#game-list.view-compact { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+	#view-switcher { gap: 0.3rem; }
+	#view-switcher button { padding: 0.35rem 0.5rem; min-width: 2.75rem; }
+
+	#game-list.view-cards { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 0.7rem; }
+	#game-list.view-list .game-card { padding: 0.6rem; gap: 0.65rem; }
+	#game-list.view-list .game-card-img-container { width: 64px; height: 86px; }
+	#game-list.view-list .game-card-body strong { font-size: var(--text-base); }
+	#game-list.view-compact { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+
+	article form,
+	article[role="article"] form { padding: var(--space-3); }
+
+	/* Hover-only affordances make no sense on touch */
+	.game-link-container:hover .game-card,
+	.articles-list article.card:hover,
+	.bounties-list article.card:hover {
+		transform: none;
+		box-shadow: var(--shadow-xs);
+	}
+
+	.game-link-container:hover .game-card-img { transform: none; }
+
+	.back-to-top { right: 0.85rem; bottom: 0.85rem; }
 }
 
 @media (max-width: 600px) {
-	:root { font-size: 12.5px; }
-	#game-list.view-cards { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
-	#game-list.view-list .game-card { padding: 0.6rem; }
-	.game-card-body strong { font-size: 0.9rem; }
-	.game-card-body small { font-size: 0.78rem; }
+	#game-list.view-cards { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: 0.65rem; }
+	.game-card-body strong { font-size: var(--text-base); }
+	.game-card-body small { font-size: var(--text-sm); }
+	.chip-grid button,
+	.chip-grid a[role="button"] { font-size: var(--text-sm); }
 }
 
-/* --- 主题切换器 --- */
-#theme-switcher {
-	background: none;
-	border: none;
-	padding: 0;
-	cursor: pointer;
-	color: var(--pico-nav-link-color);
-	transition: color 0.2s;
-}
-#theme-switcher:hover {
-	color: var(--pico-primary);
-}
-
-/* --- 标签输入组件 --- */
-.tag-input-container {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	padding: 5px;
-	border: 1px solid var(--pico-form-element-border-color);
-	border-radius: var(--pico-border-radius);
-	background-color: var(--pico-form-element-background-color);
-	transition: box-shadow 0.2s, border-color 0.2s;
-	margin-bottom: var(--pico-form-element-spacing-vertical);
-}
-.tag-input-container:focus-within {
-	border-color: var(--pico-primary);
-	box-shadow: 0 0 0 1px var(--pico-primary);
-}
-.tag-item {
-	display: inline-flex;
-	align-items: center;
-	background-color: var(--pico-primary);
-	color: var(--pico-primary-inverse);
-	border-radius: var(--pico-border-radius);
-	padding: 0.2em 0.6em;
-	margin: 3px;
-	font-size: 0.9em;
-	white-space: nowrap;
-}
-.tag-remove-btn {
-	margin-left: 8px;
-	cursor: pointer;
-	width: 16px;
-	height: 16px;
-	background: none;
-	border: none;
-	color: var(--pico-primary-inverse);
-	opacity: 0.7;
-	transition: opacity 0.2s;
-	font-weight: bold;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0;
-	line-height: 1;
-}
-.tag-remove-btn:hover {
-	opacity: 1;
-}
-.tag-input-container input[type="text"] {
-	flex-grow: 1;
-	border: none !important;
-	padding: 5px !important;
-	outline: none !important;
-	background: transparent !important;
-	color: var(--pico-color) !important;
-	min-width: 150px;
-	box-shadow: none !important;
-	margin-bottom: 0 !important;
-}
-
-/* --- 标签展示徽章 --- */
-.tag-badge {
-	display: inline-block;
-	padding: 0.25em 0.6em;
-	font-size: 0.8em;
-	font-weight: 600;
-	line-height: 1;
-	text-align: center;
-	white-space: nowrap;
-	vertical-align: baseline;
-	border-radius: var(--pico-border-radius);
-	text-decoration: none;
-	background-color: var(--pico-secondary-background);
-	color: var(--pico-secondary-foreground);
-	border: 1px solid var(--pico-secondary-border);
-	transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
-	margin: 0 0.2rem 0.2rem 0;
-}
-[data-theme="light"] .tag-badge {
-	background-color: var(--pico-primary-background);
-	color: var(--pico-primary-inverse);
-	border-color: var(--pico-primary-border);
-}
-.tag-badge:hover {
-	background-color: var(--pico-secondary-hover-background);
-	color: var(--pico-secondary-hover-foreground);
-	border-color: var(--pico-secondary-hover-border);
-}
-
-
-/* --- 过滤器激活状态 --- */
-#tag-filters button.active,
-#tag-filters a.active,
-#company-filters button.active {
-	background-color: var(--pico-primary);
-	color: var(--pico-primary-inverse);
-	border-color: var(--pico-primary);
-}
-
-
-/*
- * ===================================================================
- * 游戏列表视图切换核心样式 (View Mode Switching)
- * ===================================================================
- */
-
-#game-list {
-    transition: all 0.3s ease-in-out;
-}
-
-/* --- 通用基础样式 --- */
-/* 为卡片容器的父链接设置，以确保悬浮效果作用于整个区域 */
-.game-link-container {
-    display: block; /* 确保链接占据块级空间 */
-    text-decoration: none;
-    transition: transform 0.2s, box-shadow 0.2s;
-    border-radius: var(--pico-card-border-radius); /* 将圆角赋予外层链接，效果更统一 */
-}
-.game-link-container:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--pico-card-box-shadow);
-}
-
-/* 卡片本身的基础样式，现在由父级链接控制悬浮动画 */
-.game-card {
-    display: flex;
-    width: 100%;
-    height: 100%;
-    background-color: var(--pico-card-background-color);
-    border: 1px solid var(--pico-card-border-color);
-    border-radius: var(--pico-card-border-radius);
-    overflow: hidden;
-    transition: border-color 0.2s; /* 为紧凑模式的悬浮效果准备 */
-}
-
-/* 通用图片容器 */
-.game-card-img-container {
-    position: relative;
-    background-color: var(--pico-muted-background-color);
-    flex-shrink: 0; /* 防止图片在flex布局中被压缩 */
-    aspect-ratio: 3 / 4;
-}
-.game-card-img, .img-placeholder {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.img-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--pico-muted-color);
-}
-
-/* 通用内容区域 */
-.game-card-body {
-    display: flex;
-    flex-direction: column;
-    padding: var(--pico-card-body-padding);
-    overflow: hidden;
-}
-.game-card-body strong {
-    color: var(--pico-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis; /* 超长标题显示省略号 */
-	display: block;
-}
-.game-card-body small {
-    color: var(--pico-muted-color);
-    margin-top: 0.25rem;
-}
-
-
-/* ----------------------------- */
-/* 1. 卡片视图 (Card View) - 默认 */
-/* ----------------------------- */
-#game-list.view-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 0.9rem;
-}
-#game-list.view-cards .game-card {
-    flex-direction: column;
-}
-#game-list.view-cards .game-card-img-container {
-    width: 100%;
-    aspect-ratio: 3 / 4;
-}
-#game-list.view-cards .game-card-body {
-    flex-grow: 1;
-    justify-content: flex-start; /* 内容从顶部开始排列 */
-}
-
-/* ----------------------- */
-/* 2. 列表视图 (List View) */
-/* ----------------------- */
-#game-list.view-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem; /* 使用 gap 替代 margin-bottom */
-}
-/* 列表视图下，悬浮时只加阴影，不位移，避免页面跳动 */
-#game-list.view-list .game-link-container:hover {
-    transform: none;
-}
-#game-list.view-list .game-card {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 0.8rem;
-    padding: 0.7rem 0.85rem;
-}
-#game-list.view-list .game-card-img-container {
-    padding-top: 0; /* 清除卡片视图的 padding-top */
-    width: 80px;
-    height: 110px;
-    flex-shrink: 0;
-}
-#game-list.view-list .game-card-body {
-    justify-content: flex-start;
-    align-items: flex-start;
-    gap: 0.25rem;
-}
-#game-list.view-list .game-card-body strong {
-    font-size: 1.05rem;
-}
-#game-list.view-list .game-card-body .list-meta {
-    display: none;
-    color: var(--pico-muted-color);
-    font-size: 0.9rem;
-    line-height: 1.35;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	line-clamp: 2;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-}
-
-
-/* --------------------------- */
-/* 3. 紧凑视图 (Compact View) */
-/* --------------------------- */
-#game-list.view-compact {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 0.6rem;
-}
-
-/* 在 Grid 布局中，不再需要为链接容器设置 auto 宽度 */
-#game-list.view-compact .game-link-container {
-    width: 100%; /* 链接将撑满整个网格单元 */
-}
-
-/* 悬浮效果保持不变，依然是稳定的边框高亮 */
-#game-list.view-compact .game-link-container:hover {
-    transform: none;
-    box-shadow: none;
-}
-#game-list.view-compact .game-link-container:hover .game-card {
-    border-color: var(--pico-primary-hover);
-}
-
-/* 卡片内部样式保持不变，依然是小缩略图+标题的核心模式 */
-#game-list.view-compact .game-card {
-    flex-direction: row;
-    align-items: center;
-    padding: 0.3rem 0.65rem;
-    width: 100%; /* 卡片也撑满链接容器 */
-}
-
-/* 图片容器样式不变 */
-#game-list.view-compact .game-card-img-container {
-    display: block !important;
-    width: 32px;
-    height: 42px;
-    margin-right: 0.75rem;
-    border-radius: calc(var(--pico-border-radius) / 2);
-    overflow: hidden;
-}
-
-/* 内容主体样式不变 */
-#game-list.view-compact .game-card-body {
-    padding: 0;
-    justify-content: center;
-}
-#game-list.view-compact .game-card-body strong {
-	font-size: 0.95rem;
-}
-
-/* 副标题依然隐藏 */
-#game-list.view-compact .game-card-body small {
-    display: none;
-}
-
-/* --- 主页特定样式 --- */
-.home-game-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 0.9rem;
-    margin-top: 1rem;
-}
-
-.home-game-grid .game-link-container {
-    display: block;
-    text-decoration: none;
-    transition: transform 0.2s, box-shadow 0.2s;
-    border-radius: var(--pico-card-border-radius);
-}
-
-.home-game-grid .game-link-container:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
-}
-
-.home-game-grid .game-card {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    background-color: var(--pico-card-background-color);
-    border: 1px solid var(--pico-card-border-color);
-    border-radius: var(--pico-card-border-radius);
-    overflow: hidden;
-    text-decoration: none;
-}
-
-.home-game-grid .game-card-img-container {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 3 / 4;
-    background-color: var(--pico-muted-background-color);
-    flex-shrink: 0;
-    overflow: hidden;
-}
-
-.home-game-grid .game-card-img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-
-.home-game-grid .img-placeholder {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--pico-muted-color);
-}
-
-.home-game-grid .game-card-body {
-    display: flex;
-    flex-direction: column;
-    padding: var(--pico-card-body-padding);
-    overflow: hidden;
-    flex-grow: 1;
-    justify-content: flex-start;
-}
-
-.home-game-grid .game-card-body strong {
-    color: var(--pico-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: block;
-}
-
-.home-game-grid .game-card-body small {
-    color: var(--pico-muted-color);
-    margin-top: 0.25rem;
-}
-
-@media (max-width: 768px) {
-    .home-game-grid {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 0.75rem;
-    }
-}
-
-@media (max-width: 600px) {
-    .home-game-grid {
-        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-        gap: 0.65rem;
-    }
-}
-
-/* ===================================================================
- * 全局背景系统 (Global Background System)
- * ===================================================================
- */
-
-/* 全局背景容器 */
-body {
-    position: relative;
-    min-height: 100vh;
-    background-color: var(--pico-background-color);
-}
-
-/* 通用背景层 - 可选的装饰性背景 */
-.global-background-layer {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -1;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-/* 网格图案背景 - 性能友好的装饰效果 */
-.global-background-grid {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: 
-        linear-gradient(rgba(var(--pico-primary-rgb, 99, 102, 241), 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(var(--pico-primary-rgb, 99, 102, 241), 0.03) 1px, transparent 1px);
-    background-size: 50px 50px;
-    opacity: 0.5;
-    animation: gridMove 30s linear infinite; /* 从 20s 增至 30s，更缓慢的动画 */
-}
-
-/* 网格移动动画 */
-@keyframes gridMove {
-    0% {
-        transform: translate(0, 0);
-    }
-    100% {
-        transform: translate(50px, 50px);
-    }
-}
-
-/* 暗色主题下的网格调整 */
-[data-theme="dark"] .global-background-grid {
-    background-image: 
-        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-    opacity: 0.3;
-}
-
-/* 渐变背景层 - 柔和的色彩渐变 */
-.global-background-gradient {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: 
-        radial-gradient(ellipse at top left, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at bottom right, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at center, rgba(59, 130, 246, 0.05) 0%, transparent 60%);
-    animation: globalGradientFlow 25s ease-in-out infinite;
-    opacity: 0.6;
-}
-
-/* 全局渐变动画 */
-@keyframes globalGradientFlow {
-    0%, 100% {
-        transform: scale(1) rotate(0deg);
-        opacity: 0.4; /* 从 0.5 降至 0.4 */
-    }
-    33% {
-        transform: scale(1.1) rotate(5deg);
-        opacity: 0.6; /* 从 0.7 降至 0.6 */
-    }
-    66% {
-        transform: scale(0.9) rotate(-5deg);
-        opacity: 0.5; /* 从 0.6 降至 0.5 */
-    }
-}
-
-/* 暗色主题下的渐变调整 */
-[data-theme="dark"] .global-background-gradient {
-    background: 
-        radial-gradient(ellipse at top left, rgba(99, 102, 153, 0.12) 0%, transparent 50%),
-        radial-gradient(ellipse at bottom right, rgba(153, 72, 236, 0.12) 0%, transparent 50%),
-        radial-gradient(ellipse at center, rgba(59, 130, 246, 0.08) 0%, transparent 60%);
-    opacity: 0.4;
-}
-
-/* 粒子效果背景 - 使用 CSS 实现轻量级粒子 */
-.global-background-particles {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: 
-        radial-gradient(2px 2px at 20% 30%, rgba(99, 102, 241, 0.3), transparent),
-        radial-gradient(2px 2px at 60% 70%, rgba(236, 72, 153, 0.3), transparent),
-        radial-gradient(1px 1px at 50% 50%, rgba(59, 130, 246, 0.4), transparent),
-        radial-gradient(1px 1px at 80% 10%, rgba(99, 102, 241, 0.3), transparent),
-        radial-gradient(2px 2px at 90% 80%, rgba(236, 72, 153, 0.3), transparent),
-        radial-gradient(1px 1px at 33% 85%, rgba(59, 130, 246, 0.4), transparent),
-        radial-gradient(2px 2px at 10% 50%, rgba(99, 102, 241, 0.3), transparent);
-    background-size: 200% 200%;
-    background-position: 0% 0%, 100% 0%, 50% 50%, 0% 100%, 100% 100%, 50% 0%, 0% 50%;
-    animation: particleFloat 30s ease-in-out infinite;
-    opacity: 0.3; /* 从 0.4 降至 0.3，减少粒子效果密度 */
-}
-
-/* 粒子浮动动画 */
-@keyframes particleFloat {
-    0%, 100% {
-        background-position: 0% 0%, 100% 0%, 50% 50%, 0% 100%, 100% 100%, 50% 0%, 0% 50%;
-    }
-    25% {
-        background-position: 25% 25%, 75% 25%, 75% 75%, 25% 75%, 75% 25%, 25% 25%, 25% 75%;
-    }
-    50% {
-        background-position: 50% 50%, 50% 50%, 50% 50%, 50% 50%, 50% 50%, 50% 50%, 50% 50%;
-    }
-    75% {
-        background-position: 75% 25%, 25% 75%, 25% 25%, 75% 75%, 25% 25%, 75% 75%, 75% 25%;
-    }
-}
-
-/* 暗色主题下的粒子调整 */
-[data-theme="dark"] .global-background-particles {
-    background-image: 
-        radial-gradient(2px 2px at 20% 30%, rgba(99, 102, 241, 0.4), transparent),
-        radial-gradient(2px 2px at 60% 70%, rgba(236, 72, 153, 0.4), transparent),
-        radial-gradient(1px 1px at 50% 50%, rgba(59, 130, 246, 0.5), transparent),
-        radial-gradient(1px 1px at 80% 10%, rgba(99, 102, 241, 0.4), transparent),
-        radial-gradient(2px 2px at 90% 80%, rgba(236, 72, 153, 0.4), transparent),
-        radial-gradient(1px 1px at 33% 85%, rgba(59, 130, 246, 0.5), transparent),
-        radial-gradient(2px 2px at 10% 50%, rgba(99, 102, 241, 0.4), transparent);
-    opacity: 0.2; /* 从 0.3 降至 0.2，进一步减少粒子效果密度 */
-}
-
-/* 减少动画偏好设置 */
+/* --------------------------------------------------------------------------
+   15. Reduced motion
+   -------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
-    .global-background-grid,
-    .global-background-gradient,
-    .global-background-particles {
-        animation: none;
-    }
-    
-    .global-background-grid {
-        transform: translate(0, 0);
-    }
+	html { scroll-behavior: auto; }
+
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	main.container > * { animation: none; }
+
+	.game-link-container:hover .game-card,
+	.game-link-container:hover .game-card-img,
+	.articles-list article.card:hover,
+	.bounties-list article.card:hover {
+		transform: none;
+	}
+
+	.skeleton { animation: none; }
 }
 
-/* 性能优化：使用 will-change 提示浏览器优化 */
-.global-background-layer > * {
-    will-change: transform, opacity;
-    transform: translateZ(0); /* 强制硬件加速 */
-    backface-visibility: hidden; /* 优化渲染性能 */
-    perspective: 1000px; /* 启用3D变换上下文 */
-}
+/* --------------------------------------------------------------------------
+   16. Print
+   -------------------------------------------------------------------------- */
+@media print {
+	.global-background-layer,
+	.site-header,
+	.nav-overlay,
+	.back-to-top,
+	footer.container { display: none !important; }
 
-/* 优化动画性能 - 使用 transform 和 opacity 而非位置属性 */
-.global-background-gradient,
-.global-background-particles,
-.global-background-grid {
-    will-change: transform, opacity;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-}
+	body { background: #fff; color: #000; }
 
-/* ===================================================================
- * 表单页面优化 (Form Enhancements)
- * ===================================================================
- */
+	article,
+	.game-card { box-shadow: none !important; border-color: #ccc !important; }
 
-/* 表单容器样式 */
-article form,
-form {
-    position: relative;
-    animation: fadeInUp 0.5s ease-out;
-}
-
-/* 表单输入框增强 */
-input[type="text"],
-input[type="password"],
-input[type="email"],
-input[type="search"],
-input[type="number"],
-input[type="file"],
-textarea,
-select {
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); /* 从 0.3s 降至 0.15s，更快的过渡 */
-    border-width: 1.5px;
-}
-
-input[type="text"]:focus,
-input[type="password"]:focus,
-input[type="email"]:focus,
-input[type="search"]:focus,
-input[type="number"]:focus,
-textarea:focus,
-select:focus {
-    transform: translateY(-0.5px); /* 从 -1px 降至 -0.5px，减少位移 */
-    box-shadow: 0 3px 8px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.15); /* 降低阴影强度：从 4px 12px 0.2 降至 3px 8px 0.15 */
-    border-color: var(--pico-primary);
-}
-
-/* 输入框聚焦时的动画效果 */
-input[type="text"],
-input[type="password"],
-input[type="email"],
-input[type="search"],
-input[type="number"],
-textarea {
-    position: relative;
-}
-
-input[type="text"]:focus::before,
-input[type="password"]:focus::before,
-input[type="email"]:focus::before,
-input[type="search"]:focus::before,
-input[type="number"]:focus::before,
-textarea:focus::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--pico-primary), var(--pico-primary-hover));
-    animation: inputFocusLine 0.15s ease-out; /* 从 0.3s 降至 0.15s，更快的动画 */
-}
-
-@keyframes inputFocusLine {
-    from {
-        transform: scaleX(0);
-        opacity: 0;
-    }
-    to {
-        transform: scaleX(1);
-        opacity: 1;
-    }
-}
-
-/* 表单按钮增强 */
-button[type="submit"],
-input[type="submit"],
-button.primary {
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-button[type="submit"]:hover,
-input[type="submit"]:hover,
-button.primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.3);
-}
-
-button[type="submit"]:active,
-input[type="submit"]:active,
-button.primary:active {
-    transform: translateY(0);
-}
-
-/* 表单加载状态 */
-form.loading button[type="submit"],
-form.loading input[type="submit"] {
-    position: relative;
-    color: transparent;
-    pointer-events: none;
-}
-
-form.loading button[type="submit"]::after,
-form.loading input[type="submit"]::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 20px;
-    height: 20px;
-    margin: -10px 0 0 -10px;
-    border: 2px solid var(--pico-primary-inverse);
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* 表单容器背景效果 */
-article[role="article"] form,
-article form {
-    background: var(--pico-card-background-color);
-    padding: 2rem;
-    border-radius: var(--pico-border-radius);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-    border: 1px solid var(--pico-card-border-color);
-}
-
-[data-theme="dark"] article form {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-
-/* 标签输入容器增强 */
-.tag-input-container:focus-within {
-    transform: translateY(-0.5px); /* 从 -1px 降至 -0.5px，保持一致性 */
-    box-shadow: 0 3px 8px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.12); /* 降低阴影强度 */
-}
-
-/* 文件上传区域增强 */
-input[type="file"] {
-    padding: 0.75rem;
-    border: 2px dashed var(--pico-muted-border-color);
-    border-radius: var(--pico-border-radius);
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-input[type="file"]:hover {
-    border-color: var(--pico-primary);
-    background: rgba(var(--pico-primary-rgb, 99, 102, 241), 0.05);
-}
-
-input[type="file"]:focus {
-    border-color: var(--pico-primary);
-    box-shadow: 0 0 0 3px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.1);
-}
-
-/* 移动端优化：减少背景效果以提升性能 */
-@media (max-width: 768px) {
-    .global-background-particles {
-        opacity: 0.15; /* 从 0.2 降至 0.15，移动端进一步降低 */
-    }
-    
-    .global-background-grid {
-        background-size: 80px 80px;
-        opacity: 0.25; /* 从 0.3 降至 0.25，移动端进一步降低 */
-    }
-    
-    .global-background-gradient {
-        opacity: 0.3; /* 从 0.4 降至 0.3，移动端进一步降低 */
-    }
-    
-    /* 移动端禁用部分动画以提升性能 */
-    .global-background-layer > * {
-        will-change: auto;
-    }
-    
-    /* 移动端表单优化 */
-    article form {
-        padding: 1.5rem;
-    }
-    
-    input[type="text"]:focus,
-    input[type="password"]:focus,
-    input[type="email"]:focus,
-    textarea:focus {
-        transform: none;
-    }
-}
-
-/* 低性能设备优化 */
-@media (prefers-reduced-motion: reduce) {
-    .global-background-layer > * {
-        will-change: auto;
-    }
-}
-
-/* 内容区域性能优化 - 确保内容在背景之上正确渲染 */
-main.container {
-    position: relative;
-    z-index: 1;
-    contain: layout style paint; /* CSS containment 优化 */
-}
-
-/* 卡片性能优化 */
-.game-card,
-article {
-    contain: layout style; /* 限制重绘范围 */
-    transform: translateZ(0); /* 启用硬件加速 */
-}
-
-/* ===================================================================
- * 列表页面卡片优化 (List Page Card Enhancements)
- * ===================================================================
- */
-
-/* 卡片进入动画 */
-article.card,
-.game-card {
-    animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards; /* 使用更自然的缓动函数 */
-}
-
-/* 为不同卡片添加延迟，创造波浪效果 */
-article.card:nth-child(1) { animation-delay: 0.03s; } /* 从 0.05s 降至 0.03s */
-article.card:nth-child(2) { animation-delay: 0.06s; } /* 从 0.1s 降至 0.06s */
-article.card:nth-child(3) { animation-delay: 0.09s; } /* 从 0.15s 降至 0.09s */
-article.card:nth-child(4) { animation-delay: 0.12s; } /* 从 0.2s 降至 0.12s */
-article.card:nth-child(5) { animation-delay: 0.15s; } /* 从 0.25s 降至 0.15s */
-article.card:nth-child(6) { animation-delay: 0.18s; } /* 从 0.3s 降至 0.18s */
-article.card:nth-child(n+7) { animation-delay: 0.21s; } /* 从 0.35s 降至 0.21s */
-
-/* 淡入上升动画 */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(15px); /* 从 20px 降至 15px，减少动画距离 */
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* 文章列表卡片增强 */
-.articles-list article.card,
-.bounties-list article.card {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-}
-
-.articles-list article.card::before,
-.bounties-list article.card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transition: left 0.5s ease;
-}
-
-.articles-list article.card:hover::before,
-.bounties-list article.card:hover::before {
-    left: 100%;
-}
-
-/* 卡片3D悬浮效果 */
-.articles-list article.card:hover,
-.bounties-list article.card:hover {
-    transform: translateY(-8px) translateZ(0) rotateX(2deg);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-    border-color: var(--pico-primary);
-}
-
-[data-theme="dark"] .articles-list article.card:hover,
-[data-theme="dark"] .bounties-list article.card:hover {
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-}
-
-/* ===================================================================
- * 卡片悬浮3D效果增强 (Enhanced 3D Card Hover Effects)
- * ===================================================================
- */
-
-/* 游戏卡片3D效果增强 */
-.game-link-container {
-    perspective: 1000px;
-    transform-style: preserve-3d;
-}
-
-.game-card {
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    transform-style: preserve-3d;
-    will-change: transform;
-}
-
-/* 卡片悬浮时的3D变换 */
-.game-link-container:hover .game-card {
-    transform: translateY(-6px) translateZ(20px) rotateY(2deg) rotateX(-1deg); /* 降低位移和旋转角度 */
-    box-shadow: 
-        0 12px 24px rgba(0, 0, 0, 0.12), /* 降低阴影强度：从 16px 32px 降至 12px 24px */
-        0 0 0 1px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.1);
-    border-color: var(--pico-primary);
-}
-
-[data-theme="dark"] .game-link-container:hover .game-card {
-    box-shadow: 
-        0 12px 24px rgba(0, 0, 0, 0.4), /* 降低阴影强度：从 16px 32px 降至 12px 24px */
-        0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-/* 卡片图片的3D效果 */
-.game-card-img-container {
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    transform-style: preserve-3d;
-}
-
-.game-link-container:hover .game-card-img-container {
-    transform: scale(1.05) translateZ(10px);
-}
-
-/* 鼠标跟随效果 - 使用JavaScript实现 */
-.game-card.mouse-tilt {
-    transition: transform 0.1s ease-out;
-}
-
-/* 文章和悬赏卡片的3D效果 */
-.articles-list article.card,
-.bounties-list article.card {
-    transform-style: preserve-3d;
-    perspective: 1000px;
-}
-
-.articles-list article.card:hover,
-.bounties-list article.card:hover {
-    transform: translateY(-8px) translateZ(20px) rotateX(1deg) rotateY(-0.5deg); /* 降低位移和旋转角度 */
-    box-shadow: 
-        0 14px 28px rgba(0, 0, 0, 0.12), /* 降低阴影强度：从 20px 40px 降至 14px 28px */
-        0 0 0 1px rgba(var(--pico-primary-rgb, 99, 102, 241), 0.15);
-}
-
-[data-theme="dark"] .articles-list article.card:hover,
-[data-theme="dark"] .bounties-list article.card:hover {
-    box-shadow: 
-        0 14px 28px rgba(0, 0, 0, 0.5), /* 降低阴影强度：从 20px 40px 降至 14px 28px */
-        0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-/* 卡片内容区域的3D层次 */
-.game-card-body,
-.articles-list article.card > div:first-child,
-.bounties-list article.card > div:first-child {
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.game-link-container:hover .game-card-body,
-.articles-list article.card:hover > div:first-child,
-.bounties-list article.card:hover > div:first-child {
-    transform: translateZ(10px);
-}
-
-/* 流畅的阴影过渡 */
-.game-card,
-.articles-list article.card,
-.bounties-list article.card {
-    transition: 
-        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-        box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-        border-color 0.3s ease;
-}
-
-/* 移动端优化 - 减少3D效果 */
-@media (max-width: 768px) {
-    .game-link-container:hover .game-card,
-    .articles-list article.card:hover,
-    .bounties-list article.card:hover {
-        transform: translateY(-4px) translateZ(0);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-    }
-}
-
-/* 列表视图下的卡片优化 */
-#game-list.view-list .game-link-container:hover .game-card {
-    transform: translateX(3px) translateZ(0); /* 从 4px 降至 3px，减少位移效果 */
-}
-
-/* 紧凑视图下的卡片优化 */
-#game-list.view-compact .game-link-container:hover .game-card {
-    transform: translateX(2px) translateZ(0);
-    border-color: var(--pico-primary-hover);
-}
-
-/* ===================================================================
- * 全局过渡动画 (Global Transition Animations)
- * ===================================================================
- */
-
-/* 页面元素进入动画 */
-main.container > * {
-    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards; /* 使用更自然的缓动函数 */
-}
-
-main.container > *:nth-child(1) { animation-delay: 0.03s; } /* 从 0.05s 降至 0.03s */
-main.container > *:nth-child(2) { animation-delay: 0.06s; } /* 从 0.1s 降至 0.06s */
-main.container > *:nth-child(3) { animation-delay: 0.09s; } /* 从 0.15s 降至 0.09s */
-main.container > *:nth-child(4) { animation-delay: 0.12s; } /* 从 0.2s 降至 0.12s */
-main.container > *:nth-child(n+5) { animation-delay: 0.15s; } /* 从 0.25s 降至 0.15s */
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-/* 统一的过渡时间曲线 */
-* {
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 链接过渡效果 */
-a {
-    transition: color 0.2s ease, opacity 0.2s ease;
-}
-
-a:hover {
-    opacity: 0.8;
-}
-
-/* 按钮统一过渡 */
-button,
-[role="button"],
-input[type="submit"],
-input[type="button"] {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 减少动画偏好 */
-@media (prefers-reduced-motion: reduce) {
-    article.card,
-    .game-card,
-    main.container > * {
-        animation: none;
-    }
-    
-    * {
-        transition-duration: 0.01ms !important;
-        animation-duration: 0.01ms !important;
-    }
-    
-    .articles-list article.card:hover,
-    .bounties-list article.card:hover,
-    .game-link-container:hover .game-card {
-        transform: translateY(-4px);
-    }
+	a { color: #000; text-decoration: underline; }
 }

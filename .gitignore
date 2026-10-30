@@ -48,3 +48,18 @@ node_modules/
 dist/
 build/
 
+# ---------------------------------------------------------------------------
+# Runtime / user-generated content — 这些不进仓库
+# ---------------------------------------------------------------------------
+# 用户上传的封面与资源文件（含真实社区数据）
+app/static/uploads/
+
+# 文章正文：既有用户上传的文章，也有抓取来的第三方 wiki 页面（版权不属于本项目）
+app/static/articles/
+
+# 资料库封面：各发行商版权素材，体积也大；用 tools/build_library.py 自行生成
+app/static/library/covers/
+
+# 资料库数据可通过 tools/import_library.py 从自己的收藏重新生成
+# 仓库里保留一份 library.json 作为示例数据，如需替换请覆盖同名文件
+

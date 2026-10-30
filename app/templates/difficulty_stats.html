@@ -1,470 +1,4420 @@
 {% extends "base.html" %}
 
-{% block title %}难度评分统计 - STG社区评价{% endblock %}
+{% block title %}难度全景 · 难度统计 - STG社区评价{% endblock %}
+{% block description %}STG 社区难度统计：全部作品、难度等级与机体的难度分布、段位天梯、维度画像与情境对比。{% endblock %}
+{% block body_class %}demo-body{% endblock %}
 
 {% block content %}
 <style>
-    .stats-container {
-        margin: 2rem 0;
-    }
-    .filters {
-        background: var(--pico-card-background-color);
-        border-radius: var(--pico-border-radius);
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .filters .grid {
-        gap: 1rem;
-    }
-    .stats-table {
-        width: 100%;
-        overflow-x: auto;
-    }
-    .stats-table table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .stats-table th {
-        background: var(--pico-card-background-color);
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        cursor: pointer;
-        user-select: none;
-    }
-    .stats-table th:hover {
-        background: var(--pico-primary-background);
-    }
-    .stats-table th.sortable::after {
-        content: " ↕";
-        opacity: 0.5;
-        font-size: 0.8em;
-    }
-    .stats-table th.sort-asc::after {
-        content: " ↑";
-        opacity: 1;
-    }
-    .stats-table th.sort-desc::after {
-        content: " ↓";
-        opacity: 1;
-    }
-    .stats-table td, .stats-table th {
-        padding: 0.75rem;
-        text-align: left;
-        border-bottom: 1px solid var(--pico-muted-border-color);
-    }
-    .stats-table tr:hover {
-        background: var(--pico-card-background-color);
-    }
-    .realm-badge {
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        background: var(--pico-primary-background);
-        color: var(--pico-primary-inverse);
-        border-radius: var(--pico-border-radius);
-        font-size: 0.9rem;
-        font-weight: bold;
-    }
-    .score-cell {
-        text-align: center;
-        font-weight: 500;
-    }
-    .no-data {
-        text-align: center;
-        padding: 2rem;
-        color: var(--pico-muted-color);
-    }
-</style>
+        /* =====================================================================
+           Difficulty stats redesign — static preview
+           Reuses the detail-page visual language. Scoped to .stats-demo.
+           ===================================================================== */
+        body.demo-body,
+        .stats-demo {
+            --demo-radius: 20px;
+            --demo-card: var(--pico-card-background-color);
+            --demo-line: var(--pico-card-border-color);
+            --demo-muted: var(--pico-muted-color);
+            --demo-tint: var(--pico-card-sectioning-background-color);
+            --demo-quality: var(--pico-primary);
+            --demo-difficulty: var(--accent-500);
 
-<article>
-    <header>
-        <h1><i data-lucide="bar-chart-3"></i> 难度评分统计</h1>
-        <p>查看所有游戏所有机体的难度分级和评分</p>
-    </header>
-</article>
-
-<div class="filters">
-    <h3>筛选条件</h3>
-    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-        <div>
-            <label for="filter-tag">标签</label>
-            <select id="filter-tag">
-                <option value="">全部标签</option>
-                {% for tag in all_tags %}
-                <option value="{{ tag }}">{{ tag }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div>
-            <label for="filter-company">公司</label>
-            <select id="filter-company">
-                <option value="">全部公司</option>
-                {% for company in all_companies %}
-                <option value="{{ company }}">{{ company }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div>
-            <label for="filter-game">游戏</label>
-            <select id="filter-game">
-                <option value="">全部游戏</option>
-                {% for game in all_games %}
-                <option value="{{ game.id }}">{{ game.title }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div>
-            <label for="filter-difficulty">难度等级</label>
-            <select id="filter-difficulty">
-                <option value="">全部难度</option>
-                <option value="0">游戏总体</option>
-                {% for diff in all_difficulty_levels %}
-                <option value="{{ diff.id }}">{{ diff.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div>
-            <label for="filter-ship">机体/角色</label>
-            <select id="filter-ship">
-                <option value="">全部机体</option>
-                <option value="0">全机体/角色</option>
-                {% for ship in all_ship_types %}
-                <option value="{{ ship.id }}">{{ ship.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div>
-            <label for="filter-min-rating">最少评分数量</label>
-            <input type="number" id="filter-min-rating" min="0" value="0" placeholder="0">
-        </div>
-    </div>
-    <div style="margin-top: 1rem;">
-        <button id="reset-filters" class="secondary outline">重置筛选</button>
-        <span id="result-count" style="margin-left: 1rem; color: var(--pico-muted-color);"></span>
-    </div>
-</div>
-
-<div class="stats-container">
-    <div class="stats-table">
-        <table id="stats-table">
-            <thead>
-                <tr>
-                    <th class="sortable" data-sort="game_title">游戏</th>
-                    <th class="sortable" data-sort="difficulty_level_name">难度等级</th>
-                    <th class="sortable" data-sort="ship_type_name">机体/角色</th>
-                    <th class="sortable" data-sort="dodge_avg">避弹</th>
-                    <th class="sortable" data-sort="strategy_avg">策略</th>
-                    <th class="sortable" data-sort="execution_avg">执行</th>
-                    <th class="sortable" data-sort="overall_avg">平均分</th>
-                    <th class="sortable" data-sort="realm">段位</th>
-                    <th class="sortable" data-sort="rating_count">评分数</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody id="stats-tbody">
-                {% for stat in stats_data %}
-                <tr data-game-id="{{ stat.game_id }}"
-                    data-difficulty-id="{{ stat.difficulty_level_id }}"
-                    data-ship-id="{{ stat.ship_type_id }}"
-                    data-rating-count="{{ stat.rating_count }}">
-                    <td><strong>{{ stat.game_title }}</strong><br><small>{{ stat.game_company }}</small></td>
-                    <td>{{ stat.difficulty_level_name }}</td>
-                    <td>{{ stat.ship_type_name }}</td>
-                    <td class="score-cell">{{ stat.dodge_avg }}</td>
-                    <td class="score-cell">{{ stat.strategy_avg }}</td>
-                    <td class="score-cell">{{ stat.execution_avg }}</td>
-                    <td class="score-cell"><strong>{{ stat.overall_avg }}</strong></td>
-                    <td><span class="realm-badge">{{ stat.realm.split(' ')[0] }}</span></td>
-                    <td class="score-cell">{{ stat.rating_count }}</td>
-                    <td><a href="/game/{{ stat.game_id }}" class="contrast">查看详情</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    <div id="no-data-message" class="no-data" style="display: none;">
-        <p>没有找到符合条件的数据</p>
-    </div>
-</div>
-
-<script id="stats-data" type="application/json">
-    {{ stats_data | tojson | safe }}
-</script>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const statsData = JSON.parse(document.getElementById('stats-data').textContent);
-    const tbody = document.getElementById('stats-tbody');
-    const resultCount = document.getElementById('result-count');
-    const noDataMessage = document.getElementById('no-data-message');
-    
-    let currentSort = { field: null, direction: 'asc' };
-    let filteredData = [...statsData];
-    
-    // 筛选功能
-    const filterTag = document.getElementById('filter-tag');
-    const filterCompany = document.getElementById('filter-company');
-    const filterGame = document.getElementById('filter-game');
-    const filterDifficulty = document.getElementById('filter-difficulty');
-    const filterShip = document.getElementById('filter-ship');
-    const filterMinRating = document.getElementById('filter-min-rating');
-    const resetFilters = document.getElementById('reset-filters');
-
-    // 建立基础索引，便于级联筛选
-    const gameIndex = {};
-    const difficultyNames = {};
-    const shipNames = {};
-    statsData.forEach(stat => {
-        // 记录游戏 -> 标签/公司/可用情境
-        if (!gameIndex[stat.game_id]) {
-            gameIndex[stat.game_id] = {
-                id: stat.game_id,
-                title: stat.game_title,
-                company: stat.game_company,
-                tags: stat.tags || [],
-                difficulties: new Set(),
-                ships: new Set()
-            };
+            --realm-0: #4dabf7;
+            --realm-1: #38d9a9;
+            --realm-2: #ffd43b;
+            --realm-3: #ff922b;
+            --realm-4: #fa5252;
+            --realm-5: #b197fc;
         }
-        gameIndex[stat.game_id].difficulties.add(stat.difficulty_level_id);
-        gameIndex[stat.game_id].ships.add(stat.ship_type_id);
 
-        // 记录名称映射
-        difficultyNames[stat.difficulty_level_id] = stat.difficulty_level_name;
-        shipNames[stat.ship_type_id] = stat.ship_type_name;
-    });
-
-    function populateSelect(selectEl, options, placeholder) {
-        const currentValue = selectEl.value;
-        selectEl.innerHTML = '';
-        if (placeholder) {
-            const opt = document.createElement('option');
-            opt.value = '';
-            opt.textContent = placeholder;
-            selectEl.appendChild(opt);
+        .stats-demo {
+            padding-bottom: 3rem;
         }
-        options.forEach(optData => {
-            const opt = document.createElement('option');
-            opt.value = String(optData.value);
-            opt.textContent = optData.label;
-            selectEl.appendChild(opt);
-        });
-        // 如果原值仍然存在则保持，否则重置为空
-        const hasValue = options.some(o => String(o.value) === currentValue);
-        selectEl.value = hasValue ? currentValue : '';
-    }
 
-    function currentGameCandidates() {
-        const tag = filterTag.value;
-        const company = filterCompany.value;
-        return Object.values(gameIndex).filter(g => {
-            const matchTag = !tag || g.tags.includes(tag);
-            const matchCompany = !company || g.company === company;
-            return matchTag && matchCompany;
-        });
-    }
+        .stats-demo a {
+            text-underline-offset: 0.18em;
+        }
 
-    function updateGameOptions() {
-        const candidates = currentGameCandidates();
-        const gameOptions = candidates.map(g => ({ value: g.id, label: g.title }));
-        populateSelect(filterGame, gameOptions, '全部游戏');
-    }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
 
-    function updateDifficultyOptions() {
-        const candidates = currentGameCandidates();
-        const gameId = filterGame.value;
-        let diffIds = new Set();
-        if (gameId) {
-            const g = gameIndex[parseInt(gameId, 10)];
-            if (g) diffIds = g.difficulties;
-        } else {
-            candidates.forEach(g => g.difficulties.forEach(id => diffIds.add(id)));
+        /* ---------- Preview flag / breadcrumb ---------- */
+        .demo-topline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1.25rem 0 0.7rem;
         }
-        const diffs = Array.from(diffIds).sort((a, b) => a - b).map(id => ({
-            value: id,
-            label: difficultyNames[id] || '游戏总体'
-        }));
-        // 保证总体选项在前
-        diffs.sort((a, b) => {
-            if (a.value === 0) return -1;
-            if (b.value === 0) return 1;
-            return a.label.localeCompare(b.label, 'zh-CN');
-        });
-        populateSelect(filterDifficulty, diffs, '全部难度');
-    }
 
-    function updateShipOptions() {
-        const candidates = currentGameCandidates();
-        const gameId = filterGame.value;
-        let shipIds = new Set();
-        if (gameId) {
-            const g = gameIndex[parseInt(gameId, 10)];
-            if (g) shipIds = g.ships;
-        } else {
-            candidates.forEach(g => g.ships.forEach(id => shipIds.add(id)));
+        .demo-flag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            margin: 0;
+            padding: 0.35rem 0.7rem;
+            border: 1px dashed color-mix(in srgb, var(--demo-quality) 38%, var(--demo-line));
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--demo-quality) 7%, transparent);
+            color: var(--demo-muted);
+            font-size: 0.74rem;
         }
-        const ships = Array.from(shipIds).sort((a, b) => a - b).map(id => ({
-            value: id,
-            label: shipNames[id] || '全机体/角色'
-        }));
-        ships.sort((a, b) => {
-            if (a.value === 0) return -1;
-            if (b.value === 0) return 1;
-            return a.label.localeCompare(b.label, 'zh-CN');
-        });
-        populateSelect(filterShip, ships, '全部机体');
-    }
-    
-    function applyFilters() {
-        const gameId = filterGame.value;
-        const difficultyId = filterDifficulty.value;
-        const shipId = filterShip.value;
-        const minRating = parseInt(filterMinRating.value) || 0;
-        const tag = filterTag.value;
-        const company = filterCompany.value;
-        
-        filteredData = statsData.filter(stat => {
-            if (tag && !(stat.tags || []).includes(tag)) return false;
-            if (company && stat.game_company !== company) return false;
-            if (gameId && stat.game_id.toString() !== gameId) return false;
-            if (difficultyId !== '' && stat.difficulty_level_id.toString() !== difficultyId) return false;
-            if (shipId !== '' && stat.ship_type_id.toString() !== shipId) return false;
-            if (stat.rating_count < minRating) return false;
-            return true;
-        });
-        
-        renderTable();
-        updateResultCount();
-    }
-    
-    function updateResultCount() {
-        resultCount.textContent = `共找到 ${filteredData.length} 条记录`;
-    }
-    
-    function renderTable() {
-        if (filteredData.length === 0) {
-            tbody.innerHTML = '';
-            noDataMessage.style.display = 'block';
-            return;
+
+        .demo-flag strong {
+            color: var(--demo-quality);
+            letter-spacing: 0.08em;
+            font-size: 0.68rem;
         }
-        
-        noDataMessage.style.display = 'none';
-        
-        // 应用排序
-        if (currentSort.field) {
-            filteredData.sort((a, b) => {
-                let aVal = a[currentSort.field];
-                let bVal = b[currentSort.field];
-                
-                // 处理数字和字符串
-                if (typeof aVal === 'number' && typeof bVal === 'number') {
-                    return currentSort.direction === 'asc' ? aVal - bVal : bVal - aVal;
-                }
-                
-                aVal = String(aVal || '');
-                bVal = String(bVal || '');
-                
-                if (currentSort.direction === 'asc') {
-                    return aVal.localeCompare(bVal, 'zh-CN');
-                } else {
-                    return bVal.localeCompare(aVal, 'zh-CN');
-                }
-            });
+
+        .demo-flag a {
+            color: var(--demo-quality);
+            font-weight: 600;
+            text-decoration: none;
         }
-        
-        tbody.innerHTML = filteredData.map(stat => {
-            const realmShort = stat.realm.split(' ')[0];
-            return `
-                <tr data-game-id="${stat.game_id}"
-                    data-difficulty-id="${stat.difficulty_level_id}"
-                    data-ship-id="${stat.ship_type_id}"
-                    data-rating-count="${stat.rating_count}">
-                    <td><strong>${escapeHtml(stat.game_title)}</strong><br><small>${escapeHtml(stat.game_company)}</small></td>
-                    <td>${escapeHtml(stat.difficulty_level_name)}</td>
-                    <td>${escapeHtml(stat.ship_type_name)}</td>
-                    <td class="score-cell">${stat.dodge_avg}</td>
-                    <td class="score-cell">${stat.strategy_avg}</td>
-                    <td class="score-cell">${stat.execution_avg}</td>
-                    <td class="score-cell"><strong>${stat.overall_avg}</strong></td>
-                    <td><span class="realm-badge">${escapeHtml(realmShort)}</span></td>
-                    <td class="score-cell">${stat.rating_count}</td>
-                    <td><a href="/game/${stat.game_id}" class="contrast">查看详情</a></td>
-                </tr>
-            `;
-        }).join('');
-    }
-    
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    // 排序功能
-    document.querySelectorAll('.sortable').forEach(header => {
-        header.addEventListener('click', () => {
-            const field = header.dataset.sort;
-            
-            // 更新排序状态
-            if (currentSort.field === field) {
-                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSort.field = field;
-                currentSort.direction = 'asc';
+
+        .demo-flag a:hover {
+            text-decoration: underline;
+        }
+
+        .demo-crumbs {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+            margin: 0 0 0.85rem;
+            font-size: 0.8rem;
+            color: var(--demo-muted);
+        }
+
+        .demo-crumbs a {
+            color: var(--demo-muted);
+            text-decoration: none;
+        }
+
+        .demo-crumbs a:hover {
+            color: var(--demo-quality);
+        }
+
+        .demo-crumbs span[aria-current] {
+            color: var(--pico-color);
+            font-weight: 600;
+        }
+
+        .demo-crumbs svg {
+            width: 0.85em;
+            height: 0.85em;
+            opacity: 0.55;
+        }
+
+        /* ---------- Buttons ---------- */
+        .demo-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.42rem;
+            width: auto;
+            min-height: 2.45rem;
+            padding: 0.52rem 0.95rem;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 650;
+            line-height: 1.2;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color var(--dur-1) var(--ease-out),
+                border-color var(--dur-1) var(--ease-out),
+                color var(--dur-1) var(--ease-out),
+                transform var(--dur-1) var(--ease-out);
+        }
+
+        .demo-btn:active {
+            transform: translateY(1px);
+        }
+
+        .demo-btn svg {
+            width: 1em;
+            height: 1em;
+        }
+
+        .demo-btn--primary {
+            background: var(--pico-primary-background);
+            border-color: var(--pico-primary-background);
+            color: var(--pico-primary-inverse);
+        }
+
+        .demo-btn--primary:hover {
+            background: var(--pico-primary-hover-background);
+            border-color: var(--pico-primary-hover-background);
+        }
+
+        .demo-btn--ghost {
+            background: transparent;
+            border-color: var(--demo-line);
+            color: var(--fg-muted);
+        }
+
+        .demo-btn--ghost:hover {
+            border-color: color-mix(in srgb, var(--pico-primary) 44%, var(--demo-line));
+            color: var(--pico-primary);
+        }
+
+        .demo-btn--subtle {
+            min-height: 2rem;
+            padding: 0.3rem 0.65rem;
+            border-color: var(--demo-line);
+            background: var(--demo-tint);
+            color: var(--fg-muted);
+            font-size: 0.74rem;
+            font-weight: 600;
+        }
+
+        .demo-btn--subtle:hover {
+            border-color: color-mix(in srgb, var(--pico-primary) 40%, var(--demo-line));
+            color: var(--pico-primary);
+        }
+
+        /* ---------- Hero ---------- */
+        .stats-hero {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            border-radius: 24px;
+            color: #f8faff;
+            background:
+                radial-gradient(120% 150% at 8% 0%, rgba(66, 99, 235, 0.48), transparent 56%),
+                radial-gradient(80% 120% at 100% 4%, rgba(240, 140, 0, 0.22), transparent 58%),
+                linear-gradient(158deg, #141c2e 0%, #0b101a 62%, #080c14 100%);
+            box-shadow: 0 30px 70px rgba(9, 13, 24, 0.28);
+        }
+
+        .stats-hero::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: linear-gradient(180deg, #000 0%, transparent 82%);
+            -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 82%);
+            pointer-events: none;
+        }
+
+        .stats-hero__inner {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 340px;
+            align-items: end;
+            gap: 2.4rem;
+            padding: 2.3rem 2.3rem 1.7rem;
+        }
+
+        .stats-hero__eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            margin: 0 0 0.9rem;
+            color: rgba(240, 245, 255, 0.55);
+            font-size: 0.66rem;
+            font-weight: 700;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+        }
+
+        .stats-hero__eyebrow::before {
+            content: "";
+            width: 26px;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.34);
+        }
+
+        .stats-hero h1 {
+            margin: 0;
+            color: #f8faff;
+            font-size: clamp(2.2rem, 4.6vw, 3.4rem);
+            font-weight: 780;
+            letter-spacing: -0.045em;
+            line-height: 1;
+        }
+
+        .stats-hero__lede {
+            max-width: 41rem;
+            margin: 1rem 0 0;
+            color: rgba(240, 245, 255, 0.64);
+            font-size: 0.9rem;
+            line-height: 1.72;
+        }
+
+        .stats-hero__meta {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            margin-top: 1.25rem;
+            color: rgba(240, 245, 255, 0.44);
+            font-size: 0.72rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stats-hero__meta i {
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.28);
+        }
+
+        .stats-hero__meta b {
+            color: rgba(248, 250, 255, 0.82);
+            font-weight: 650;
+        }
+
+        .hero-console {
+            position: relative;
+            padding: 1.15rem 1.25rem 1.05rem;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 18px;
+            background: rgba(9, 13, 22, 0.6);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(18px) saturate(1.1);
+            -webkit-backdrop-filter: blur(18px) saturate(1.1);
+        }
+
+        .hero-console__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.6rem;
+            color: rgba(248, 250, 255, 0.82);
+            font-size: 0.8rem;
+            font-weight: 650;
+        }
+
+        .hero-console__value {
+            display: flex;
+            align-items: baseline;
+            gap: 0.14rem;
+            margin: 0.35rem 0 0.2rem;
+            color: #ffd8a8;
+            font-size: 3rem;
+            font-weight: 780;
+            letter-spacing: -0.05em;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hero-console__value small {
+            color: rgba(240, 245, 255, 0.42);
+            font-size: 0.76rem;
+            font-weight: 600;
+            letter-spacing: 0;
+        }
+
+        .hero-console__sub {
+            color: rgba(240, 245, 255, 0.45);
+            font-size: 0.7rem;
+        }
+
+        .hero-gauge {
+            margin-top: 0.9rem;
+        }
+
+        .hero-gauge__track {
+            position: relative;
+            height: 8px;
+            border-radius: 999px;
+            background: linear-gradient(90deg,
+                var(--realm-0) 0 16.6%,
+                var(--realm-1) 16.6% 33.3%,
+                var(--realm-2) 33.3% 50%,
+                var(--realm-3) 50% 66.6%,
+                var(--realm-4) 66.6% 91.6%,
+                var(--realm-5) 91.6% 100%);
+            opacity: 0.92;
+        }
+
+        .hero-gauge__marker {
+            position: absolute;
+            top: 50%;
+            left: 50.5%;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #111726;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.16);
+            transform: translate(-50%, -50%);
+        }
+
+        .hero-gauge__labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.34rem;
+            color: rgba(240, 245, 255, 0.4);
+            font-size: 0.6rem;
+        }
+
+        .hero-console__foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.6rem;
+            margin-top: 0.85rem;
+            padding-top: 0.7rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(240, 245, 255, 0.4);
+            font-size: 0.66rem;
+        }
+
+        .stats-kpis {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(6, 9, 16, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .stat-kpi {
+            padding: 0.95rem 1.4rem 1rem;
+            border-right: 1px solid rgba(255, 255, 255, 0.09);
+        }
+
+        .stat-kpi:last-child {
+            border-right: 0;
+        }
+
+        .stat-kpi__label {
+            display: block;
+            color: rgba(240, 245, 255, 0.42);
+            font-size: 0.64rem;
+            font-weight: 650;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .stat-kpi__value {
+            display: flex;
+            align-items: baseline;
+            gap: 0.18rem;
+            margin-top: 0.25rem;
+            color: #f8faff;
+            font-size: 1.5rem;
+            font-weight: 760;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-kpi__value small {
+            color: rgba(240, 245, 255, 0.4);
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0;
+        }
+
+        .stat-kpi__sub {
+            display: block;
+            margin-top: 0.2rem;
+            color: rgba(240, 245, 255, 0.38);
+            font-size: 0.64rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ---------- Sticky section nav ---------- */
+        #overview,
+        #ladder,
+        #contexts,
+        #table {
+            scroll-margin-top: 132px;
+        }
+
+        .stats-tabs {
+            position: sticky;
+            top: 50px;
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: 1.4rem 0;
+            padding: 0.38rem 0.55rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 13px;
+            background: color-mix(in srgb, var(--pico-background-color) 92%, transparent);
+            box-shadow: var(--shadow-xs);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        .stats-tabs__links {
+            display: flex;
+            gap: 0.2rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .stats-tabs__links::-webkit-scrollbar {
+            display: none;
+        }
+
+        .stats-tabs__links a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.45rem 0.78rem;
+            border-radius: 9px;
+            color: var(--demo-muted);
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+            text-decoration: none;
+            transition: background-color var(--dur-1) var(--ease-out),
+                color var(--dur-1) var(--ease-out);
+        }
+
+        .stats-tabs__links a:hover {
+            color: var(--pico-color);
+            background: color-mix(in srgb, var(--pico-color) 5%, transparent);
+        }
+
+        .stats-tabs__links a.is-active {
+            background: color-mix(in srgb, var(--pico-primary) 11%, var(--demo-card));
+            color: var(--pico-primary);
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pico-primary) 20%, transparent);
+        }
+
+        .stats-tabs__meta {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex: 0 0 auto;
+            padding-right: 0.3rem;
+            color: var(--demo-muted);
+            font-size: 0.72rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stats-tabs__meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.22rem 0.5rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 999px;
+            background: var(--demo-card);
+        }
+
+        .stats-tabs__meta svg {
+            width: 0.9em;
+            height: 0.9em;
+            opacity: 0.7;
+        }
+
+        /* ---------- Layout / panels ---------- */
+        .stats-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            align-items: start;
+            gap: 1.5rem;
+        }
+
+        .stats-main {
+            display: grid;
+            gap: 1.4rem;
+            min-width: 0;
+        }
+
+        .stats-split {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-items: start;
+            gap: 1.4rem;
+            min-width: 0;
+        }
+
+        .stats-rail {
+            position: sticky;
+            top: 142px;
+            display: grid;
+            gap: 1.1rem;
+            min-width: 0;
+        }
+
+        .panel {
+            overflow: hidden;
+            border: 1px solid var(--demo-line);
+            border-radius: var(--demo-radius);
+            background: var(--demo-card);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .panel__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1.05rem 1.3rem;
+            border-bottom: 1px solid var(--demo-line);
+        }
+
+        .panel__title {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            min-width: 0;
+        }
+
+        .panel__title h2 {
+            margin: 0;
+            font-size: 1rem;
+            letter-spacing: -0.01em;
+        }
+
+        .panel__title p {
+            margin: 0.12rem 0 0;
+            color: var(--demo-muted);
+            font-size: 0.71rem;
+        }
+
+        .icon-chip {
+            display: inline-grid;
+            place-items: center;
+            flex: 0 0 auto;
+            width: 2.15rem;
+            height: 2.15rem;
+            border-radius: 11px;
+            font-size: 1rem;
+        }
+
+        .icon-chip svg {
+            width: 1em;
+            height: 1em;
+        }
+
+        .icon-chip--quality {
+            background: color-mix(in srgb, var(--pico-primary) 11%, transparent);
+            color: var(--pico-primary);
+        }
+
+        .icon-chip--difficulty {
+            background: color-mix(in srgb, var(--accent-500) 13%, transparent);
+            color: var(--accent-500);
+        }
+
+        .icon-chip--violet {
+            background: color-mix(in srgb, var(--realm-5) 14%, transparent);
+            color: var(--realm-5);
+        }
+
+        .icon-chip--teal {
+            background: color-mix(in srgb, var(--realm-1) 15%, transparent);
+            color: #0ca678;
+        }
+
+        .icon-chip--neutral {
+            background: var(--demo-tint);
+            color: var(--demo-muted);
+        }
+
+        .panel__meta {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            flex: 0 0 auto;
+            color: var(--demo-muted);
+            font-size: 0.7rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .panel__meta strong {
+            color: var(--pico-color);
+            font-size: 1.1rem;
+            font-weight: 750;
+            letter-spacing: -0.02em;
+        }
+
+        .panel__meta a {
+            color: var(--demo-muted);
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .panel__meta a:hover {
+            color: var(--pico-primary);
+        }
+
+        .panel__body {
+            padding: 1.25rem 1.3rem;
+        }
+
+        .panel__body--tight {
+            padding: 1rem 1.3rem;
+        }
+
+        .panel__body--flush {
+            padding: 0;
+        }
+
+        .panel__foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            padding: 0.75rem 1.3rem;
+            border-top: 1px solid var(--demo-line);
+            background: color-mix(in srgb, var(--demo-tint) 55%, transparent);
+            color: var(--demo-muted);
+            font-size: 0.68rem;
+        }
+
+        .panel__foot b {
+            color: var(--pico-color);
+            font-weight: 650;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ---------- Realm pill ---------- */
+        .realm-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.16rem 0.52rem;
+            border: 1px solid color-mix(in srgb, var(--realm-color, var(--accent-500)) 36%, transparent);
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--realm-color, var(--accent-500)) 14%, transparent);
+            color: color-mix(in srgb, var(--realm-color, var(--accent-500)) 82%, var(--pico-color));
+            font-size: 0.68rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .realm-pill--dark {
+            border-color: rgba(255, 169, 77, 0.32);
+            background: rgba(240, 140, 0, 0.16);
+            color: #ffc078;
+        }
+
+        /* ---------- Distribution ---------- */
+        .realm-stack {
+            display: flex;
+            height: 32px;
+            overflow: hidden;
+            border-radius: 10px;
+            background: var(--demo-tint);
+            box-shadow: inset 0 0 0 1px var(--demo-line);
+        }
+
+        .realm-stack__seg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            color: #fff;
+            font-size: 0.66rem;
+            font-weight: 750;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            transition: filter var(--dur-1) var(--ease-out);
+        }
+
+        .realm-stack__seg:hover {
+            filter: brightness(1.1);
+        }
+
+        .realm-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            margin-top: 0.7rem;
+        }
+
+        .realm-legend__item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.32rem;
+            padding: 0.18rem 0.45rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--demo-tint) 55%, transparent);
+            color: var(--demo-muted);
+            font-size: 0.62rem;
+            line-height: 1.2;
+        }
+
+        .realm-legend__dot {
+            flex: 0 0 auto;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--c);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 16%, transparent);
+        }
+
+        .realm-legend__name {
+            color: var(--pico-color);
+            font-weight: 650;
+        }
+
+        .realm-legend__range {
+            color: var(--demo-muted);
+            font-size: 0.56rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .realm-legend__count {
+            margin-left: 0.04rem;
+            padding-left: 0.32rem;
+            border-left: 1px solid var(--demo-line);
+            color: var(--pico-color);
+            font-weight: 750;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .spread {
+            position: relative;
+            height: 142px;
+            margin-top: 0.85rem;
+            border-radius: 12px;
+            background: color-mix(in srgb, var(--demo-tint) 62%, transparent);
+            box-shadow: inset 0 0 0 1px var(--demo-line);
+        }
+
+        .spread__band {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            border-left: 1px dashed color-mix(in srgb, var(--pico-color) 9%, transparent);
+            background: color-mix(in srgb, var(--c) 7%, transparent);
+        }
+
+        .spread__band:first-child {
+            border-left: 0;
+        }
+
+        .spread__band span {
+            position: absolute;
+            top: 6px;
+            left: 7px;
+            color: var(--demo-muted);
+            font-size: 0.53rem;
+            font-weight: 650;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+
+        .spread__dot {
+            position: absolute;
+            width: var(--size, 9px);
+            height: var(--size, 9px);
+            min-width: 0;
+            min-height: 0;
+            margin: 0;
+            padding: 0;
+            border: 1.2px solid var(--demo-card);
+            border-radius: 50%;
+            background: var(--c);
+            box-shadow: 0 0 0 1.2px color-mix(in srgb, var(--c) 30%, transparent);
+            line-height: 0;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: transform var(--dur-1) var(--ease-out),
+                box-shadow var(--dur-1) var(--ease-out);
+            z-index: 2;
+        }
+
+        .spread__dot:hover,
+        .spread__dot:focus-visible {
+            outline: none;
+            transform: translate(-50%, -50%) scale(1.55);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 28%, transparent);
+            z-index: 6;
+        }
+
+        .spread__mean {
+            position: absolute;
+            top: 26px;
+            bottom: 16px;
+            border-left: 1.5px dashed color-mix(in srgb, var(--pico-color) 42%, transparent);
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        .spread__axis {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.28rem;
+            padding: 0 1rem;
+            color: var(--demo-muted);
+            font-size: 0.58rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .boxplot {
+            position: relative;
+            height: 20px;
+            margin: 0.55rem 1rem 0;
+        }
+
+        .boxplot__track {
+            position: absolute;
+            inset: 0;
+        }
+
+        .boxplot__range {
+            position: absolute;
+            top: 50%;
+            height: 2px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--pico-color) 24%, transparent);
+            transform: translateY(-50%);
+        }
+
+        .boxplot__cap {
+            position: absolute;
+            top: 50%;
+            width: 1px;
+            height: 10px;
+            background: color-mix(in srgb, var(--pico-color) 34%, transparent);
+            transform: translate(-50%, -50%);
+        }
+
+        .boxplot__box {
+            position: absolute;
+            top: 1px;
+            bottom: 1px;
+            border: 1px solid color-mix(in srgb, var(--pico-primary) 52%, var(--demo-line));
+            border-radius: 4px;
+            background: color-mix(in srgb, var(--pico-primary) 16%, transparent);
+        }
+
+        .boxplot__median {
+            position: absolute;
+            top: -1px;
+            bottom: -1px;
+            width: 2px;
+            border-radius: 1px;
+            background: var(--pico-color);
+            transform: translateX(-50%);
+        }
+
+        .chart-tip {
+            position: absolute;
+            z-index: 20;
+            padding: 0.42rem 0.58rem;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            background: #0d1320;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+            color: #f8faff;
+            font-size: 0.64rem;
+            line-height: 1.45;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transform: translate(-50%, calc(-100% - 8px));
+            transition: opacity var(--dur-1) var(--ease-out);
+        }
+
+        .chart-tip.is-visible {
+            opacity: 1;
+        }
+
+        .chart-tip b {
+            color: #ffd8a8;
+        }
+
+        .chart-tip small {
+            display: block;
+            color: rgba(240, 245, 255, 0.52);
+            font-size: 0.58rem;
+        }
+
+        /* ---------- Dimension profile ---------- */
+        .dim-profile {
+            display: grid;
+            grid-template-columns: 180px minmax(0, 1fr);
+            align-items: center;
+            gap: 0.9rem;
+        }
+
+        .dim-radar {
+            width: 180px;
+            margin: 0 auto;
+            aspect-ratio: 1;
+        }
+
+        .dim-radar svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .dim-radar .radar-ring {
+            fill: none;
+            stroke: color-mix(in srgb, var(--pico-color) 9%, transparent);
+            stroke-width: 1;
+        }
+
+        .dim-radar .radar-axis {
+            stroke: color-mix(in srgb, var(--pico-color) 11%, transparent);
+            stroke-width: 1;
+        }
+
+        .dim-radar .radar-shape {
+            fill: color-mix(in srgb, var(--pico-primary) 14%, transparent);
+            stroke: var(--pico-primary);
+            stroke-width: 2;
+            stroke-linejoin: round;
+        }
+
+        .dim-radar .radar-point {
+            stroke: var(--demo-card);
+            stroke-width: 1.4;
+        }
+
+        .dim-radar .radar-label {
+            fill: var(--demo-muted);
+            font-size: 10px;
+            font-weight: 650;
+        }
+
+        .dim-list {
+            display: grid;
+            gap: 0.85rem;
+            min-width: 0;
+        }
+
+        .dim-row__head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.8rem;
+            margin-bottom: 0.28rem;
+        }
+
+        .dim-row__name {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.42rem;
+            color: var(--pico-color);
+            font-size: 0.78rem;
+            font-weight: 650;
+        }
+
+        .dim-row__dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--c);
+        }
+
+        .dim-row__value {
+            color: var(--pico-color);
+            font-size: 1rem;
+            font-weight: 750;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .dim-row__value small {
+            color: var(--demo-muted);
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0;
+        }
+
+        .dim-row__bar {
+            height: 8px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: var(--demo-tint);
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pico-color) 5%, transparent);
+        }
+
+        .dim-row__bar i {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, color-mix(in srgb, var(--c) 70%, transparent), var(--c));
+        }
+
+        .dim-row__meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-top: 0.28rem;
+            color: var(--demo-muted);
+            font-size: 0.58rem;
+        }
+
+        .dim-row__meta b {
+            color: var(--pico-color);
+            font-weight: 650;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .insight {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.55rem;
+            margin-top: 1.1rem;
+            padding: 0.7rem 0.8rem;
+            border: 1px solid color-mix(in srgb, var(--pico-primary) 22%, var(--demo-line));
+            border-radius: 11px;
+            background: color-mix(in srgb, var(--pico-primary) 6%, transparent);
+            color: var(--demo-muted);
+            font-size: 0.7rem;
+            line-height: 1.55;
+        }
+
+        .insight svg {
+            flex: 0 0 auto;
+            width: 0.95rem;
+            height: 0.95rem;
+            margin-top: 0.1rem;
+            color: var(--pico-primary);
+        }
+
+        .insight b {
+            color: var(--pico-color);
+        }
+
+        /* ---------- Top list ---------- */
+        .top-list {
+            display: grid;
+            gap: 0.2rem;
+        }
+
+        .top-item {
+            display: grid;
+            grid-template-columns: 28px 38px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 0.7rem;
+            padding: 0.58rem 0.6rem;
+            border-radius: 11px;
+            color: inherit;
+            text-decoration: none;
+            transition: background-color var(--dur-1) var(--ease-out);
+        }
+
+        .top-item:hover {
+            background: var(--demo-tint);
+        }
+
+        .top-item__rank {
+            color: var(--demo-muted);
+            font-size: 0.72rem;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+
+        .top-item:first-child .top-item__rank {
+            color: #d4a017;
+        }
+
+        .top-item__cover {
+            width: 38px;
+            aspect-ratio: 3 / 4;
+            object-fit: cover;
+            border-radius: 5px;
+            border: 1px solid var(--demo-line);
+            background: var(--demo-tint);
+        }
+
+        .top-item__main {
+            min-width: 0;
+        }
+
+        .top-item__title {
+            overflow: hidden;
+            color: var(--pico-color);
+            font-size: 0.78rem;
+            font-weight: 650;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .top-item__sub {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-top: 0.12rem;
+            overflow: hidden;
+            color: var(--demo-muted);
+            font-size: 0.63rem;
+            white-space: nowrap;
+        }
+
+        .top-item__sub span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mini-context {
+            flex: 0 0 auto;
+            padding: 0.05rem 0.36rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 999px;
+            background: var(--demo-tint);
+            color: var(--demo-muted);
+            font-size: 0.58rem;
+        }
+
+        .top-item__score {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--pico-color);
+            font-size: 1rem;
+            font-weight: 760;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+
+        .top-item__score small {
+            color: var(--demo-muted);
+            font-size: 0.56rem;
+            font-weight: 600;
+            letter-spacing: 0;
+        }
+
+        /* ---------- Ladder ---------- */
+        .ladder-tools {
+            display: flex;
+            align-items: center;
+            gap: 0.38rem;
+            flex-wrap: wrap;
+            padding: 0.8rem 1.3rem;
+            border-bottom: 1px solid var(--demo-line);
+            background: color-mix(in srgb, var(--demo-tint) 45%, transparent);
+        }
+
+        .realm-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.32rem;
+            min-height: 1.8rem;
+            padding: 0.22rem 0.58rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 999px;
+            background: var(--demo-card);
+            color: var(--demo-muted);
+            font-size: 0.68rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color var(--dur-1) var(--ease-out),
+                background-color var(--dur-1) var(--ease-out),
+                color var(--dur-1) var(--ease-out);
+        }
+
+        .realm-chip:hover {
+            border-color: color-mix(in srgb, var(--pico-primary) 35%, var(--demo-line));
+            color: var(--pico-color);
+        }
+
+        .realm-chip.is-active {
+            border-color: color-mix(in srgb, var(--pico-primary) 40%, var(--demo-line));
+            background: color-mix(in srgb, var(--pico-primary) 10%, var(--demo-card));
+            color: var(--pico-primary);
+        }
+
+        .realm-chip__dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--c, var(--demo-muted));
+        }
+
+        .realm-chip__count {
+            color: var(--demo-muted);
+            font-size: 0.6rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .ladder-tools__spacer {
+            flex: 1 1 auto;
+        }
+
+        .ladder-tools__note {
+            color: var(--demo-muted);
+            font-size: 0.64rem;
+        }
+
+        .ladder-list {
+            display: grid;
+        }
+
+        .ladder-row {
+            display: grid;
+            grid-template-columns: 38px 46px minmax(0, 1fr) 150px 104px 66px;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.75rem 1.3rem;
+            border-top: 1px solid var(--demo-line);
+            color: inherit;
+            text-decoration: none;
+            transition: background-color var(--dur-1) var(--ease-out);
+        }
+
+        .ladder-row:first-child {
+            border-top: 0;
+        }
+
+        .ladder-row:hover {
+            background: color-mix(in srgb, var(--pico-primary) 3.5%, transparent);
+        }
+
+        .rank-badge {
+            display: inline-grid;
+            place-items: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            background: var(--demo-tint);
+            color: var(--demo-muted);
+            font-size: 0.7rem;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+
+        .rank-badge--1 {
+            background: linear-gradient(145deg, #f7d774, #d9a520);
+            color: #3a2a00;
+            box-shadow: 0 4px 12px rgba(217, 165, 32, 0.28);
+        }
+
+        .rank-badge--2 {
+            background: linear-gradient(145deg, #e7ebf2, #b6c0cf);
+            color: #2b3444;
+        }
+
+        .rank-badge--3 {
+            background: linear-gradient(145deg, #ecc39a, #c1814c);
+            color: #3d2410;
+        }
+
+        .ladder-cover {
+            width: 46px;
+            aspect-ratio: 3 / 4;
+            object-fit: cover;
+            border: 1px solid var(--demo-line);
+            border-radius: 6px;
+            background: var(--demo-tint);
+        }
+
+        .ladder-main {
+            min-width: 0;
+        }
+
+        .ladder-title {
+            overflow: hidden;
+            color: var(--pico-color);
+            font-size: 0.82rem;
+            font-weight: 680;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ladder-context {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            flex-wrap: wrap;
+            margin-top: 0.18rem;
+            overflow: hidden;
+            color: var(--demo-muted);
+            font-size: 0.64rem;
+        }
+
+        .context-chip {
+            flex: 0 0 auto;
+            padding: 0.06rem 0.4rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 999px;
+            background: var(--demo-tint);
+            color: var(--fg-muted);
+            font-size: 0.6rem;
+            line-height: 1.35;
+        }
+
+        .context-chip--ship {
+            border-style: dashed;
+        }
+
+        .ladder-company {
+            color: var(--demo-muted);
+            font-size: 0.62rem;
+        }
+
+        .ladder-track {
+            position: relative;
+            height: 7px;
+            border-radius: 999px;
+            background: var(--demo-tint);
+            box-shadow: inset 0 0 0 1px var(--demo-line);
+            overflow: visible;
+        }
+
+        .ladder-track i {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: var(--pct);
+            border-radius: inherit;
+            background: linear-gradient(90deg, color-mix(in srgb, var(--c) 50%, transparent), var(--c));
+        }
+
+        .ladder-track b {
+            position: absolute;
+            top: 50%;
+            left: var(--pct);
+            width: 11px;
+            height: 11px;
+            border: 2px solid var(--demo-card);
+            border-radius: 50%;
+            background: var(--c);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 24%, transparent);
+            transform: translate(-50%, -50%);
+        }
+
+        .ladder-score {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.4rem;
+        }
+
+        .ladder-score__num {
+            color: var(--pico-color);
+            font-size: 1rem;
+            font-weight: 760;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+
+        .ladder-score__num small {
+            color: var(--demo-muted);
+            font-size: 0.55rem;
+            font-weight: 600;
+            letter-spacing: 0;
+        }
+
+        .ladder-sample {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.3rem;
+            color: var(--demo-muted);
+            font-size: 0.64rem;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .confidence {
+            display: inline-flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 10px;
+        }
+
+        .confidence i {
+            width: 3px;
+            border-radius: 1px;
+            background: color-mix(in srgb, var(--pico-color) 14%, transparent);
+        }
+
+        .confidence i:nth-child(1) { height: 4px; }
+        .confidence i:nth-child(2) { height: 7px; }
+        .confidence i:nth-child(3) { height: 10px; }
+
+        .confidence--low i:nth-child(1) { background: var(--realm-2); }
+        .confidence--mid i:nth-child(-n+2) { background: var(--realm-1); }
+        .confidence--high i { background: var(--realm-0); }
+
+        .ladder-empty {
+            padding: 3rem 1.3rem;
+            color: var(--demo-muted);
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        /* ---------- Context explorer ---------- */
+        .context-games {
+            display: flex;
+            gap: 0.45rem;
+            overflow-x: auto;
+            padding: 0.8rem 1.3rem;
+            border-bottom: 1px solid var(--demo-line);
+            background: color-mix(in srgb, var(--demo-tint) 45%, transparent);
+            scrollbar-width: none;
+        }
+
+        .context-games::-webkit-scrollbar {
+            display: none;
+        }
+
+        .context-game {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex: 0 0 auto;
+            padding: 0.28rem 0.7rem 0.28rem 0.3rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 999px;
+            background: var(--demo-card);
+            color: var(--demo-muted);
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: border-color var(--dur-1) var(--ease-out),
+                background-color var(--dur-1) var(--ease-out),
+                color var(--dur-1) var(--ease-out);
+        }
+
+        .context-game:hover {
+            border-color: color-mix(in srgb, var(--pico-primary) 35%, var(--demo-line));
+            color: var(--pico-color);
+        }
+
+        .context-game.is-active {
+            border-color: color-mix(in srgb, var(--pico-primary) 42%, var(--demo-line));
+            background: color-mix(in srgb, var(--pico-primary) 9%, var(--demo-card));
+            color: var(--pico-primary);
+        }
+
+        .context-game img {
+            width: 20px;
+            height: 27px;
+            object-fit: cover;
+            border-radius: 4px;
+            background: var(--demo-tint);
+        }
+
+        .context-game__count {
+            color: var(--demo-muted);
+            font-size: 0.58rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .context-summary {
+            display: grid;
+            grid-template-columns: 62px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.1rem 1.3rem;
+            border-bottom: 1px solid var(--demo-line);
+        }
+
+        .context-summary__cover {
+            width: 62px;
+            aspect-ratio: 3 / 4;
+            object-fit: cover;
+            border: 1px solid var(--demo-line);
+            border-radius: 9px;
+            box-shadow: var(--shadow-xs);
+            background: var(--demo-tint);
+        }
+
+        .context-summary__title {
+            margin: 0;
+            color: var(--pico-color);
+            font-size: 1.02rem;
+            font-weight: 720;
+            letter-spacing: -0.015em;
+        }
+
+        .context-summary__meta {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            margin-top: 0.25rem;
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+        }
+
+        .context-summary__tags {
+            display: flex;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+            margin-top: 0.45rem;
+        }
+
+        .context-summary__tags span {
+            padding: 0.05rem 0.38rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 999px;
+            background: var(--demo-tint);
+            color: var(--demo-muted);
+            font-size: 0.58rem;
+        }
+
+        .context-metrics {
+            display: flex;
+            align-items: stretch;
+            gap: 1.2rem;
+        }
+
+        .context-metric {
+            text-align: right;
+        }
+
+        .context-metric__label {
+            display: block;
+            color: var(--demo-muted);
+            font-size: 0.58rem;
+            letter-spacing: 0.05em;
+        }
+
+        .context-metric__value {
+            display: flex;
+            align-items: baseline;
+            justify-content: flex-end;
+            gap: 0.15rem;
+            margin-top: 0.12rem;
+            color: var(--pico-color);
+            font-size: 1.18rem;
+            font-weight: 760;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+        }
+
+        .context-metric__value small {
+            color: var(--demo-muted);
+            font-size: 0.56rem;
+            font-weight: 600;
+            letter-spacing: 0;
+        }
+
+        .context-list {
+            display: grid;
+        }
+
+        .context-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1.45fr) 74px 58px minmax(0, 1.1fr) 52px 30px;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.62rem 1.3rem;
+            border-top: 1px solid var(--demo-line);
+            color: inherit;
+            text-decoration: none;
+            transition: background-color var(--dur-1) var(--ease-out);
+        }
+
+        .context-row:first-child {
+            border-top: 0;
+        }
+
+        .context-row:hover {
+            background: color-mix(in srgb, var(--pico-primary) 3.5%, transparent);
+        }
+
+        .context-row--overall {
+            background: color-mix(in srgb, var(--pico-primary) 4%, transparent);
+        }
+
+        .context-row--overall:hover {
+            background: color-mix(in srgb, var(--pico-primary) 7%, transparent);
+        }
+
+        .context-name {
+            min-width: 0;
+        }
+
+        .context-name__main {
+            overflow: hidden;
+            color: var(--pico-color);
+            font-size: 0.76rem;
+            font-weight: 620;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .context-name__sub {
+            margin-top: 0.12rem;
+            color: var(--demo-muted);
+            font-size: 0.6rem;
+        }
+
+        .context-score {
+            color: var(--pico-color);
+            font-size: 0.94rem;
+            font-weight: 740;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+            text-align: right;
+        }
+
+        .context-delta {
+            font-size: 0.66rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .context-delta--up {
+            color: var(--realm-3);
+        }
+
+        .context-delta--down {
+            color: var(--realm-0);
+        }
+
+        .context-delta--flat {
+            color: var(--demo-muted);
+        }
+
+        .context-dims {
+            display: grid;
+            gap: 3px;
+        }
+
+        .context-dim {
+            display: grid;
+            grid-template-columns: 22px minmax(0, 1fr);
+            align-items: center;
+            gap: 5px;
+            color: var(--demo-muted);
+            font-size: 0.54rem;
+        }
+
+        .context-dim__bar {
+            height: 4px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: var(--demo-tint);
+        }
+
+        .context-dim__bar i {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--c);
+        }
+
+        .context-sample {
+            color: var(--demo-muted);
+            font-size: 0.62rem;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .context-link {
+            display: inline-grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--demo-line);
+            border-radius: 8px;
+            color: var(--demo-muted);
+        }
+
+        .context-row:hover .context-link {
+            border-color: color-mix(in srgb, var(--pico-primary) 35%, var(--demo-line));
+            color: var(--pico-primary);
+        }
+
+        .context-link svg {
+            width: 0.85rem;
+            height: 0.85rem;
+        }
+
+        /* ---------- Data table ---------- */
+        .table-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+            padding: 0.9rem 1.3rem;
+            border-bottom: 1px solid var(--demo-line);
+        }
+
+        .search-field {
+            position: relative;
+            flex: 1 1 250px;
+            min-width: 0;
+        }
+
+        .search-field svg {
+            position: absolute;
+            top: 50%;
+            left: 0.75rem;
+            width: 0.95rem;
+            height: 0.95rem;
+            color: var(--demo-muted);
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .search-field input {
+            width: 100%;
+            height: 2.45rem;
+            margin: 0;
+            padding: 0.45rem 0.8rem 0.45rem 2.2rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 10px;
+            background: var(--demo-card);
+            color: var(--pico-color);
+            font-size: 0.78rem;
+            box-shadow: none;
+        }
+
+        .search-field input:focus {
+            border-color: var(--pico-primary);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--pico-primary) 14%, transparent);
+        }
+
+        .toolbar-badge {
+            display: inline-grid;
+            place-items: center;
+            min-width: 1.15rem;
+            height: 1.15rem;
+            margin-left: 0.18rem;
+            padding: 0 0.24rem;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+            color: var(--pico-primary);
+            font-size: 0.6rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .sort-controls {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex: 0 0 auto;
+        }
+
+        .sort-controls select {
+            width: auto;
+            min-width: 8.4rem;
+            height: 2.45rem;
+            margin: 0;
+            padding: 0.35rem 2rem 0.35rem 0.7rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 10px;
+            background-color: var(--demo-card);
+            color: var(--pico-color);
+            font-size: 0.74rem;
+            box-shadow: none;
+        }
+
+        .sort-dir {
+            width: 2.45rem;
+            min-height: 2.45rem;
+            padding: 0;
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .filter-drawer {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+            gap: 0.7rem 0.9rem;
+            padding: 1rem 1.3rem;
+            border-bottom: 1px solid var(--demo-line);
+            background: color-mix(in srgb, var(--demo-tint) 55%, transparent);
+        }
+
+        .filter-drawer.is-open {
+            display: grid;
+        }
+
+        .filter-field {
+            min-width: 0;
+        }
+
+        .filter-field label {
+            display: block;
+            margin: 0 0 0.26rem;
+            color: var(--demo-muted);
+            font-size: 0.62rem;
+            font-weight: 650;
+            letter-spacing: 0.04em;
+        }
+
+        .filter-field select {
+            width: 100%;
+            height: 2.1rem;
+            margin: 0;
+            padding: 0.25rem 1.7rem 0.25rem 0.55rem;
+            border: 1px solid var(--demo-line);
+            border-radius: 8px;
+            background-color: var(--demo-card);
+            color: var(--pico-color);
+            font-size: 0.72rem;
+            box-shadow: none;
+        }
+
+        .filter-drawer__actions {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.45rem;
+        }
+
+        .filter-chips {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+            padding: 0.65rem 1.3rem;
+            border-bottom: 1px solid var(--demo-line);
+        }
+
+        .filter-chips:empty {
+            display: none;
+        }
+
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.55rem;
+            border: 1px solid color-mix(in srgb, var(--pico-primary) 26%, var(--demo-line));
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--pico-primary) 7%, transparent);
+            color: var(--pico-primary);
+            font-size: 0.64rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .filter-chip:hover {
+            background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+        }
+
+        .filter-chip svg {
+            width: 0.7rem;
+            height: 0.7rem;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .stats-table {
+            width: 100%;
+            min-width: 940px;
+            margin: 0;
+            border-collapse: collapse;
+            background: transparent;
+        }
+
+        .stats-table th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            padding: 0.62rem 0.9rem;
+            border-bottom: 1px solid var(--demo-line);
+            background: color-mix(in srgb, var(--demo-card) 96%, var(--demo-tint));
+            color: var(--demo-muted);
+            font-size: 0.64rem;
+            font-weight: 650;
+            letter-spacing: 0.03em;
+            text-align: left;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .stats-table th:first-child {
+            padding-left: 1.3rem;
+        }
+
+        .stats-table th:last-child {
+            padding-right: 1.3rem;
+            text-align: right;
+        }
+
+        .stats-table th:hover {
+            color: var(--pico-color);
+        }
+
+        .stats-table th:focus-visible {
+            outline: 2px solid var(--pico-primary);
+            outline-offset: -2px;
+        }
+
+        .stats-table th .sort-arrow {
+            display: inline-block;
+            width: 0.7em;
+            margin-left: 0.18rem;
+            opacity: 0.3;
+            font-size: 0.9em;
+        }
+
+        .stats-table th[aria-sort="ascending"] .sort-arrow,
+        .stats-table th[aria-sort="descending"] .sort-arrow {
+            color: var(--pico-primary);
+            opacity: 1;
+        }
+
+        .stats-table td {
+            padding: 0.58rem 0.9rem;
+            border-bottom: 1px solid color-mix(in srgb, var(--demo-line) 72%, transparent);
+            color: var(--pico-color);
+            font-size: 0.72rem;
+            vertical-align: middle;
+        }
+
+        .stats-table td:first-child {
+            padding-left: 1.3rem;
+        }
+
+        .stats-table td:last-child {
+            padding-right: 1.3rem;
+            text-align: right;
+        }
+
+        .stats-table tbody tr:hover {
+            background: color-mix(in srgb, var(--pico-primary) 3.5%, transparent);
+        }
+
+        .cell-game {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            min-width: 0;
+        }
+
+        .cell-game img {
+            width: 30px;
+            height: 40px;
+            object-fit: cover;
+            border: 1px solid var(--demo-line);
+            border-radius: 4px;
+            background: var(--demo-tint);
+        }
+
+        .cell-game__title {
+            max-width: 15rem;
+            overflow: hidden;
+            color: var(--pico-color);
+            font-weight: 650;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cell-game__sub {
+            margin-top: 0.06rem;
+            color: var(--demo-muted);
+            font-size: 0.6rem;
+        }
+
+        .cell-context {
+            display: flex;
+            flex-direction: column;
+            gap: 0.12rem;
+        }
+
+        .cell-context__main {
+            color: var(--pico-color);
+            font-size: 0.7rem;
+        }
+
+        .cell-context__sub {
+            color: var(--demo-muted);
+            font-size: 0.6rem;
+        }
+
+        .cell-score {
+            font-weight: 740;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+        }
+
+        .cell-score small {
+            color: var(--demo-muted);
+            font-size: 0.55rem;
+            font-weight: 600;
+        }
+
+        .dim-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            min-width: 4.6rem;
+        }
+
+        .dim-cell__bar {
+            flex: 1 1 auto;
+            height: 4px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: var(--demo-tint);
+        }
+
+        .dim-cell__bar i {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--c);
+        }
+
+        .dim-cell__num {
+            flex: 0 0 auto;
+            min-width: 1.5rem;
+            color: var(--pico-color);
+            font-size: 0.64rem;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+        }
+
+        .cell-empty {
+            color: var(--demo-muted);
+            font-size: 0.7rem;
+        }
+
+        .cell-sample {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            white-space: nowrap;
+        }
+
+        .cell-sample__num {
+            color: var(--pico-color);
+            font-weight: 650;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .cell-sample__sub {
+            color: var(--demo-muted);
+            font-size: 0.58rem;
+        }
+
+        .row-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: var(--pico-primary);
+            font-size: 0.66rem;
+            font-weight: 650;
+            text-decoration: none;
+        }
+
+        .row-link:hover {
+            text-decoration: underline;
+        }
+
+        .row-link svg {
+            width: 0.75rem;
+            height: 0.75rem;
+        }
+
+        .table-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            padding: 0.75rem 1.3rem;
+            border-top: 1px solid var(--demo-line);
+            background: color-mix(in srgb, var(--demo-tint) 55%, transparent);
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+        }
+
+        .table-foot b {
+            color: var(--pico-color);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .table-empty {
+            padding: 3.2rem 1.3rem;
+            color: var(--demo-muted);
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .table-hint {
+            display: none;
+        }
+
+        /* ---------- Sidebar ---------- */
+        .rail-card {
+            padding: 1rem 1.1rem;
+            border: 1px solid var(--demo-line);
+            border-radius: var(--demo-radius);
+            background: var(--demo-card);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .rail-card__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.6rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .rail-card__head h3 {
+            margin: 0;
+            font-size: 0.84rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .rail-card__head a {
+            color: var(--demo-muted);
+            font-size: 0.66rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .rail-card__head a:hover {
+            color: var(--pico-primary);
+        }
+
+        .realm-scale {
+            display: grid;
+            gap: 0.28rem;
+        }
+
+        .realm-scale__row {
+            display: grid;
+            grid-template-columns: 9px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.38rem 0.45rem;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: transparent;
+            color: inherit;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color var(--dur-1) var(--ease-out),
+                border-color var(--dur-1) var(--ease-out);
+        }
+
+        .realm-scale__row:hover {
+            border-color: var(--demo-line);
+            background: var(--demo-tint);
+        }
+
+        .realm-scale__dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--c);
+        }
+
+        .realm-scale__name {
+            color: var(--fg);
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .realm-scale__range {
+            margin-left: 0.3rem;
+            color: var(--demo-muted);
+            font-size: 0.58rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .realm-scale__count {
+            color: var(--fg);
+            font-size: 0.72rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .realm-scale__count small {
+            color: var(--demo-muted);
+            font-size: 0.56rem;
+            font-weight: 600;
+        }
+
+        .quality-list {
+            display: grid;
+            gap: 0.8rem;
+        }
+
+        .quality-item__head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.6rem;
+            color: var(--demo-muted);
+            font-size: 0.68rem;
+        }
+
+        .quality-item__head b {
+            color: var(--pico-color);
+            font-size: 0.76rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .quality-item__meter {
+            height: 5px;
+            margin-top: 0.32rem;
+            overflow: hidden;
+            border-radius: 999px;
+            background: var(--demo-tint);
+        }
+
+        .quality-item__meter i {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--realm-0), var(--realm-1));
+        }
+
+        .method-list {
+            display: grid;
+            gap: 0.7rem;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .method-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.55rem;
+            color: var(--demo-muted);
+            font-size: 0.68rem;
+            line-height: 1.55;
+        }
+
+        .method-list svg {
+            flex: 0 0 auto;
+            width: 0.95rem;
+            height: 0.95rem;
+            margin-top: 0.12rem;
+            color: var(--pico-primary);
+        }
+
+        .method-list b {
+            color: var(--pico-color);
+            font-weight: 650;
+        }
+
+        .rail-cta {
+            padding: 1rem 1.1rem;
+            border: 1px solid color-mix(in srgb, var(--pico-primary) 24%, var(--demo-line));
+            border-radius: var(--demo-radius);
+            background:
+                radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--pico-primary) 14%, transparent), transparent 60%),
+                var(--demo-card);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .rail-cta p {
+            margin: 0 0 0.7rem;
+            color: var(--demo-muted);
+            font-size: 0.7rem;
+            line-height: 1.55;
+        }
+
+        .rail-cta b {
+            display: block;
+            margin-bottom: 0.2rem;
+            color: var(--pico-color);
+            font-size: 0.82rem;
+        }
+
+        .rail-cta .demo-btn {
+            width: 100%;
+        }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 1180px) {
+            .stats-split {
+                grid-template-columns: 1fr;
             }
-            
-            // 更新表头样式
-            document.querySelectorAll('.sortable').forEach(h => {
-                h.classList.remove('sort-asc', 'sort-desc');
-            });
-            header.classList.add(`sort-${currentSort.direction}`);
-            
-            renderTable();
-        });
-    });
-    
-    // 筛选事件
-    function onBaseFilterChange() {
-        updateGameOptions();
-        updateDifficultyOptions();
-        updateShipOptions();
-        applyFilters();
-    }
 
-    filterTag.addEventListener('change', onBaseFilterChange);
-    filterCompany.addEventListener('change', onBaseFilterChange);
-    filterGame.addEventListener('change', () => {
-        updateDifficultyOptions();
-        updateShipOptions();
-        applyFilters();
-    });
-    filterDifficulty.addEventListener('change', applyFilters);
-    filterShip.addEventListener('change', applyFilters);
-    filterMinRating.addEventListener('input', applyFilters);
-    
-    resetFilters.addEventListener('click', () => {
-        filterTag.value = '';
-        filterCompany.value = '';
-        filterGame.value = '';
-        filterDifficulty.value = '';
-        filterShip.value = '';
-        filterMinRating.value = '0';
-        updateGameOptions();
-        updateDifficultyOptions();
-        updateShipOptions();
-        applyFilters();
-    });
-    
-    // 初始化
-    updateGameOptions();
-    updateDifficultyOptions();
-    updateShipOptions();
-    updateResultCount();
-    
-    // 确保图标被渲染
-    if (window.lucide) {
-        lucide.createIcons();
-    }
-});
-</script>
+            .dim-profile {
+                grid-template-columns: 190px minmax(0, 1fr);
+            }
+
+            .dim-radar {
+                width: 190px;
+            }
+        }
+
+        @media (max-width: 1040px) {
+            .stats-layout {
+                grid-template-columns: minmax(0, 1fr) 290px;
+            }
+
+            .stats-hero__inner {
+                grid-template-columns: minmax(0, 1fr) 310px;
+                gap: 1.6rem;
+            }
+
+            .context-row {
+                grid-template-columns: minmax(0, 1.35fr) 68px 52px minmax(0, 0.9fr) 46px 26px;
+                gap: 0.55rem;
+            }
+        }
+
+        @media (max-width: 920px) {
+            .stats-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-rail {
+                position: static;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .rail-card--wide {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 820px) {
+            .stats-hero__inner {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+                padding: 1.7rem 1.6rem 1.3rem;
+            }
+
+            .hero-console {
+                max-width: none;
+            }
+
+            .stats-kpis {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .stat-kpi:nth-child(2) {
+                border-right: 0;
+            }
+
+            .stat-kpi:nth-child(-n+2) {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+            }
+
+            .stats-tabs__meta {
+                display: none;
+            }
+
+            .ladder-row {
+                grid-template-columns: 34px 42px minmax(0, 1fr) 92px;
+                gap: 0.6rem;
+                padding: 0.7rem 1rem;
+            }
+
+            .ladder-track,
+            .ladder-sample {
+                display: none;
+            }
+
+            .ladder-score {
+                justify-content: flex-end;
+            }
+
+            .ladder-cover {
+                width: 42px;
+            }
+
+            .context-row {
+                grid-template-columns: minmax(0, 1fr) 64px 46px 38px;
+                padding: 0.6rem 1rem;
+            }
+
+            .context-dims,
+            .context-link {
+                display: none;
+            }
+
+            .context-summary {
+                grid-template-columns: 52px minmax(0, 1fr);
+                padding: 1rem;
+            }
+
+            .context-summary__cover {
+                width: 52px;
+            }
+
+            .context-metrics {
+                grid-column: 1 / -1;
+                justify-content: space-between;
+                padding-top: 0.75rem;
+                border-top: 1px solid var(--demo-line);
+            }
+
+            .context-metric {
+                text-align: left;
+            }
+
+            .context-metric__value {
+                justify-content: flex-start;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .stats-demo {
+                padding-bottom: 2rem;
+            }
+
+            .demo-flag {
+                width: 100%;
+                gap: 0.35rem;
+                padding: 0.4rem 0.6rem;
+                font-size: 0.68rem;
+                line-height: 1.4;
+            }
+
+            .demo-flag strong {
+                display: none;
+            }
+
+            .demo-flag a {
+                margin-left: auto;
+                white-space: nowrap;
+            }
+
+            .stats-hero {
+                border-radius: 18px;
+            }
+
+            .stats-hero__inner {
+                padding: 1.35rem 1.15rem 1.1rem;
+            }
+
+            .stats-hero h1 {
+                font-size: clamp(1.9rem, 9vw, 2.5rem);
+            }
+
+            .stats-hero__lede {
+                margin-top: 0.75rem;
+                font-size: 0.8rem;
+                line-height: 1.65;
+            }
+
+            .stats-hero__meta {
+                margin-top: 0.9rem;
+                font-size: 0.66rem;
+            }
+
+            .hero-console {
+                padding: 0.95rem 1rem 0.9rem;
+            }
+
+            .hero-console__value {
+                font-size: 2.5rem;
+            }
+
+            .hero-gauge__labels {
+                font-size: 0.55rem;
+            }
+
+            .stat-kpi {
+                padding: 0.75rem 1rem 0.8rem;
+            }
+
+            .stat-kpi__value {
+                font-size: 1.3rem;
+            }
+
+            .stats-tabs {
+                top: 53px;
+                margin: 1rem 0;
+            }
+
+            #overview,
+            #ladder,
+            #contexts,
+            #table {
+                scroll-margin-top: 118px;
+            }
+
+            .stats-tabs__links {
+                width: 100%;
+            }
+
+            .stats-tabs__links a {
+                padding: 0.42rem 0.65rem;
+                font-size: 0.75rem;
+            }
+
+            .stats-main {
+                gap: 1rem;
+            }
+
+            .stats-rail {
+                grid-template-columns: 1fr;
+                gap: 0.9rem;
+            }
+
+            .panel {
+                border-radius: 16px;
+            }
+
+            .panel__head {
+                padding: 0.9rem 1rem;
+            }
+
+            .panel__title h2 {
+                font-size: 0.92rem;
+            }
+
+            .panel__body {
+                padding: 1rem;
+            }
+
+            .panel__body--tight {
+                padding: 0.85rem 1rem;
+            }
+
+            .panel__foot {
+                padding: 0.65rem 1rem;
+            }
+
+            .realm-legend {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.45rem 0.7rem;
+            }
+
+            .spread {
+                height: 150px;
+            }
+
+            .spread__band span {
+                font-size: 0.5rem;
+            }
+
+            .spread__axis {
+                font-size: 0.55rem;
+            }
+
+            .dim-profile {
+                grid-template-columns: 150px minmax(0, 1fr);
+                gap: 0.75rem;
+            }
+
+            .dim-radar {
+                width: 150px;
+            }
+
+            .ladder-tools {
+                padding: 0.7rem 1rem;
+            }
+
+            .ladder-tools__note {
+                display: none;
+            }
+
+            .ladder-row {
+                grid-template-columns: 30px 38px minmax(0, 1fr) 80px;
+                gap: 0.5rem;
+                padding: 0.65rem 1rem;
+            }
+
+            .rank-badge {
+                width: 27px;
+                height: 27px;
+                font-size: 0.64rem;
+            }
+
+            .ladder-cover {
+                width: 38px;
+            }
+
+            .ladder-title {
+                font-size: 0.76rem;
+            }
+
+            .ladder-context {
+                font-size: 0.6rem;
+            }
+
+            .ladder-score {
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 0.15rem;
+            }
+
+            .ladder-score__num {
+                font-size: 0.9rem;
+            }
+
+            .ladder-score .realm-pill {
+                font-size: 0.58rem;
+                padding: 0.1rem 0.36rem;
+            }
+
+            .context-games {
+                padding: 0.7rem 1rem;
+            }
+
+            .context-row {
+                grid-template-columns: minmax(0, 1fr) 58px 40px 30px;
+                gap: 0.45rem;
+                padding: 0.56rem 1rem;
+            }
+
+            .context-name__main {
+                font-size: 0.72rem;
+            }
+
+            .context-score {
+                font-size: 0.86rem;
+            }
+
+            .context-delta {
+                font-size: 0.6rem;
+            }
+
+            .context-row .realm-pill {
+                display: none;
+            }
+
+            .table-toolbar {
+                padding: 0.8rem 1rem;
+            }
+
+            .search-field {
+                flex-basis: 100%;
+            }
+
+            .sort-controls {
+                flex: 1 1 auto;
+            }
+
+            .sort-controls select {
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+
+            .filter-drawer {
+                padding: 0.85rem 1rem;
+            }
+
+            .filter-chips {
+                padding: 0.6rem 1rem;
+            }
+
+            .stats-table th:first-child,
+            .stats-table td:first-child {
+                position: sticky;
+                left: 0;
+                z-index: 2;
+                padding-left: 1rem;
+                background: var(--demo-card);
+                box-shadow: 1px 0 0 var(--demo-line);
+            }
+
+            .stats-table th:first-child {
+                z-index: 4;
+            }
+
+            .stats-table tbody tr:hover td:first-child {
+                background: color-mix(in srgb, var(--pico-primary) 3.5%, var(--demo-card));
+            }
+
+            .cell-game img {
+                width: 26px;
+                height: 35px;
+            }
+
+            .cell-game__title {
+                max-width: 8.8rem;
+            }
+
+            .stats-table th:last-child,
+            .stats-table td:last-child {
+                padding-right: 1rem;
+            }
+
+            .table-foot {
+                padding: 0.65rem 1rem;
+            }
+
+            .table-note {
+                display: none;
+            }
+
+            .table-hint {
+                display: inline;
+            }
+
+            .rail-card {
+                border-radius: 16px;
+            }
+
+        }
+
+        @media (max-width: 560px) {
+            .top-item {
+                grid-template-columns: 26px 36px minmax(0, 1fr);
+                grid-template-rows: auto auto;
+                row-gap: 0.28rem;
+                padding: 0.55rem 0.45rem;
+            }
+
+            .top-item__rank {
+                grid-row: 1 / span 2;
+            }
+
+            .top-item__cover {
+                grid-row: 1 / span 2;
+                width: 36px;
+            }
+
+            .top-item__main {
+                grid-column: 3;
+                grid-row: 1;
+            }
+
+            .top-item__score {
+                grid-column: 3;
+                grid-row: 2;
+                justify-content: flex-start;
+                font-size: 0.95rem;
+            }
+
+            .top-item__sub {
+                flex-wrap: wrap;
+                white-space: normal;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .dim-profile {
+                grid-template-columns: 1fr;
+                gap: 0.85rem;
+            }
+
+            .dim-radar {
+                width: 165px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .stat-kpi__sub {
+                font-size: 0.58rem;
+            }
+
+            .stats-tabs__links a {
+                padding: 0.4rem 0.55rem;
+            }
+
+            .realm-legend {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .ladder-row {
+                grid-template-columns: 28px 34px minmax(0, 1fr) 70px;
+            }
+
+            .ladder-cover {
+                width: 34px;
+            }
+
+            .context-row {
+                grid-template-columns: minmax(0, 1fr) 52px 36px 28px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .stats-demo *,
+            .stats-demo *::before,
+            .stats-demo *::after {
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+            }
+        }
+        /* =====================================================================
+           浅色主题重绘
+           hero 与 KPI 条原本按深色写死（#0b101a 等），深色主题下没问题，
+           切到亮色时就成了页面上唯一一块黑。这里只在浅色主题下覆盖回浅色，
+           深色主题保持原设计不动。
+           ===================================================================== */
+        :root:not([data-theme="dark"]) .stats-hero {
+            color: var(--pico-color);
+            background:
+                radial-gradient(120% 150% at 8% 0%, rgba(66, 99, 235, 0.16), transparent 56%),
+                radial-gradient(80% 120% at 100% 4%, rgba(240, 140, 0, 0.14), transparent 58%),
+                linear-gradient(135deg, #eef3ff 0%, #fbfcff 46%, #fff6ea 100%);
+            border: 1px solid var(--pico-card-border-color);
+            box-shadow: var(--shadow-md);
+        }
+
+        :root:not([data-theme="dark"]) .stats-hero::after {
+            background-image:
+                linear-gradient(rgba(15, 23, 42, 0.045) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+        }
+
+        :root:not([data-theme="dark"]) .stats-hero__eyebrow {
+            color: var(--pico-muted-color);
+        }
+
+        :root:not([data-theme="dark"]) .stats-hero__eyebrow::before {
+            background: rgba(15, 23, 42, 0.22);
+        }
+
+        :root:not([data-theme="dark"]) .stats-hero h1 {
+            color: var(--pico-color);
+        }
+
+        :root:not([data-theme="dark"]) .stats-hero__lede {
+            color: var(--pico-muted-color);
+        }
+
+        :root:not([data-theme="dark"]) .stats-hero__meta {
+            color: var(--pico-muted-color);
+        }
+
+        :root:not([data-theme="dark"]) .stats-hero__meta i {
+            background: rgba(15, 23, 42, 0.25);
+        }
+
+        :root:not([data-theme="dark"]) .stats-hero__meta b {
+            color: var(--pico-color);
+        }
+
+        /* 社区平均难度小面板 */
+        :root:not([data-theme="dark"]) .hero-console {
+            border-color: var(--pico-card-border-color);
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: var(--shadow-sm);
+        }
+
+        :root:not([data-theme="dark"]) .hero-console__head {
+            color: var(--pico-color);
+        }
+
+        :root:not([data-theme="dark"]) .hero-console__value {
+            color: #b35c00;
+        }
+
+        :root:not([data-theme="dark"]) .hero-console__value small,
+        :root:not([data-theme="dark"]) .hero-console__sub {
+            color: var(--pico-muted-color);
+        }
+
+        :root:not([data-theme="dark"]) .hero-gauge__marker {
+            border-color: #fff;
+            background: #1f2430;
+            box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.14);
+        }
+
+        :root:not([data-theme="dark"]) .hero-gauge__labels {
+            color: var(--pico-muted-color);
+        }
+
+        :root:not([data-theme="dark"]) .hero-console__foot {
+            border-top-color: var(--pico-card-border-color);
+            color: var(--pico-muted-color);
+        }
+
+        /* 底部 KPI 条 */
+        :root:not([data-theme="dark"]) .stats-kpis {
+            border-top-color: var(--pico-card-border-color);
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+        :root:not([data-theme="dark"]) .stat-kpi {
+            border-right-color: var(--pico-card-border-color);
+        }
+
+        :root:not([data-theme="dark"]) .stat-kpi__label,
+        :root:not([data-theme="dark"]) .stat-kpi__sub {
+            color: var(--pico-muted-color);
+        }
+
+        :root:not([data-theme="dark"]) .stat-kpi__value {
+            color: var(--pico-color);
+        }
+
+        :root:not([data-theme="dark"]) .stat-kpi__value small {
+            color: var(--pico-muted-color);
+        }
+
+    </style>
+
+<div class="stats-demo">
+
+<nav class="demo-crumbs" aria-label="面包屑">
+            <a href="/">主页</a>
+            <i data-lucide="chevron-right"></i>
+            <span aria-current="page">难度统计</span>
+        </nav>
+
+        <section class="stats-hero" aria-labelledby="stats-title">
+            <div class="stats-hero__inner">
+                <div>
+                    <p class="stats-hero__eyebrow">Community difficulty index</p>
+                    <h1 id="stats-title">难度全景</h1>
+                    <p class="stats-hero__lede">
+                        把每部作品、每个难度情境与机体放到同一把 0–60 的尺子上。快速评分计入综合难度，
+                        详细评分同时构成避弹、策略与执行的维度画像。
+                    </p>
+                    <div class="stats-hero__meta">
+                        <span>更新于 <b id="hero-updated">{{ stats_payload.meta.updated }}</b></span>
+                        <i aria-hidden="true"></i>
+                        <span><b id="hero-games">{{ stats_payload.meta.game_count }}</b> 部作品</span>
+                        <i aria-hidden="true"></i>
+                        <span><b id="hero-contexts">{{ stats_payload.meta.context_count }}</b> 个情境</span>
+                        <i aria-hidden="true"></i>
+                        <span><b id="hero-ratings">{{ stats_payload.meta.total_ratings }}</b> 条评分</span>
+                    </div>
+                </div>
+
+                <aside class="hero-console" aria-label="社区平均难度">
+                    <div class="hero-console__head">
+                        <span>社区平均难度</span>
+                        <span class="realm-pill realm-pill--dark" id="hero-realm">{{ stats_payload.meta.mean_realm }}</span>
+                    </div>
+                    <div class="hero-console__value" id="hero-mean">{{ '%.1f'|format(stats_payload.meta.mean) }}<small>/60</small></div>
+                    <div class="hero-console__sub" id="hero-console-sub">{{ stats_payload.meta.total_ratings }} 条评分 · {{ stats_payload.meta.total_detailed }} 条含细分维度</div>
+                    <div class="hero-gauge" aria-hidden="true">
+                        <div class="hero-gauge__track">
+                            <span class="hero-gauge__marker" id="hero-gauge-marker" style="left: {{ (stats_payload.meta.mean / 60 * 100) | round(1) }}%"></span>
+                        </div>
+                        <div class="hero-gauge__labels">
+                            <span>见习</span><span>新手</span><span>入门</span><span>进阶</span><span>上级</span><span>论外</span>
+                        </div>
+                    </div>
+                    <div class="hero-console__foot">
+                        <span>分数越高 = 难度越高</span>
+                        <span id="hero-realm-count">{{ stats_payload.meta.realm_count }} 个段位有数据</span>
+                    </div>
+                </aside>
+            </div>
+
+            <div class="stats-kpis">
+                <div class="stat-kpi">
+                    <span class="stat-kpi__label">覆盖作品</span>
+                    <span class="stat-kpi__value" id="kpi-games">{{ stats_payload.meta.game_count }}<small>/ {{ stats_payload.meta.total_games }}</small></span>
+                    <span class="stat-kpi__sub" id="kpi-games-sub">{{ stats_payload.meta.coverage_pct }}% 的作品已有难度记录</span>
+                </div>
+                <div class="stat-kpi">
+                    <span class="stat-kpi__label">难度情境</span>
+                    <span class="stat-kpi__value" id="kpi-contexts">{{ stats_payload.meta.context_count }}<small>个</small></span>
+                    <span class="stat-kpi__sub">按难度等级 × 机体拆分</span>
+                </div>
+                <div class="stat-kpi">
+                    <span class="stat-kpi__label">有效评分</span>
+                    <span class="stat-kpi__value" id="kpi-ratings">{{ stats_payload.meta.total_ratings }}<small>条</small></span>
+                    <span class="stat-kpi__sub" id="kpi-ratings-sub">其中 {{ stats_payload.meta.total_detailed }} 条含细分维度</span>
+                </div>
+                <div class="stat-kpi">
+                    <span class="stat-kpi__label">最高难度</span>
+                    <span class="stat-kpi__value" id="kpi-top">{{ '%.1f'|format(stats_payload.meta.top_score) }}<small>/60</small></span>
+                    <span class="stat-kpi__sub" id="kpi-top-sub">{{ stats_payload.meta.top_title }} · {{ stats_payload.meta.top_context }}</span>
+                </div>
+            </div>
+        </section>
+
+        <nav class="stats-tabs" aria-label="页面导航">
+            <div class="stats-tabs__links">
+                <a href="#overview" class="is-active">总览</a>
+                <a href="#ladder">难度天梯</a>
+                <a href="#contexts">情境透视</a>
+                <a href="#table">数据表</a>
+            </div>
+            <div class="stats-tabs__meta" aria-hidden="true">
+                <span><i data-lucide="grid-3x3"></i><b id="tabs-contexts">{{ stats_payload.meta.context_count }}</b> 条情境</span>
+                <span><i data-lucide="users"></i><b id="tabs-ratings">{{ stats_payload.meta.total_ratings }}</b> 条评分</span>
+            </div>
+        </nav>
+
+        <div class="stats-layout">
+            <div class="stats-main">
+                <section id="overview" aria-labelledby="overview-title">
+                    <div class="stats-split">
+                        <article class="panel">
+                            <header class="panel__head">
+                                <div class="panel__title">
+                                    <span class="icon-chip icon-chip--difficulty" aria-hidden="true"><i data-lucide="bar-chart-3"></i></span>
+                                    <div>
+                                        <h2 id="overview-title">难度分布</h2>
+                                        <p>全部情境在 0–60 尺度上的位置</p>
+                                    </div>
+                                </div>
+                                <div class="panel__meta">
+                                    <span>均值</span>
+                                    <strong id="dist-mean">{{ '%.1f'|format(stats_payload.meta.mean) }}</strong>
+                                    <span>/ 60</span>
+                                </div>
+                            </header>
+                            <div class="panel__body">
+                                <div class="realm-stack" id="realm-stack" role="img" aria-label="各段位情境数量构成"></div>
+                                <div class="realm-legend" id="realm-legend"></div>
+                                <div class="spread" id="spread">
+                                    <div class="chart-tip" id="chart-tip" aria-hidden="true"></div>
+                                </div>
+                                <div class="spread__axis" aria-hidden="true">
+                                    <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span>
+                                </div>
+                                <div class="boxplot" id="boxplot" role="img" aria-label="难度分布四分位摘要">
+                                    <div class="boxplot__track">
+                                        <span class="boxplot__range" id="boxplot-range"></span>
+                                        <span class="boxplot__cap" id="boxplot-cap-min"></span>
+                                        <span class="boxplot__cap" id="boxplot-cap-max"></span>
+                                        <span class="boxplot__box" id="boxplot-box"></span>
+                                        <span class="boxplot__median" id="boxplot-median"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <footer class="panel__foot">
+                                <span>中位 <b id="dist-median">—</b> · 中间 50% <b id="dist-iqr">—</b></span>
+                                <span>极值 <b id="dist-range">—</b> · 点越大 = 样本越多</span>
+                            </footer>
+                        </article>
+
+                        <article class="panel">
+                            <header class="panel__head">
+                                <div class="panel__title">
+                                    <span class="icon-chip icon-chip--violet" aria-hidden="true"><i data-lucide="radar"></i></span>
+                                    <div>
+                                        <h2>维度画像</h2>
+                                        <p>详细评分中的三项能力均值</p>
+                                    </div>
+                                </div>
+                                <div class="panel__meta">
+                                    <span>n =</span>
+                                    <strong id="dim-total">{{ stats_payload.meta.total_detailed }}</strong>
+                                </div>
+                            </header>
+                            <div class="panel__body">
+                                <div class="dim-profile">
+                                    <div class="dim-radar" id="dim-radar" role="img" aria-label="避弹、策略、执行三维雷达图"></div>
+                                    <div class="dim-list" id="dim-list"></div>
+                                </div>
+                                <div class="insight">
+                                    <i data-lucide="info" aria-hidden="true"></i>
+                                    <div id="dim-insight"></div>
+                                </div>
+                            </div>
+                            <footer class="panel__foot">
+                                <span>快速评分只计入综合难度，不进入维度均值</span>
+                            </footer>
+                        </article>
+                    </div>
+
+                    <article class="panel" style="margin-top: 1.4rem;">
+                        <header class="panel__head">
+                            <div class="panel__title">
+                                <span class="icon-chip icon-chip--difficulty" aria-hidden="true"><i data-lucide="award"></i></span>
+                                <div>
+                                    <h2>最难关卡 Top 5</h2>
+                                    <p>按情境综合难度排序</p>
+                                </div>
+                            </div>
+                            <div class="panel__meta">
+                                <a href="#ladder">查看完整天梯 →</a>
+                            </div>
+                        </header>
+                        <div class="panel__body panel__body--tight">
+                            <div class="top-list" id="top-list"></div>
+                        </div>
+                    </article>
+                </section>
+
+                <section class="panel" id="ladder" aria-labelledby="ladder-title">
+                    <header class="panel__head">
+                        <div class="panel__title">
+                            <span class="icon-chip icon-chip--difficulty" aria-hidden="true"><i data-lucide="trending-up"></i></span>
+                            <div>
+                                <h2 id="ladder-title">难度天梯</h2>
+                                <p>每个难度等级 × 机体情境的独立排名</p>
+                            </div>
+                        </div>
+                        <div class="panel__meta">
+                            <span id="ladder-count">{{ stats_payload.meta.context_count }} 个情境</span>
+                        </div>
+                    </header>
+                    <div class="ladder-tools" id="ladder-chips" role="group" aria-label="按段位筛选天梯"></div>
+                    <div class="ladder-list" id="ladder-list"></div>
+                    <footer class="panel__foot">
+                        <span>排序依据为情境综合分；评分人数少于 3 的结果仅供参考</span>
+                        <span>点击任意行进入作品详情</span>
+                    </footer>
+                </section>
+
+                <section class="panel" id="contexts" aria-labelledby="contexts-title">
+                    <header class="panel__head">
+                        <div class="panel__title">
+                            <span class="icon-chip icon-chip--teal" aria-hidden="true"><i data-lucide="grid-3x3"></i></span>
+                            <div>
+                                <h2 id="contexts-title">情境透视</h2>
+                                <p>同一部作品里，不同难度与机体到底差多少</p>
+                            </div>
+                        </div>
+                        <div class="panel__meta">
+                            <span>选择作品查看拆分</span>
+                        </div>
+                    </header>
+                    <div class="context-games" id="context-games" role="tablist" aria-label="选择作品"></div>
+                    <div class="context-summary" id="context-summary"></div>
+                    <div class="context-list" id="context-list"></div>
+                    <div class="panel__body panel__body--tight" id="context-insight-wrap">
+                        <div class="insight" style="margin-top: 0;">
+                            <i data-lucide="info" aria-hidden="true"></i>
+                            <div id="context-insight"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="stats-rail" aria-label="统计说明">
+                <section class="rail-card">
+                    <div class="rail-card__head">
+                        <h3>段位刻度</h3>
+                        <span style="color: var(--demo-muted); font-size: 0.62rem;">点击筛选数据表</span>
+                    </div>
+                    <div class="realm-scale" id="realm-scale"></div>
+                </section>
+
+                <section class="rail-card">
+                    <div class="rail-card__head">
+                        <h3>数据质量</h3>
+                        <span style="color: var(--demo-muted); font-size: 0.62rem;">样本说明</span>
+                    </div>
+                    <div class="quality-list" id="quality-list"></div>
+                </section>
+
+                <section class="rail-card">
+                    <div class="rail-card__head">
+                        <h3>评分方法</h3>
+                    </div>
+                    <ul class="method-list">
+                        <li>
+                            <i data-lucide="sliders-horizontal" aria-hidden="true"></i>
+                            <span><b>综合难度 0–60。</b>每条评分先得出综合分，再按情境取均值；快速评分同样计入。</span>
+                        </li>
+                        <li>
+                            <i data-lucide="gem" aria-hidden="true"></i>
+                            <span><b>维度画像只取详细评分。</b>避弹、策略、执行各自独立计数，不把快速评分摊进均值。</span>
+                        </li>
+                        <li>
+                            <i data-lucide="grid-3x3" aria-hidden="true"></i>
+                            <span><b>情境彼此独立。</b>难度等级与机体组合成一个情境，同一作品可以有多个情境。</span>
+                        </li>
+                    </ul>
+                </section>
+
+                <section class="rail-cta">
+                    <b>你的评分会改变这里</b>
+                    <p>找一部作品，留下快速评分或细分难度。样本越充分，段位越可靠。</p>
+                    <a class="demo-btn demo-btn--primary" href="/games">
+                        去给作品评分
+                        <i data-lucide="arrow-right"></i>
+                    </a>
+                </section>
+            </aside>
+        </div>
+
+        <section class="panel" id="table" aria-labelledby="table-title" style="margin-top: 1.5rem;">
+            <header class="panel__head">
+                <div class="panel__title">
+                    <span class="icon-chip icon-chip--neutral" aria-hidden="true"><i data-lucide="file-text"></i></span>
+                    <div>
+                        <h2 id="table-title">数据表</h2>
+                        <p>逐条查看，支持组合筛选、排序与导出</p>
+                    </div>
+                </div>
+                <div class="panel__meta">
+                    <span id="table-result-count">{{ stats_payload.meta.context_count }} 条记录</span>
+                </div>
+            </header>
+
+            <div class="table-toolbar">
+                <div class="search-field">
+                    <i data-lucide="search" aria-hidden="true"></i>
+                    <label class="sr-only" for="table-search">搜索作品、公司、难度或机体</label>
+                    <input id="table-search" type="search" placeholder="搜索作品、公司、难度或机体…" autocomplete="off">
+                </div>
+
+                <button type="button" class="demo-btn demo-btn--ghost" id="filter-toggle" aria-expanded="false" aria-controls="filter-drawer">
+                    <i data-lucide="sliders-horizontal" aria-hidden="true"></i>
+                    筛选
+                    <span class="toolbar-badge" id="filter-count">0</span>
+                </button>
+
+                <div class="sort-controls">
+                    <label class="sr-only" for="sort-field">排序字段</label>
+                    <select id="sort-field">
+                        <option value="overall">综合难度</option>
+                        <option value="count">评分人数</option>
+                        <option value="dodge">避弹</option>
+                        <option value="strategy">策略</option>
+                        <option value="execution">执行</option>
+                        <option value="title">作品名</option>
+                        <option value="context">情境名称</option>
+                    </select>
+                    <button type="button" class="demo-btn demo-btn--ghost sort-dir" id="sort-dir" aria-label="切换排序方向">↓</button>
+                </div>
+
+                <button type="button" class="demo-btn demo-btn--ghost" id="export-csv">
+                    <i data-lucide="file-text" aria-hidden="true"></i>
+                    导出 CSV
+                </button>
+            </div>
+
+            <div class="filter-drawer" id="filter-drawer">
+                <div class="filter-field">
+                    <label for="filter-company">公司</label>
+                    <select id="filter-company" data-filter="company"><option value="">全部公司</option></select>
+                </div>
+                <div class="filter-field">
+                    <label for="filter-game">作品</label>
+                    <select id="filter-game" data-filter="game"><option value="">全部作品</option></select>
+                </div>
+                <div class="filter-field">
+                    <label for="filter-difficulty">难度等级</label>
+                    <select id="filter-difficulty" data-filter="difficulty"><option value="">全部难度</option></select>
+                </div>
+                <div class="filter-field">
+                    <label for="filter-ship">机体 / 角色</label>
+                    <select id="filter-ship" data-filter="ship"><option value="">全部机体</option></select>
+                </div>
+                <div class="filter-field">
+                    <label for="filter-tag">标签</label>
+                    <select id="filter-tag" data-filter="tag"><option value="">全部标签</option></select>
+                </div>
+                <div class="filter-field">
+                    <label for="filter-realm">段位</label>
+                    <select id="filter-realm" data-filter="realm"><option value="">全部段位</option></select>
+                </div>
+                <div class="filter-field">
+                    <label for="filter-min">最少评分人数</label>
+                    <select id="filter-min" data-filter="min">
+                        <option value="0">不限</option>
+                        <option value="3">≥ 3 条</option>
+                        <option value="5">≥ 5 条</option>
+                        <option value="10">≥ 10 条</option>
+                    </select>
+                </div>
+                <div class="filter-drawer__actions">
+                    <button type="button" class="demo-btn demo-btn--subtle" id="reset-filters">重置全部</button>
+                </div>
+            </div>
+
+            <div class="filter-chips" id="filter-chips"></div>
+
+            <div class="table-scroll">
+                <table class="stats-table" id="stats-table">
+                    <thead>
+                        <tr>
+                            <th scope="col" data-sort="title">作品 <span class="sort-arrow">↕</span></th>
+                            <th scope="col" data-sort="context">情境 <span class="sort-arrow">↕</span></th>
+                            <th scope="col" data-sort="overall" style="text-align: right;">综合 <span class="sort-arrow">↕</span></th>
+                            <th scope="col" data-sort="dodge">避弹 <span class="sort-arrow">↕</span></th>
+                            <th scope="col" data-sort="strategy">策略 <span class="sort-arrow">↕</span></th>
+                            <th scope="col" data-sort="execution">执行 <span class="sort-arrow">↕</span></th>
+                            <th scope="col" data-sort="count">样本 <span class="sort-arrow">↕</span></th>
+                            <th scope="col">段位</th>
+                            <th scope="col">详情</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+                <div class="table-empty" id="table-empty" hidden>没有找到符合条件的记录，试试放宽筛选。</div>
+            </div>
+
+            <footer class="table-foot">
+                <span>显示 <b id="table-visible">{{ stats_payload.meta.context_count }}</b> / <b id="table-total">{{ stats_payload.meta.context_count }}</b> 条 · 含综合评分与细分维度</span>
+                <span class="table-hint">左右滑动查看完整表格</span>
+                <span class="table-note">数据由社区评分聚合</span>
+            </footer>
+        </section>
+    </div>
+
+<script id="stats-data" type="application/json">{{ stats_payload | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+        (function () {
+            'use strict';
+
+            var DATA = JSON.parse(document.getElementById('stats-data').textContent);
+            var ROWS = DATA.rows.slice();
+            var TOTAL_GAMES = DATA.meta.total_games;
+
+            var REALMS = [
+                { name: '见习', from: 0, to: 10, color: '#4dabf7' },
+                { name: '新手', from: 10, to: 20, color: '#38d9a9' },
+                { name: '入门', from: 20, to: 30, color: '#ffd43b' },
+                { name: '进阶', from: 30, to: 40, color: '#ff922b' },
+                { name: '上级', from: 40, to: 55, color: '#fa5252' },
+                { name: '论外', from: 55, to: 60, color: '#b197fc' }
+            ];
+
+            var DIMS = [
+                { key: 'dodge', nkey: 'dodge_n', label: '避弹', color: '#4dabf7' },
+                { key: 'strategy', nkey: 'strategy_n', label: '策略', color: '#b197fc' },
+                { key: 'execution', nkey: 'execution_n', label: '执行', color: '#ff922b' }
+            ];
+
+            var state = {
+                ladderRealm: 'all',
+                contextGame: null,
+                table: {
+                    search: '',
+                    company: '',
+                    game: '',
+                    difficulty: '',
+                    ship: '',
+                    tag: '',
+                    realm: '',
+                    min: 0,
+                    sortField: 'overall',
+                    sortDir: 'desc'
+                }
+            };
+
+            function realmIndex(score) {
+                if (score <= 10) return 0;
+                if (score <= 20) return 1;
+                if (score <= 30) return 2;
+                if (score <= 40) return 3;
+                if (score <= 55) return 4;
+                return 5;
+            }
+
+            function realmLabel(score) {
+                if (score <= 5) return '见习一';
+                if (score <= 10) return '见习二';
+                if (score <= 15) return '新手一';
+                if (score <= 20) return '新手二';
+                if (score <= 25) return '入门一';
+                if (score <= 30) return '入门二';
+                if (score <= 35) return '进阶一';
+                if (score <= 40) return '进阶二';
+                if (score <= 45) return '上级一';
+                if (score <= 50) return '上级二';
+                if (score <= 55) return '上级三';
+                return '论外';
+            }
+
+            function realmOf(score) {
+                var idx = realmIndex(score);
+                return {
+                    index: idx,
+                    group: REALMS[idx].name,
+                    label: realmLabel(score),
+                    color: REALMS[idx].color
+                };
+            }
+
+            function fmt(n) {
+                return (Math.round(n * 10) / 10).toFixed(1);
+            }
+
+            function mean(values) {
+                if (!values.length) return 0;
+                return values.reduce(function (sum, value) { return sum + value; }, 0) / values.length;
+            }
+
+            function median(values) {
+                if (!values.length) return 0;
+                var sorted = values.slice().sort(function (a, b) { return a - b; });
+                var mid = Math.floor(sorted.length / 2);
+                return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+            }
+
+            function escapeHtml(value) {
+                return String(value == null ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function confidenceClass(count) {
+                if (count >= 10) return 'confidence--high';
+                if (count >= 4) return 'confidence--mid';
+                return 'confidence--low';
+            }
+
+            function confidenceLabel(count) {
+                if (count >= 10) return '样本充足';
+                if (count >= 4) return '样本中等';
+                return '样本较少';
+            }
+
+            function confidenceHtml(count) {
+                return '<span class="confidence ' + confidenceClass(count) + '" title="' + confidenceLabel(count) + ' · ' + count + ' 条评分">' +
+                    '<i></i><i></i><i></i></span>';
+            }
+
+            function contextLabel(row) {
+                if (row.difficulty_name === '游戏总体' && (!row.ship_name || row.ship_name === '全机体/角色')) {
+                    return '游戏总体';
+                }
+                return row.difficulty_name + ' · ' + row.ship_name;
+            }
+
+            ROWS.forEach(function (row) {
+                row.realm = realmOf(row.overall);
+                row._search = [
+                    row.game_title,
+                    row.company,
+                    row.difficulty_name,
+                    row.ship_name,
+                    (row.tags || []).join(' ')
+                ].join(' ').toLowerCase();
+            });
+
+            if (!ROWS.length) {
+                var emptyPanel = document.createElement('div');
+                emptyPanel.className = 'panel';
+                emptyPanel.style.marginTop = '1.5rem';
+                emptyPanel.innerHTML = '<div class="panel__body" style="padding:2.5rem;text-align:center;color:var(--demo-muted)">暂无难度评分数据。</div>';
+                document.querySelector('.stats-hero').style.display = 'none';
+                document.querySelector('.stats-tabs').style.display = 'none';
+                document.querySelector('.stats-layout').replaceWith(emptyPanel);
+                document.getElementById('table').style.display = 'none';
+                return;
+            }
+
+            var allScores = ROWS.map(function (row) { return row.overall; });
+            var globalMean = mean(allScores);
+            var totalRatings = ROWS.reduce(function (sum, row) { return sum + row.count; }, 0);
+            var totalDetailed = ROWS.reduce(function (sum, row) { return sum + row.detailed; }, 0);
+            var gameCount = new Set(ROWS.map(function (row) { return row.game_id; })).size;
+            var gameMap = {};
+
+            ROWS.forEach(function (row) {
+                if (!gameMap[row.game_id]) {
+                    gameMap[row.game_id] = {
+                        id: row.game_id,
+                        title: row.game_title,
+                        company: row.company,
+                        cover: row.cover,
+                        tags: row.tags || [],
+                        rows: []
+                    };
+                }
+                gameMap[row.game_id].rows.push(row);
+            });
+
+            var GAMES = Object.keys(gameMap).map(function (key) {
+                var game = gameMap[key];
+                var scores = game.rows.map(function (row) { return row.overall; });
+                return Object.assign({}, game, {
+                    mean: mean(scores),
+                    count: game.rows.reduce(function (sum, row) { return sum + row.count; }, 0),
+                    detailed: game.rows.reduce(function (sum, row) { return sum + row.detailed; }, 0)
+                });
+            }).sort(function (a, b) { return b.mean - a.mean; });
+
+            function weightedDimension(rows, dim) {
+                var weighted = 0;
+                var count = 0;
+                rows.forEach(function (row) {
+                    var value = row[dim.key];
+                    var n = row[dim.nkey] || 0;
+                    if (value == null || !n) return;
+                    weighted += value * n;
+                    count += n;
+                });
+                return {
+                    value: count ? weighted / count : null,
+                    count: count
+                };
+            }
+
+            /* ---------- Hero ---------- */
+            function renderHero() {
+                var realm = realmOf(globalMean);
+                var top = ROWS.slice().sort(function (a, b) { return b.overall - a.overall; })[0];
+                var marker = document.getElementById('hero-gauge-marker');
+                marker.style.left = (globalMean / 60 * 100) + '%';
+                document.getElementById('hero-mean').innerHTML = fmt(globalMean) + '<small>/60</small>';
+                var heroRealm = document.getElementById('hero-realm');
+                heroRealm.textContent = realm.label;
+                document.getElementById('hero-updated').textContent = DATA.meta.updated;
+                document.getElementById('hero-games').textContent = gameCount;
+                document.getElementById('hero-contexts').textContent = ROWS.length;
+                document.getElementById('hero-ratings').textContent = totalRatings;
+                document.getElementById('tabs-contexts').textContent = ROWS.length;
+                document.getElementById('tabs-ratings').textContent = totalRatings;
+                document.getElementById('hero-console-sub').textContent =
+                    totalRatings + ' 条评分 · ' + totalDetailed + ' 条含细分维度';
+                document.getElementById('kpi-games').innerHTML = gameCount + '<small>/ ' + TOTAL_GAMES + '</small>';
+                document.getElementById('kpi-games-sub').textContent =
+                    Math.round(gameCount / TOTAL_GAMES * 100) + '% 的作品已有难度记录';
+                document.getElementById('kpi-contexts').innerHTML = ROWS.length + '<small>个</small>';
+                document.getElementById('kpi-ratings').innerHTML = totalRatings + '<small>条</small>';
+                document.getElementById('kpi-ratings-sub').textContent = '其中 ' + totalDetailed + ' 条含细分维度';
+                document.getElementById('kpi-top').innerHTML = fmt(top.overall) + '<small>/60</small>';
+                document.getElementById('kpi-top-sub').textContent = top.game_title + ' · ' + top.difficulty_name;
+                var activeRealms = REALMS.filter(function (realmItem) {
+                    return ROWS.some(function (row) { return row.realm.index === REALMS.indexOf(realmItem); });
+                }).length;
+                document.getElementById('hero-realm-count').textContent = activeRealms + ' 个段位有数据';
+            }
+
+            /* ---------- Distribution ---------- */
+            function quantile(sorted, p) {
+                if (!sorted.length) return 0;
+                var pos = (sorted.length - 1) * p;
+                var base = Math.floor(pos);
+                var rest = pos - base;
+                var next = sorted[base + 1];
+                return next === undefined ? sorted[base] : sorted[base] + rest * (next - sorted[base]);
+            }
+
+            function renderDistribution() {
+                var counts = REALMS.map(function () { return 0; });
+                ROWS.forEach(function (row) { counts[row.realm.index] += 1; });
+
+                var stack = document.getElementById('realm-stack');
+                stack.innerHTML = REALMS.map(function (realm, index) {
+                    if (!counts[index]) return '';
+                    var pct = counts[index] / ROWS.length * 100;
+                    return '<span class="realm-stack__seg" style="flex:' + counts[index] + ';background:' + realm.color + ';" title="' +
+                        realm.name + ' · ' + counts[index] + ' 个情境">' + (pct >= 8 ? counts[index] : '') + '</span>';
+                }).join('');
+
+                document.getElementById('realm-legend').innerHTML = REALMS.map(function (realm, index) {
+                    return '<span class="realm-legend__item" title="' + realm.name + ' ' + realm.from + '–' + realm.to + ' · ' + counts[index] + ' 个情境">' +
+                        '<span class="realm-legend__dot" style="--c:' + realm.color + '"></span>' +
+                        '<span class="realm-legend__name">' + realm.name + '</span>' +
+                        '<span class="realm-legend__range">' + realm.from + '–' + realm.to + '</span>' +
+                        '<span class="realm-legend__count">' + counts[index] + '</span>' +
+                        '</span>';
+                }).join('');
+
+                var sortedScores = allScores.slice().sort(function (a, b) { return a - b; });
+                document.getElementById('dist-mean').textContent = fmt(globalMean);
+                renderBoxplot(sortedScores);
+                renderSpread();
+            }
+
+            function renderBoxplot(sorted) {
+                var min = sorted[0];
+                var max = sorted[sorted.length - 1];
+                var q1 = quantile(sorted, 0.25);
+                var q3 = quantile(sorted, 0.75);
+                var med = quantile(sorted, 0.5);
+                var pct = function (value) { return value / 60 * 100; };
+
+                document.getElementById('boxplot-range').style.left = pct(min) + '%';
+                document.getElementById('boxplot-range').style.width = (pct(max) - pct(min)) + '%';
+                document.getElementById('boxplot-cap-min').style.left = pct(min) + '%';
+                document.getElementById('boxplot-cap-max').style.left = pct(max) + '%';
+                document.getElementById('boxplot-box').style.left = pct(q1) + '%';
+                document.getElementById('boxplot-box').style.width = (pct(q3) - pct(q1)) + '%';
+                document.getElementById('boxplot-median').style.left = pct(med) + '%';
+
+                document.getElementById('dist-median').textContent = fmt(med);
+                document.getElementById('dist-iqr').textContent = fmt(q1) + '–' + fmt(q3);
+                document.getElementById('dist-range').textContent = fmt(min) + '–' + fmt(max);
+
+                var label = '最低 ' + fmt(min) + ' · Q1 ' + fmt(q1) + ' · 中位 ' + fmt(med) + ' · Q3 ' + fmt(q3) + ' · 最高 ' + fmt(max);
+                var box = document.getElementById('boxplot');
+                box.title = label;
+                box.setAttribute('aria-label', '难度分布箱线图：' + label);
+            }
+
+            function renderSpread() {
+                var spread = document.getElementById('spread');
+                var tip = document.getElementById('chart-tip');
+                spread.querySelectorAll('.spread__band, .spread__dot, .spread__mean').forEach(function (el) { el.remove(); });
+
+                var width = spread.clientWidth || 600;
+                var height = spread.clientHeight || 142;
+                var axis = document.querySelector('.spread__axis');
+                var padX = axis ? parseFloat(getComputedStyle(axis).paddingLeft) : 15;
+                if (!isFinite(padX)) padX = 15;
+                var scaleWidth = width - padX * 2;
+
+                REALMS.forEach(function (realm) {
+                    var band = document.createElement('div');
+                    band.className = 'spread__band';
+                    band.style.left = (padX + (realm.from / 60) * scaleWidth) + 'px';
+                    band.style.width = (((realm.to - realm.from) / 60) * scaleWidth) + 'px';
+                    band.style.setProperty('--c', realm.color);
+                    band.innerHTML = '<span>' + realm.name + '</span>';
+                    spread.appendChild(band);
+                });
+
+                var padTop = 30;
+                var padBottom = 14;
+                var rowGap = 12;
+                var minDist = 12.5;
+                var centerY = padTop + (height - padTop - padBottom) / 2;
+                var maxOffset = Math.max(1, Math.floor((height - padTop - padBottom) / (rowGap * 2)));
+                var placed = [];
+
+                var sorted = ROWS.slice().sort(function (a, b) { return a.overall - b.overall; });
+                sorted.forEach(function (row) {
+                    var x = padX + (row.overall / 60) * (width - padX * 2);
+                    var offsets = [0];
+                    for (var i = 1; i <= maxOffset; i += 1) {
+                        offsets.push(-i);
+                        offsets.push(i);
+                    }
+
+                    var y = centerY;
+                    for (var k = 0; k < offsets.length; k += 1) {
+                        var candidate = centerY + offsets[k] * rowGap;
+                        if (candidate < padTop || candidate > height - padBottom) continue;
+                        var collision = placed.some(function (item) {
+                            return Math.abs(item.y - candidate) < rowGap * 0.75 && Math.abs(item.x - x) < minDist;
+                        });
+                        if (!collision) {
+                            y = candidate;
+                            break;
+                        }
+                    }
+                    placed.push({ x: x, y: y });
+
+                    var dot = document.createElement('button');
+                    dot.type = 'button';
+                    dot.className = 'spread__dot';
+                    dot.style.left = (x / width * 100) + '%';
+                    dot.style.top = y + 'px';
+                    dot.style.setProperty('--c', row.realm.color);
+                    dot.style.setProperty('--size', (7.5 + Math.min(3.5, row.count / 6)) + 'px');
+                    dot.setAttribute('aria-label', row.game_title + ' ' + contextLabel(row) + ' 难度 ' + fmt(row.overall) + ' / 60');
+                    dot.title = row.game_title + ' · ' + contextLabel(row) + ' · ' + fmt(row.overall) + '/60';
+
+                    function showTip() {
+                        tip.innerHTML = '<b>' + escapeHtml(row.game_title) + '</b><br>' +
+                            escapeHtml(contextLabel(row)) + ' · <b>' + fmt(row.overall) + '</b>/60' +
+                            '<small>' + row.count + ' 条评分 · ' + row.realm.label + '</small>';
+                        tip.style.left = Math.max(60, Math.min(width - 60, dot.offsetLeft)) + 'px';
+                        tip.style.top = dot.offsetTop + 'px';
+                        tip.classList.add('is-visible');
+                    }
+
+                    dot.addEventListener('mouseenter', showTip);
+                    dot.addEventListener('mouseleave', function () { tip.classList.remove('is-visible'); });
+                    dot.addEventListener('focus', showTip);
+                    dot.addEventListener('blur', function () { tip.classList.remove('is-visible'); });
+                    spread.appendChild(dot);
+                });
+
+                var marker = document.createElement('div');
+                marker.className = 'spread__mean';
+                marker.style.left = (padX + (globalMean / 60) * scaleWidth) + 'px';
+                spread.appendChild(marker);
+            }
+
+            /* ---------- Dimensions ---------- */
+            function dimensionRange(dim) {
+                var values = ROWS.map(function (row) { return row[dim.key]; }).filter(function (value) {
+                    return value != null;
+                });
+                return {
+                    min: values.length ? Math.min.apply(null, values) : 0,
+                    max: values.length ? Math.max.apply(null, values) : 0
+                };
+            }
+
+            function buildRadarSvg(values) {
+                var size = 180;
+                var cx = 90;
+                var cy = 92;
+                var radius = 62;
+                var angles = [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6];
+
+                function point(index, ratio) {
+                    var angle = angles[index];
+                    return [
+                        cx + Math.cos(angle) * radius * ratio,
+                        cy + Math.sin(angle) * radius * ratio
+                    ];
+                }
+
+                var rings = [1 / 3, 2 / 3, 1].map(function (ratio) {
+                    var points = [0, 1, 2].map(function (index) {
+                        var p = point(index, ratio);
+                        return p[0].toFixed(1) + ',' + p[1].toFixed(1);
+                    }).join(' ');
+                    return '<polygon class="radar-ring" points="' + points + '"></polygon>';
+                }).join('');
+
+                var axes = [0, 1, 2].map(function (index) {
+                    var p = point(index, 1);
+                    return '<line class="radar-axis" x1="' + cx + '" y1="' + cy + '" x2="' +
+                        p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '"></line>';
+                }).join('');
+
+                var shapePoints = values.map(function (value, index) {
+                    var p = point(index, Math.max(0, value) / 60);
+                    return p[0].toFixed(1) + ',' + p[1].toFixed(1);
+                }).join(' ');
+
+                var points = values.map(function (value, index) {
+                    var p = point(index, Math.max(0, value) / 60);
+                    return '<circle class="radar-point" cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) +
+                        '" r="3.2" fill="' + DIMS[index].color + '"></circle>';
+                }).join('');
+
+                var labels = DIMS.map(function (dim, index) {
+                    var p = point(index, 1.2);
+                    var anchor = index === 0 ? 'middle' : index === 1 ? 'start' : 'end';
+                    return '<text class="radar-label" x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) +
+                        '" text-anchor="' + anchor + '" dominant-baseline="middle">' + dim.label + '</text>';
+                }).join('');
+
+                return '<svg viewBox="0 0 ' + size + ' ' + size + '" role="presentation">' +
+                    rings + axes +
+                    '<polygon class="radar-shape" points="' + shapePoints + '"></polygon>' +
+                    points + labels +
+                    '</svg>';
+            }
+
+            function renderDimensions() {
+                var values = DIMS.map(function (dim) { return weightedDimension(ROWS, dim); });
+                document.getElementById('dim-total').textContent = totalDetailed;
+                document.getElementById('dim-radar').innerHTML = buildRadarSvg(values.map(function (item) {
+                    return item.value == null ? 0 : item.value;
+                }));
+
+                document.getElementById('dim-list').innerHTML = DIMS.map(function (dim, index) {
+                    var item = values[index];
+                    var value = item.value == null ? 0 : item.value;
+                    var pct = value / 60 * 100;
+                    var range = dimensionRange(dim);
+                    return '<div class="dim-row">' +
+                        '<div class="dim-row__head">' +
+                        '<span class="dim-row__name"><span class="dim-row__dot" style="--c:' + dim.color + '"></span>' + dim.label + '</span>' +
+                        '<span class="dim-row__value">' + fmt(value) + '<small>/60</small></span>' +
+                        '</div>' +
+                        '<div class="dim-row__bar"><i style="width:' + pct + '%;--c:' + dim.color + '"></i></div>' +
+                        '<div class="dim-row__meta"><span>区间 <b>' + fmt(range.min) + '–' + fmt(range.max) +
+                        '</b></span><span>' + item.count + ' 条</span></div>' +
+                        '</div>';
+                }).join('');
+
+                var ranked = DIMS.map(function (dim, index) {
+                    return { label: dim.label, value: values[index].value || 0 };
+                }).sort(function (a, b) { return b.value - a.value; });
+                var maxItem = ranked[0];
+                var minItem = ranked[ranked.length - 1];
+
+                document.getElementById('dim-insight').innerHTML =
+                    '三维中<b>' + maxItem.label + '</b>最高（' + fmt(maxItem.value) + '），<b>' +
+                    minItem.label + '</b>最低（' + fmt(minItem.value) + '），相差 <b>' +
+                    fmt(maxItem.value - minItem.value) + '</b> 分。整体更偏<b>' +
+                    ranked[0].label + '</b>与<b>' + ranked[1].label + '</b>。';
+            }
+
+            /* ---------- Top 5 ---------- */
+            function renderTop() {
+                var top = ROWS.slice().sort(function (a, b) {
+                    if (b.overall !== a.overall) return b.overall - a.overall;
+                    return b.count - a.count;
+                }).slice(0, 5);
+
+                document.getElementById('top-list').innerHTML = top.map(function (row, index) {
+                    return '<a class="top-item" href="/game/' + row.game_id + '">' +
+                        '<span class="top-item__rank">' + String(index + 1).padStart(2, '0') + '</span>' +
+                        '<img class="top-item__cover" src="' + escapeHtml(row.cover) + '" alt="" decoding="async">' +
+                        '<div class="top-item__main">' +
+                        '<div class="top-item__title">' + escapeHtml(row.game_title) + '</div>' +
+                        '<div class="top-item__sub"><span>' + escapeHtml(row.company) + ' · ' + row.count + ' 条评分</span>' +
+                        '<span class="mini-context">' + escapeHtml(row.difficulty_name) + '</span>' +
+                        (row.ship_id ? '<span class="mini-context">' + escapeHtml(row.ship_name) + '</span>' : '') +
+                        '</div></div>' +
+                        '<div class="top-item__score">' + fmt(row.overall) + '<small>/60</small>' +
+                        '<span class="realm-pill" style="--realm-color:' + row.realm.color + '">' + row.realm.label + '</span></div>' +
+                        '</a>';
+                }).join('');
+            }
+
+            /* ---------- Ladder ---------- */
+            function renderLadderChips() {
+                var counts = REALMS.map(function () { return 0; });
+                ROWS.forEach(function (row) { counts[row.realm.index] += 1; });
+                var html = '<button type="button" class="realm-chip' + (state.ladderRealm === 'all' ? ' is-active' : '') + '" data-realm="all">全部 <span class="realm-chip__count">' + ROWS.length + '</span></button>';
+                html += REALMS.map(function (realm, index) {
+                    return '<button type="button" class="realm-chip' + (state.ladderRealm === String(index) ? ' is-active' : '') +
+                        '" data-realm="' + index + '"><span class="realm-chip__dot" style="--c:' + realm.color + '"></span>' +
+                        realm.name + ' <span class="realm-chip__count">' + counts[index] + '</span></button>';
+                }).join('');
+                html += '<span class="ladder-tools__spacer"></span><span class="ladder-tools__note">点击行进入作品详情</span>';
+                document.getElementById('ladder-chips').innerHTML = html;
+            }
+
+            function renderLadder() {
+                renderLadderChips();
+                var rows = ROWS.filter(function (row) {
+                    return state.ladderRealm === 'all' || String(row.realm.index) === state.ladderRealm;
+                }).sort(function (a, b) {
+                    if (b.overall !== a.overall) return b.overall - a.overall;
+                    return b.count - a.count;
+                });
+
+                document.getElementById('ladder-count').textContent = rows.length + ' 个情境';
+
+                if (!rows.length) {
+                    document.getElementById('ladder-list').innerHTML = '<div class="ladder-empty">这个段位还没有收录情境。</div>';
+                    return;
+                }
+
+                document.getElementById('ladder-list').innerHTML = rows.map(function (row, index) {
+                    var rankClass = index === 0 ? ' rank-badge--1' : index === 1 ? ' rank-badge--2' : index === 2 ? ' rank-badge--3' : '';
+                    return '<a class="ladder-row" href="/game/' + row.game_id + '">' +
+                        '<span class="rank-badge' + rankClass + '">' + String(index + 1).padStart(2, '0') + '</span>' +
+                        '<img class="ladder-cover" src="' + escapeHtml(row.cover) + '" alt="" decoding="async">' +
+                        '<div class="ladder-main">' +
+                        '<div class="ladder-title">' + escapeHtml(row.game_title) + '</div>' +
+                        '<div class="ladder-context">' +
+                        '<span class="context-chip">' + escapeHtml(row.difficulty_name) + '</span>' +
+                        (row.ship_id ? '<span class="context-chip context-chip--ship">' + escapeHtml(row.ship_name) + '</span>' : '<span class="context-chip context-chip--ship">全机体</span>') +
+                        '<span class="ladder-company">' + escapeHtml(row.company) + '</span>' +
+                        '</div></div>' +
+                        '<div class="ladder-track" style="--pct:' + (row.overall / 60 * 100) + '%;--c:' + row.realm.color + '">' +
+                        '<i></i><b></b></div>' +
+                        '<div class="ladder-score">' +
+                        '<span class="ladder-score__num">' + fmt(row.overall) + '<small>/60</small></span>' +
+                        '<span class="realm-pill" style="--realm-color:' + row.realm.color + '">' + row.realm.label + '</span>' +
+                        '</div>' +
+                        '<div class="ladder-sample">' + confidenceHtml(row.count) + '<span>' + row.count + ' 条</span></div>' +
+                        '</a>';
+                }).join('');
+            }
+
+            /* ---------- Context explorer ---------- */
+            function initContextGames() {
+                if (!state.contextGame) {
+                    state.contextGame = GAMES.slice().sort(function (a, b) {
+                        return b.rows.length - a.rows.length;
+                    })[0].id;
+                }
+                document.getElementById('context-games').innerHTML = GAMES.map(function (game) {
+                    return '<button type="button" class="context-game' + (game.id === state.contextGame ? ' is-active' : '') +
+                        '" role="tab" aria-selected="' + (game.id === state.contextGame) + '" data-game="' + game.id + '">' +
+                        '<img src="' + escapeHtml(game.cover) + '" alt="" decoding="async">' +
+                        '<span>' + escapeHtml(game.title) + '</span>' +
+                        '<span class="context-game__count">' + game.rows.length + '</span>' +
+                        '</button>';
+                }).join('');
+
+                var wrap = document.getElementById('context-games');
+                var active = wrap.querySelector('.context-game.is-active');
+                if (active) {
+                    window.requestAnimationFrame(function () {
+                        var left = active.offsetLeft;
+                        var right = left + active.offsetWidth;
+                        if (left < wrap.scrollLeft || right > wrap.scrollLeft + wrap.clientWidth) {
+                            wrap.scrollLeft = left - (wrap.clientWidth - active.offsetWidth) / 2;
+                        }
+                    });
+                }
+            }
+
+            function renderContext() {
+                var game = GAMES.find(function (item) { return item.id === state.contextGame; }) || GAMES[0];
+                initContextGames();
+
+                var dims = DIMS.map(function (dim) { return weightedDimension(game.rows, dim); });
+                var overallDims = dims.map(function (item) { return item.value; });
+
+                document.getElementById('context-summary').innerHTML =
+                    '<img class="context-summary__cover" src="' + escapeHtml(game.cover) + '" alt="' + escapeHtml(game.title) + ' 封面">' +
+                    '<div style="min-width:0;">' +
+                    '<h3 class="context-summary__title">' + escapeHtml(game.title) + '</h3>' +
+                    '<div class="context-summary__meta"><span>' + escapeHtml(game.company) + '</span><span>·</span><span>' +
+                    game.rows.length + ' 个情境</span><span>·</span><span>' + game.count + ' 条评分</span></div>' +
+                    '<div class="context-summary__tags">' + (game.tags || []).slice(0, 4).map(function (tag) {
+                        return '<span>' + escapeHtml(tag) + '</span>';
+                    }).join('') + '</div></div>' +
+                    '<div class="context-metrics">' +
+                    '<div class="context-metric"><span class="context-metric__label">作品综合</span><span class="context-metric__value">' +
+                    fmt(game.mean) + '<small>/60</small></span></div>' +
+                    '<div class="context-metric"><span class="context-metric__label">段位</span><span class="context-metric__value" style="font-size:0.9rem;">' +
+                    realmOf(game.mean).label + '</span></div>' +
+                    '<div class="context-metric"><span class="context-metric__label">细分样本</span><span class="context-metric__value">' +
+                    game.detailed + '<small>条</small></span></div>' +
+                    '</div>';
+
+                var sorted = game.rows.slice().sort(function (a, b) { return b.overall - a.overall; });
+                var overallRow = '<div class="context-row context-row--overall">' +
+                    '<div class="context-name"><div class="context-name__main">游戏总体 · 全机体</div>' +
+                    '<div class="context-name__sub">全部情境的算术平均</div></div>' +
+                    '<div class="context-score">' + fmt(game.mean) + '</div>' +
+                    '<div class="context-delta context-delta--flat">—</div>' +
+                    '<div class="context-dims">' + renderContextDims(overallDims) + '</div>' +
+                    '<div class="context-sample">' + game.count + ' 条</div>' +
+                    '<a class="context-link" href="/game/' + game.id + '" aria-label="查看 ' + escapeHtml(game.title) + '"><i data-lucide="chevron-right"></i></a>' +
+                    '</div>';
+
+                document.getElementById('context-list').innerHTML = overallRow + sorted.map(function (row) {
+                    var delta = row.overall - game.mean;
+                    var deltaClass = Math.abs(delta) < 0.05 ? 'context-delta--flat' : delta > 0 ? 'context-delta--up' : 'context-delta--down';
+                    var deltaText = Math.abs(delta) < 0.05 ? '±0.0' : (delta > 0 ? '+' : '') + fmt(delta);
+                    return '<a class="context-row" href="/game/' + row.game_id + '">' +
+                        '<div class="context-name">' +
+                        '<div class="context-name__main">' + escapeHtml(row.difficulty_name) + '</div>' +
+                        '<div class="context-name__sub">' + escapeHtml(row.ship_name) + ' · ' + escapeHtml(row.realm.label) + '</div>' +
+                        '</div>' +
+                        '<div class="context-score">' + fmt(row.overall) + '</div>' +
+                        '<div class="context-delta ' + deltaClass + '" title="相对作品综合">' + deltaText + '</div>' +
+                        '<div class="context-dims">' + renderContextDims([row.dodge, row.strategy, row.execution]) + '</div>' +
+                        '<div class="context-sample">' + row.count + ' 条</div>' +
+                        '<span class="context-link" aria-hidden="true"><i data-lucide="chevron-right"></i></span>' +
+                        '</a>';
+                }).join('');
+
+                var high = sorted[0];
+                var low = sorted[sorted.length - 1];
+                var gap = high.overall - low.overall;
+                document.getElementById('context-insight').innerHTML = gap > 0.05
+                    ? '<b>' + escapeHtml(high.difficulty_name) + (high.ship_id ? ' · ' + escapeHtml(high.ship_name) : '') + '</b> 比 <b>' +
+                      escapeHtml(low.difficulty_name) + (low.ship_id ? ' · ' + escapeHtml(low.ship_name) : '') + '</b> 高 <b>' +
+                      fmt(gap) + '</b> 分，是这部作品当前最大的情境差异。'
+                    : '这部作品目前只有一个情境，暂时无法比较作品内部的差异。';
+
+                if (window.lucide) window.lucide.createIcons();
+            }
+
+            function renderContextDims(values) {
+                return DIMS.map(function (dim, index) {
+                    var value = values[index];
+                    if (value == null) {
+                        return '<div class="context-dim"><span>' + dim.label.slice(0, 1) + '</span><span class="context-dim__bar"></span></div>';
+                    }
+                    return '<div class="context-dim" title="' + dim.label + ' ' + fmt(value) + '/60">' +
+                        '<span>' + dim.label.slice(0, 1) + '</span>' +
+                        '<span class="context-dim__bar"><i style="width:' + (value / 60 * 100) + '%;--c:' + dim.color + '"></i></span>' +
+                        '</div>';
+                }).join('');
+            }
+
+            /* ---------- Table ---------- */
+            function fillSelect(id, values) {
+                var select = document.getElementById(id);
+                var current = select.value;
+                while (select.options.length > 1) select.remove(1);
+                values.forEach(function (item) {
+                    var option = document.createElement('option');
+                    option.value = item.value;
+                    option.textContent = item.label;
+                    select.appendChild(option);
+                });
+                if (Array.prototype.some.call(select.options, function (option) { return option.value === current; })) {
+                    select.value = current;
+                }
+            }
+
+            function uniqueValues(key) {
+                var seen = new Set();
+                ROWS.forEach(function (row) { if (row[key] != null) seen.add(row[key]); });
+                return Array.from(seen).sort(function (a, b) { return String(a).localeCompare(String(b), 'zh-CN'); });
+            }
+
+            function initFilterOptions() {
+                fillSelect('filter-company', uniqueValues('company').map(function (value) {
+                    return { value: value, label: value };
+                }));
+                fillSelect('filter-game', Array.from(new Set(ROWS.map(function (row) { return row.game_id; })))
+                    .map(function (id) { return { value: String(id), label: gameMap[id].title }; })
+                    .sort(function (a, b) { return a.label.localeCompare(b.label, 'zh-CN'); }));
+                fillSelect('filter-difficulty', uniqueValues('difficulty_name').map(function (value) {
+                    return { value: value, label: value };
+                }));
+                fillSelect('filter-ship', uniqueValues('ship_name').map(function (value) {
+                    return { value: value, label: value };
+                }));
+                var tags = new Set();
+                ROWS.forEach(function (row) { (row.tags || []).forEach(function (tag) { tags.add(tag); }); });
+                fillSelect('filter-tag', Array.from(tags).sort(function (a, b) { return a.localeCompare(b, 'zh-CN'); }).map(function (value) {
+                    return { value: value, label: value };
+                }));
+                fillSelect('filter-realm', REALMS.map(function (realm, index) {
+                    return { value: String(index), label: realm.name };
+                }));
+            }
+
+            function filteredRows() {
+                var table = state.table;
+                var query = table.search.trim().toLowerCase();
+                var rows = ROWS.filter(function (row) {
+                    if (query && row._search.indexOf(query) === -1) return false;
+                    if (table.company && row.company !== table.company) return false;
+                    if (table.game && String(row.game_id) !== table.game) return false;
+                    if (table.difficulty && row.difficulty_name !== table.difficulty) return false;
+                    if (table.ship && row.ship_name !== table.ship) return false;
+                    if (table.tag && (row.tags || []).indexOf(table.tag) === -1) return false;
+                    if (table.realm !== '' && String(row.realm.index) !== table.realm) return false;
+                    if (row.count < Number(table.min || 0)) return false;
+                    return true;
+                });
+
+                rows.sort(function (a, b) {
+                    var field = table.sortField;
+                    var dir = table.sortDir === 'asc' ? 1 : -1;
+                    if (field === 'title') {
+                        return a.game_title.localeCompare(b.game_title, 'zh-CN') * dir;
+                    }
+                    if (field === 'context') {
+                        return (a.difficulty_name + ' ' + a.ship_name).localeCompare(b.difficulty_name + ' ' + b.ship_name, 'zh-CN') * dir;
+                    }
+                    var av = a[field];
+                    var bv = b[field];
+                    var aNull = av == null;
+                    var bNull = bv == null;
+                    if (aNull && bNull) return 0;
+                    if (aNull) return 1;
+                    if (bNull) return -1;
+                    return (av - bv) * dir;
+                });
+                return rows;
+            }
+
+            function sortValue(field, row) {
+                if (field === 'title') return row.game_title;
+                return row[field];
+            }
+
+            function renderTable() {
+                var rows = filteredRows();
+                document.getElementById('table-visible').textContent = rows.length;
+                document.getElementById('table-total').textContent = ROWS.length;
+                document.getElementById('table-result-count').textContent = rows.length + ' 条记录';
+                document.getElementById('table-empty').hidden = rows.length > 0;
+                document.getElementById('stats-table').style.display = rows.length ? '' : 'none';
+
+                document.getElementById('table-body').innerHTML = rows.map(function (row, index) {
+                    return '<tr>' +
+                        '<td><div class="cell-game">' +
+                        '<img src="' + escapeHtml(row.cover) + '" alt="" decoding="async">' +
+                        '<div style="min-width:0;"><div class="cell-game__title">' + escapeHtml(row.game_title) + '</div>' +
+                        '<div class="cell-game__sub">' + escapeHtml(row.company) + '</div></div></div></td>' +
+                        '<td><div class="cell-context"><span class="cell-context__main">' + escapeHtml(row.difficulty_name) + '</span>' +
+                        '<span class="cell-context__sub">' + escapeHtml(row.ship_name) + '</span></div></td>' +
+                        '<td class="cell-score">' + fmt(row.overall) + '<small>/60</small></td>' +
+                        renderDimCell(row.dodge, '#4dabf7') +
+                        renderDimCell(row.strategy, '#b197fc') +
+                        renderDimCell(row.execution, '#ff922b') +
+                        '<td><div class="cell-sample">' + confidenceHtml(row.count) +
+                        '<span class="cell-sample__num">' + row.count + '</span>' +
+                        '<span class="cell-sample__sub">/' + row.detailed + ' 细分</span></div></td>' +
+                        '<td><span class="realm-pill" style="--realm-color:' + row.realm.color + '">' + row.realm.label + '</span></td>' +
+                        '<td><a class="row-link" href="/game/' + row.game_id + '">查看<i data-lucide="chevron-right"></i></a></td>' +
+                        '</tr>';
+                }).join('');
+
+                renderFilterChips();
+                updateSortHeaders();
+                if (window.lucide) window.lucide.createIcons();
+            }
+
+            function renderDimCell(value, color) {
+                if (value == null) return '<td><span class="cell-empty">—</span></td>';
+                return '<td><div class="dim-cell"><span class="dim-cell__bar"><i style="width:' + (value / 60 * 100) + '%;--c:' + color + '"></i></span>' +
+                    '<span class="dim-cell__num">' + fmt(value) + '</span></div></td>';
+            }
+
+            function updateSortHeaders() {
+                document.querySelectorAll('#stats-table th[data-sort]').forEach(function (th) {
+                    if (th.dataset.sort === state.table.sortField) {
+                        th.setAttribute('aria-sort', state.table.sortDir === 'asc' ? 'ascending' : 'descending');
+                        th.querySelector('.sort-arrow').textContent = state.table.sortDir === 'asc' ? '↑' : '↓';
+                    } else {
+                        th.removeAttribute('aria-sort');
+                        th.querySelector('.sort-arrow').textContent = '↕';
+                    }
+                });
+                document.getElementById('sort-field').value = state.table.sortField;
+                var dirButton = document.getElementById('sort-dir');
+                dirButton.textContent = state.table.sortDir === 'asc' ? '↑' : '↓';
+                dirButton.setAttribute('aria-label', state.table.sortDir === 'asc' ? '当前升序，点击切换为降序' : '当前降序，点击切换为升序');
+            }
+
+            function activeFilters() {
+                var table = state.table;
+                var result = [];
+                if (table.search.trim()) result.push({ key: 'search', label: '搜索：' + table.search.trim() });
+                if (table.company) result.push({ key: 'company', label: '公司：' + table.company });
+                if (table.game) result.push({ key: 'game', label: '作品：' + (gameMap[table.game] ? gameMap[table.game].title : table.game) });
+                if (table.difficulty) result.push({ key: 'difficulty', label: '难度：' + table.difficulty });
+                if (table.ship) result.push({ key: 'ship', label: '机体：' + table.ship });
+                if (table.tag) result.push({ key: 'tag', label: '标签：' + table.tag });
+                if (table.realm !== '') result.push({ key: 'realm', label: '段位：' + REALMS[Number(table.realm)].name });
+                if (Number(table.min)) result.push({ key: 'min', label: '样本：≥ ' + table.min + ' 条' });
+                return result;
+            }
+
+            function renderFilterChips() {
+                var filters = activeFilters();
+                document.getElementById('filter-count').textContent = filters.length;
+                document.getElementById('filter-chips').innerHTML = filters.map(function (filter) {
+                    return '<button type="button" class="filter-chip" data-clear="' + filter.key + '">' +
+                        escapeHtml(filter.label) + '<i data-lucide="x" aria-hidden="true"></i></button>';
+                }).join('') + (filters.length ? '<button type="button" class="demo-btn demo-btn--subtle" id="clear-all-inline">清空筛选</button>' : '');
+            }
+
+            function setFilter(key, value) {
+                if (key === 'search') {
+                    state.table.search = value;
+                    document.getElementById('table-search').value = value;
+                } else if (key === 'min') {
+                    state.table.min = Number(value);
+                    document.getElementById('filter-min').value = String(value);
+                } else {
+                    state.table[key] = value;
+                    var el = document.querySelector('[data-filter="' + key + '"]');
+                    if (el) el.value = value;
+                }
+                renderTable();
+            }
+
+            function clearFilter(key) {
+                if (key === 'search') setFilter('search', '');
+                else if (key === 'min') setFilter('min', 0);
+                else setFilter(key, '');
+            }
+
+            function resetFilters() {
+                state.table.search = '';
+                state.table.company = '';
+                state.table.game = '';
+                state.table.difficulty = '';
+                state.table.ship = '';
+                state.table.tag = '';
+                state.table.realm = '';
+                state.table.min = 0;
+                document.getElementById('table-search').value = '';
+                document.querySelectorAll('.filter-drawer select').forEach(function (select) {
+                    select.value = select.id === 'filter-min' ? '0' : '';
+                });
+                renderTable();
+            }
+
+            function exportCsv() {
+                var rows = filteredRows();
+                var header = ['作品', '公司', '难度等级', '机体', '综合', '避弹', '策略', '执行', '评分人数', '细分样本', '段位'];
+                var lines = [header];
+                rows.forEach(function (row) {
+                    lines.push([
+                        row.game_title,
+                        row.company,
+                        row.difficulty_name,
+                        row.ship_name,
+                        fmt(row.overall),
+                        row.dodge == null ? '' : fmt(row.dodge),
+                        row.strategy == null ? '' : fmt(row.strategy),
+                        row.execution == null ? '' : fmt(row.execution),
+                        row.count,
+                        row.detailed,
+                        row.realm.label
+                    ]);
+                });
+                var csv = lines.map(function (line) {
+                    return line.map(function (cell) {
+                        var text = String(cell == null ? '' : cell);
+                        return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+                    }).join(',');
+                }).join('\n');
+                var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+                var url = URL.createObjectURL(blob);
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = 'stg-difficulty-stats.csv';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+
+            /* ---------- Rail ---------- */
+            function renderRail() {
+                var counts = REALMS.map(function () { return 0; });
+                ROWS.forEach(function (row) { counts[row.realm.index] += 1; });
+
+                document.getElementById('realm-scale').innerHTML = REALMS.map(function (realm, index) {
+                    return '<button type="button" class="realm-scale__row" data-realm-index="' + index + '">' +
+                        '<span class="realm-scale__dot" style="--c:' + realm.color + '"></span>' +
+                        '<span class="realm-scale__name">' + realm.name +
+                        '<span class="realm-scale__range">' + realm.from + '–' + realm.to + '</span></span>' +
+                        '<span class="realm-scale__count">' + counts[index] + '<small> 个</small></span>' +
+                        '</button>';
+                }).join('');
+
+                var sufficient = ROWS.filter(function (row) { return row.count >= 10; }).length;
+                var quickOnly = ROWS.filter(function (row) { return row.detailed === 0; }).length;
+                var coverage = gameCount / TOTAL_GAMES * 100;
+                document.getElementById('quality-list').innerHTML =
+                    '<div class="quality-item">' +
+                    '<div class="quality-item__head"><span>样本 ≥ 10 的情境</span><b>' + sufficient + ' / ' + ROWS.length + '</b></div>' +
+                    '<div class="quality-item__meter"><i style="width:' + (sufficient / ROWS.length * 100) + '%"></i></div></div>' +
+                    '<div class="quality-item">' +
+                    '<div class="quality-item__head"><span>仅有综合评分的情境</span><b>' + quickOnly + ' 个</b></div>' +
+                    '<div class="quality-item__meter"><i style="width:' + (quickOnly / ROWS.length * 100) + '%;background:linear-gradient(90deg,var(--realm-2),var(--realm-3));"></i></div></div>' +
+                    '<div class="quality-item">' +
+                    '<div class="quality-item__head"><span>作品覆盖</span><b>' + gameCount + ' / ' + TOTAL_GAMES + '</b></div>' +
+                    '<div class="quality-item__meter"><i style="width:' + coverage + '%"></i></div></div>';
+            }
+
+            /* ---------- Events ---------- */
+            function bindEvents() {
+                document.getElementById('ladder-chips').addEventListener('click', function (event) {
+                    var button = event.target.closest('[data-realm]');
+                    if (!button) return;
+                    state.ladderRealm = button.dataset.realm;
+                    renderLadder();
+                });
+
+                document.getElementById('context-games').addEventListener('click', function (event) {
+                    var button = event.target.closest('[data-game]');
+                    if (!button) return;
+                    state.contextGame = Number(button.dataset.game);
+                    renderContext();
+                });
+
+                document.getElementById('filter-toggle').addEventListener('click', function () {
+                    var drawer = document.getElementById('filter-drawer');
+                    var open = drawer.classList.toggle('is-open');
+                    this.setAttribute('aria-expanded', String(open));
+                });
+
+                document.querySelectorAll('.filter-drawer select').forEach(function (select) {
+                    select.addEventListener('change', function () {
+                        var key = select.dataset.filter;
+                        setFilter(key, select.value);
+                    });
+                });
+
+                var searchTimer = null;
+                document.getElementById('table-search').addEventListener('input', function () {
+                    var value = this.value;
+                    window.clearTimeout(searchTimer);
+                    searchTimer = window.setTimeout(function () {
+                        setFilter('search', value);
+                    }, 120);
+                });
+
+                document.getElementById('filter-chips').addEventListener('click', function (event) {
+                    var clear = event.target.closest('[data-clear]');
+                    if (clear) {
+                        clearFilter(clear.dataset.clear);
+                        return;
+                    }
+                    if (event.target.closest('#clear-all-inline')) {
+                        resetFilters();
+                    }
+                });
+
+                document.getElementById('reset-filters').addEventListener('click', resetFilters);
+
+                document.getElementById('sort-field').addEventListener('change', function () {
+                    state.table.sortField = this.value;
+                    state.table.sortDir = (this.value === 'title' || this.value === 'context') ? 'asc' : 'desc';
+                    renderTable();
+                });
+
+                document.getElementById('sort-dir').addEventListener('click', function () {
+                    state.table.sortDir = state.table.sortDir === 'asc' ? 'desc' : 'asc';
+                    renderTable();
+                });
+
+                document.querySelectorAll('#stats-table th[data-sort]').forEach(function (th) {
+                    th.setAttribute('tabindex', '0');
+                    th.addEventListener('click', function () {
+                        var field = th.dataset.sort;
+                        if (state.table.sortField === field) {
+                            state.table.sortDir = state.table.sortDir === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            state.table.sortField = field;
+                            state.table.sortDir = (field === 'title' || field === 'context') ? 'asc' : 'desc';
+                        }
+                        renderTable();
+                    });
+                    th.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            th.click();
+                        }
+                    });
+                });
+
+                document.getElementById('export-csv').addEventListener('click', exportCsv);
+
+                document.getElementById('realm-scale').addEventListener('click', function (event) {
+                    var button = event.target.closest('[data-realm-index]');
+                    if (!button) return;
+                    state.table.realm = button.dataset.realmIndex;
+                    document.getElementById('filter-realm').value = button.dataset.realmIndex;
+                    renderTable();
+                    document.getElementById('table').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+
+                /* Tabs + scroll spy */
+                var tabs = Array.prototype.slice.call(document.querySelectorAll('.stats-tabs__links a'));
+                var sections = ['overview', 'ladder', 'contexts', 'table'].map(function (id) {
+                    return document.getElementById(id);
+                });
+                tabs.forEach(function (tab) {
+                    tab.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        var target = document.querySelector(tab.getAttribute('href'));
+                        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+                });
+
+                var spyTicking = false;
+                function updateSpy() {
+                    var current = sections[0];
+                    sections.forEach(function (section) {
+                        if (section.getBoundingClientRect().top <= 150) current = section;
+                    });
+                    tabs.forEach(function (tab) {
+                        tab.classList.toggle('is-active', tab.getAttribute('href') === '#' + current.id);
+                    });
+                    spyTicking = false;
+                }
+                window.addEventListener('scroll', function () {
+                    if (!spyTicking) {
+                        window.requestAnimationFrame(updateSpy);
+                        spyTicking = true;
+                    }
+                }, { passive: true });
+                updateSpy();
+
+                window.addEventListener('resize', function () {
+                    renderSpread();
+                });
+            }
+
+            /* ---------- Boot ---------- */
+            renderHero();
+            renderDistribution();
+            renderDimensions();
+            renderTop();
+            renderLadder();
+            initContextGames();
+            renderContext();
+            initFilterOptions();
+            renderTable();
+            renderRail();
+            bindEvents();
+        })();
+    </script>
 {% endblock %}

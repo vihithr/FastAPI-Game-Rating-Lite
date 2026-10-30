@@ -2,8 +2,6 @@
 
 **FastAPI-Game-Rating-Lite** 是一个基于 FastAPI 的轻量级游戏评分 / 社区站点模板，当前主要面向 STG（纵版/弹幕射击）玩家。本目录是该站点的 **独立部署版本**，包含运行线上实例所需的全部代码和运维脚本，适合作为一个完整的 GitHub 开源项目使用。
 
-本项目底层部署技术由 [FastAPI-Caddy-Systemd-OneKey](https://github.com/vihithr/FastAPI-Caddy-Systemd-OneKey) 提供支持。
-
 - **后端框架**: Python 3 / FastAPI + SQLAlchemy（SQLite 默认）  
 - **前端**: 服务器端模板渲染（Jinja2），配合少量原生 JS/CSS  
 - **部署方式**: 一键脚本部署到 Linux 服务器（Systemd + Gunicorn + Caddy）  
@@ -19,13 +17,37 @@
 - ✅ **权限隔离**：自动创建专用非 root 用户 `stg_website` 运行服务  
 - ✅ **集中管理**：所有安装内容集中在 `/opt/stg_website` 目录下  
 - ✅ **安全默认值**：自动生成 JWT / Session 密钥，强制使用 SQLite 本地数据库  
-- ✅ **数据保护**：更新部署时自动保留现有数据库，支持一键备份与迁移  
+
+### 站点功能
+
+| 模块 | 说明 |
+|---|---|
+| 作品库 | 品质评分（5 维度）+ 难度评分（3 维度）双轨评价，支持标签、公司、**平台**筛选与三种浏览视图 |
+| 难度统计 | 难度分布、维度雷达、玩家分段对比 |
+| **资料库** | 独立于评分库的只读作品档案（封面/年份/平台/系列/简介/外部链接），支持关键词、平台、年代、标签检索 |
+| 文章 / 专栏 | ToastUI 编辑器，支持图文混合与静态资料包 |
+| 资源索引 | 分类、标签、热度、有效/失效投票 |
+| 悬赏板 | 分类、状态流转、评论区 |
+| 主题 | 深色 / 浅色双主题，`localStorage` 记忆，首帧无闪烁 |
+
+### 数据工具（`tools/`）
+
+| 脚本 | 用途 |
+|---|---|
+| `import_library.py` | 把采集来的作品档案批量导入评分库；按标题去重，封面走站内 uploads 流程（自动生成 400/800 宽 webp 缩略图） |
+| `backfill_meta.py` | 按「标题 → 别名 → 译名」归一化匹配，回填 platform / release_year / series |
+| `dedup_games.py` | 合并重复条目（中英文异名、`∀`/`A`、间隔号、副标题差异等），评分与标签安全迁移 |
+| `build_icons.py` | 从 lucide 图标集裁剪出站点实际用到的图标子集 |
+
+> 三个数据脚本都支持 `--dry-run` / `--report`，建议先预览再执行。
 
 ---
 
 ## 目录结构概览
 
 - `app/`：应用代码（FastAPI、模型、路由、模板、静态资源等）  
+- `app/data/library.json`：资料库的示例数据（898 部作品的元数据），可直接替换  
+- `tools/`：数据导入 / 回填 / 查重 / 图标生成脚本  
 - `alembic/`：数据库迁移脚本  
 - `deploy.sh`：一键部署 / 更新 / 卸载脚本  
 - `env.example`：环境变量模板  
@@ -33,7 +55,7 @@
 - `stg_website.service`：Systemd 服务单元模板  
 - `Caddyfile`：Caddy 反向代理模板（HTTPS / HTTP 配置）  
 - `gunicorn_config.py`：Gunicorn 配置  
-- [`DEPLOYMENT.md`](DEPLOYMENT.md)：更详细的部署说明与故障排查  
+- `DEPLOYMENT.md`：更详细的部署说明与故障排查  
 
 ---
 
@@ -49,49 +71,50 @@
   - 内存：**≥ 256MB（推荐 512MB）**  
   - 磁盘：**≥ 512MB 可用空间（推荐 1GB 以上）**  
 
-### 性能与压测（参考数据）
-
-- 测试环境：Vultr VC2（$3.5/月，1 核 shard CPU，512MB 内存，Debian 12）  
-- 压测工具：`bombardier`，目标 `http://45.76.0.167:80`（HTTP）  
-- 结果（单位：req/s 与延迟均为平均值）：  
-  - `-c 40 -n 10000`：**45.22 req/s**，延迟 **0.88s ±0.40s**，最大 7.34s；2xx=9965，超时=35，吞吐 **617 KB/s**  
-  - `-c 60 -n 10000`：**56.87 req/s**，延迟 **1.05s ±0.52s**，最大 5.55s；2xx=8618，超时=1382，吞吐 **672 KB/s**  
-- 资源占用：CPU 峰值约 90% 左右，内存占用约 320–370MB（512MB 机器可跑完 10k 请求批次）。
-- 性能解读：  
-  - 40 并发：超时率约 0.35%，表现稳定，可视为该规格下的“安全并发”。  
-  - 60 并发：吞吐略升但超时率约 13.8%，说明 512MB/shard CPU 接近瓶颈；如需稳定性建议控制在 ≤40 并发或升级 ≥1GB。  
-  - 极限吞吐基线：以 **~50 req/s** 作为该规格接近上限的保守估计。  
-- 估算可支撑日活（轻度交互社区）：  
-  - 假设高峰占全天 30% 请求量、每活跃用户日均 30–50 次请求。  
-  - 以 50 req/s 上限估算，高峰每小时可处理 ~180k 请求；对应约 **10k–20k DAU**（活跃度越高越靠近下限）。  
-  - 若需更低尾延迟或更高 DAU，建议：降并发、加前置缓存/CDN、或升配至 ≥1GB 规格。
-
 ### 2. 在线一键部署（推荐，从本仓库拉取）
 
-完整的部署说明和所有模式（从 GitHub 克隆、Release 源码包、离线本地包等）已迁移到 [`DEPLOYMENT.md`](DEPLOYMENT.md)。  
-这里只保留一个**最推荐、可直接复制的生产环境 Quick Start**。
+本项目已经托管在 GitHub 仓库 [`vihithr/FastAPI-Game-Rating-Lite`](https://github.com/vihithr/FastAPI-Game-Rating-Lite.git)，根据你的登录方式分两种常见场景：
 
-**场景：新服务器，直接以 `root` 登录，使用 Release `v0.1.1` 源码包 + HTTPS，一行命令完成下载与安装：**
+#### 2.1 常见场景：以普通用户登录，使用 `sudo`（真正一行一键）
+
+**有域名（HTTPS 模式，自动申请证书）**：
 
 ```bash
-bash -c 'cd /tmp && \
-  curl -L -o stg_website_v0.1.1.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz && \
-  bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-    install --from-archive /tmp/stg_website_v0.1.1.tar.gz --domain example.com'
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
 ```
 
-- 将命令中的 `example.com` 替换为你的实际域名。  
-- 如果你是普通用户而非 root，请改用：
+**无域名（IP 模式，仅 HTTP，用于内网 / 临时环境）**：
 
-  ```bash
-  sudo bash -c 'cd /tmp && \
-    curl -L -o stg_website_v0.1.1.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz && \
-    bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-      install --from-archive /tmp/stg_website_v0.1.1.tar.gz --domain example.com'
-  ```
+```bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
+```
 
-- 若没有域名、只想用 IP 访问，可把末尾的 `--domain example.com` 改成 `--ip`。  
-- 更多部署模式与参数说明请查看 [`DEPLOYMENT.md`](DEPLOYMENT.md) 中的“快速开始”与“手动部署步骤”章节。  
+> 说明：这里用的是 `bash <(curl ...)`，脚本从网络加载，但 **stdin 仍然是你的终端**，所以交互式向导（数据库类型 / 域名选择等）可以正常工作，不会像 `curl ... | bash` 那样直接读到 EOF 退出。
+
+#### 2.2 直接以 `root` 登录（无 `sudo` 或最小系统环境）
+
+如果你登录的就是 `root@server`，或者系统里没有安装 `sudo`，请使用下列命令（**去掉 sudo**）：
+
+**有域名（HTTPS 模式）**：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
+```
+
+**无域名（IP 模式）**：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
+  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
+```
+
+常用可选参数（可与上面的命令组合使用）：
+
+- `--branch <name>`：指定分支，默认为 `main`  
+- `--force`：跳过卸载 / 静态清理时的二次确认（请谨慎使用）  
 
 ### 3. 离线 / 本地部署（可选）
 
@@ -115,71 +138,6 @@ bash -c 'cd /tmp && \
 - 数据库：`/opt/stg_website/stg_website.db`  
 - 环境变量：`/opt/stg_website/.env`  
 - Caddy 二进制：`/opt/stg_website/caddy/`  
-
-### 4. 备份与迁移（重要）
-
-#### 快速备份
-
-在服务器上执行备份命令，将生成包含代码、数据库和上传资源的压缩包：
-
-```bash
-cd /opt/stg_website
-sudo ./deploy.sh backup
-```
-
-备份文件默认保存在 `/opt/stg_website_backup_YYYYMMDD_HHMMSS.tar.gz`，包含：
-- ✅ 应用代码
-- ✅ SQLite 数据库（`stg_website.db`）
-- ✅ 上传的文件（文章封面、静态包等）
-- ❌ 排除虚拟环境、日志、缓存、`.env` 等环境相关文件
-
-#### 快速迁移到新服务器
-
-**步骤 1：在原服务器备份**
-```bash
-cd /opt/stg_website
-sudo ./deploy.sh backup
-# 备份文件会显示保存路径，例如：/opt/stg_website_backup_20241218_143022.tar.gz
-```
-
-**步骤 2：将备份文件传输到新服务器**
-```bash
-# 使用 scp 传输（示例）
-scp /opt/stg_website_backup_20241218_143022.tar.gz user@new-server:/tmp/
-```
-
-**步骤 3：在新服务器恢复**
-```bash
-# 解压备份文件
-cd /tmp
-tar -xzf stg_website_backup_20241218_143022.tar.gz
-
-# 进入解压后的目录（通常是 stg_website 目录）
-cd stg_website
-
-# 执行部署脚本（会自动保留数据库和上传文件）
-sudo ./deploy.sh install --from-local --domain your-domain.com
-# 或使用 IP 模式：sudo ./deploy.sh install --from-local --ip
-```
-
-**重要提示**：
-- ✅ 部署脚本会**自动检测并保留**备份中的数据库文件，不会覆盖
-- ✅ 环境变量（`.env`）会在新服务器上重新生成，但数据库数据会保留
-- ✅ 上传的文件（封面、静态包等）会一并迁移
-- ⚠️ 如果新服务器已有数据库，更新时会自动保护现有数据
-
-#### 更新部署时的数据保护
-
-当执行更新部署时（例如从 GitHub 拉取新代码），脚本会：
-- ✅ **自动检测**目标位置是否已有数据库文件
-- ✅ **自动保护**现有数据库，不会覆盖
-- ✅ 仅更新代码和表结构（如果需要）
-
-```bash
-# 更新代码（保留现有数据库）
-cd /opt/stg_website
-sudo ./deploy.sh install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain your-domain.com
-```
 
 ---
 
@@ -241,104 +199,6 @@ sudo systemctl stop stg_website.service
 
 ---
 
-## 备份与数据迁移
-
-### 一键备份
-
-部署脚本提供了便捷的备份功能，可以快速备份整个站点（代码 + 数据库 + 上传文件）：
-
-```bash
-cd /opt/stg_website
-sudo ./deploy.sh backup
-```
-
-备份过程会：
-1. 提示备份文件保存路径（默认在 `/opt/` 目录下）
-2. 自动排除虚拟环境、日志、缓存、`.env` 等环境相关文件
-3. 包含应用代码、SQLite 数据库和所有上传资源
-4. 生成带时间戳的压缩包：`stg_website_backup_YYYYMMDD_HHMMSS.tar.gz`
-
-### 服务器迁移步骤
-
-#### 方法一：使用备份功能（推荐）
-
-**在原服务器：**
-```bash
-cd /opt/stg_website
-sudo ./deploy.sh backup
-# 记录备份文件路径，例如：/opt/stg_website_backup_20241218_143022.tar.gz
-```
-
-**传输备份文件到新服务器：**
-```bash
-# 使用 scp
-scp /opt/stg_website_backup_20241218_143022.tar.gz user@new-server:/tmp/
-
-# 或使用 rsync
-rsync -avz /opt/stg_website_backup_20241218_143022.tar.gz user@new-server:/tmp/
-```
-
-**在新服务器恢复：**
-```bash
-# 1. 解压备份文件
-cd /tmp
-tar -xzf stg_website_backup_20241218_143022.tar.gz
-
-# 2. 进入解压后的目录
-cd stg_website
-
-# 3. 执行部署（会自动保留数据库）
-sudo ./deploy.sh install --from-local --domain your-domain.com
-```
-
-#### 方法二：直接复制数据库文件
-
-如果只需要迁移数据库数据：
-
-```bash
-# 在原服务器
-sudo cp /opt/stg_website/stg_website.db /tmp/
-
-# 传输到新服务器
-scp /tmp/stg_website.db user@new-server:/tmp/
-
-# 在新服务器部署后，替换数据库文件
-sudo cp /tmp/stg_website.db /opt/stg_website/
-sudo chown stg_website:stg_website /opt/stg_website/stg_website.db
-sudo chmod 600 /opt/stg_website/stg_website.db
-sudo systemctl restart stg_website.service
-```
-
-### 更新部署时的数据保护
-
-部署脚本在更新时会自动保护现有数据：
-
-- ✅ **检测现有数据库**：如果目标位置已有 `stg_website.db`，会自动保护
-- ✅ **保留数据**：更新代码时不会覆盖现有数据库
-- ✅ **智能同步**：首次安装时允许从源目录拷贝数据库（如果存在）
-
-```bash
-# 更新代码（自动保护现有数据库）
-cd /opt/stg_website
-sudo ./deploy.sh install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain your-domain.com
-```
-
-### 备份内容说明
-
-备份文件包含：
-- ✅ 应用代码（`app/` 目录）
-- ✅ SQLite 数据库（`stg_website.db`）
-- ✅ 上传的文件（`app/static/uploads/`）
-- ✅ 配置文件模板（`Caddyfile`、`stg_website.service` 等）
-
-备份文件**不包含**：
-- ❌ 虚拟环境（`venv/`，会在新服务器重新创建）
-- ❌ 环境变量（`.env`，会在新服务器重新生成）
-- ❌ 日志文件（`*.log`）
-- ❌ 缓存文件（`__pycache__/`、`*.pyc`）
-
----
-
 ## 卸载
 
 完全卸载（包含数据目录，执行前请备份数据库）：
@@ -382,8 +242,7 @@ uvicorn app.main:app --reload
 1. 生产环境务必使用**强随机密钥**（脚本已自动生成一份，但建议妥善备份）。  
 2. `.env` 文件权限应为 `600`，仅服务用户可读。  
 3. 确保你的域名解析正确指向服务器 IP，并开放 80 / 443 端口。  
-4. **定期备份数据**：使用 `./deploy.sh backup` 定期备份，建议设置定时任务（cron）自动备份。  
-5. 数据库文件默认位于本地磁盘（`/opt/stg_website/stg_website.db`），注意定期备份到其他位置。  
+4. 数据库文件默认位于本地磁盘，注意定期备份。  
 
 ---
 
@@ -395,4 +254,19 @@ uvicorn app.main:app --reload
 2. 查看 Caddy 日志：`sudo journalctl -u caddy -n 50`  
 3. 参考 `DEPLOYMENT.md` 中更详细的故障排查章节  
 4. 提交 Issue 时，建议附上：系统发行版、Python 版本、部署命令、相关日志片段  
+
+---
+
+## 数据来源与版权
+
+`app/data/library.json` 是 STG 资料库的示例数据，元数据采集自
+[shmups.wiki](https://shmups.wiki)、Arcade Database (ADB/MAME)、Steam 商店 API 与
+日 / 英维基百科，采集于 2026-10。其中作品简介为各来源原文的短摘录（维基部分遵循 CC BY-SA），
+**版权归原作者所有**，本项目仅作资料整理与检索用途。
+
+**封面图片不随仓库分发**（`app/static/library/covers/` 已在 `.gitignore` 中）。
+封面版权归各发行商所有，如需完整封面请自行整理并放入该目录，或运行
+`tools/build_library.py` 从你自己的收藏生成。
+
+如果你要替换示例数据，覆盖 `app/data/library.json` 即可，格式见 `tools/import_library.py` 顶部注释。
 

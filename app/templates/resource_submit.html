@@ -2,54 +2,160 @@
 
 {% block title %}{% if is_edit %}编辑资源{% else %}提交资源{% endif %} - STG社区评价{% endblock %}
 
-{% block content %}
-<section>
-  <h2>{% if is_edit %}编辑资源{% else %}提交新资源{% endif %}</h2>
-
-  <p>请粘贴网盘链接、提取码、解压密码等信息到「提交内容」中，注意不要泄露个人隐私。</p>
-
-  <form method="post" enctype="multipart/form-data">
-    <label>
-      资源标题 *
-      <input type="text" name="title" value="{{ (resource.title if resource else '') }}" required>
-    </label>
-
-    <label>
-      分类（任意字符串，建议从下列枚举中选择） *
-      <input list="resource-categories" name="category" value="{{ (resource.category if resource else '') }}" required>
-      <datalist id="resource-categories">
-        {% for cat in suggested_categories %}
-          <option value="{{ cat }}"></option>
-        {% endfor %}
-      </datalist>
-    </label>
-
-    <label>
-      标签（空格或逗号分隔，用于搜索） *
-      <input type="text" name="tags" value="{{ tags_str if tags_str is defined else '' }}" placeholder="例如：东方 MAME 录屏" required>
-    </label>
-
-    <label>
-      提交内容（网盘链接 / 提取码 / 解压密码 / 说明） *
-      <textarea name="content" rows="6" required>{{ (resource.content if resource else '') }}</textarea>
-    </label>
-
-    <label>
-      资源介绍（可选）
-      <textarea name="intro" rows="4">{{ (resource.intro if resource and resource.intro else '') }}</textarea>
-    </label>
-
-    <label>
-      封面图（可选，&lt; 1MB，JPG/PNG/WEBP/GIF）
-      <input type="file" name="cover" accept="image/jpeg,image/png,image/gif,image/webp">
-    </label>
-
-    <div style="display:flex; justify-content:flex-end; gap:.75rem;">
-      <a href="/resources" role="button" class="secondary">返回列表</a>
-      <button type="submit">{% if is_edit %}保存修改{% else %}提交{% endif %}</button>
-    </div>
-  </form>
-</section>
+{% block head %}
+<link rel="stylesheet" href="{{ asset_url('/static/css/pages.css') }}">
 {% endblock %}
 
+{% block content %}
+<div class="pg">
 
+    <nav class="pg-crumbs" aria-label="面包屑">
+        <a href="/">主页</a>
+        <i data-lucide="chevron-right"></i>
+        <a href="/resources">资源索引</a>
+        <i data-lucide="chevron-right"></i>
+        <span aria-current="page">{% if is_edit %}编辑资源{% else %}提交资源{% endif %}</span>
+    </nav>
+
+    <header class="pg-hero">
+        <div class="pg-hero__inner">
+            <div>
+                <p class="pg-hero__eyebrow">
+                    <span>Contribute</span>
+                    <span class="dot"></span>
+                    <span>资源分发</span>
+                </p>
+                <h1>{% if is_edit %}编辑资源{% else %}提交新资源{% endif %}</h1>
+                <p class="pg-hero__lede">
+                    把网盘链接、提取码、解压密码写进「提交内容」，其余字段只影响检索与展示。
+                </p>
+            </div>
+            <div class="pg-hero__aside">
+                <a href="/resources" class="pg-hero__cta">
+                    <i data-lucide="arrow-left"></i>
+                    返回索引
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="pg-layout">
+
+        <div class="pg-main">
+            <form method="post" enctype="multipart/form-data" class="pg-form">
+
+                <section class="pg-panel">
+                    <div class="pg-panel__head">
+                        <h2><i data-lucide="info"></i> 基本信息</h2>
+                        <small>带 * 为必填</small>
+                    </div>
+                    <div class="pg-panel__body">
+                        <label class="pg-field" for="res-title">
+                            <span class="pg-label">资源标题 <span class="req">*</span></span>
+                            <input type="text" id="res-title" name="title"
+                                value="{{ (resource.title if resource else '') }}" required
+                                placeholder="例如：东方红魔乡 汉化补丁 v1.02">
+                        </label>
+
+                        <div class="pg-grid-2" style="margin-top: 1rem;">
+                            <label class="pg-field" for="res-category">
+                                <span class="pg-label">分类 <span class="req">*</span></span>
+                                <input list="resource-categories" id="res-category" name="category"
+                                    value="{{ (resource.category if resource else '') }}" required
+                                    placeholder="选择或直接输入">
+                                <datalist id="resource-categories">
+                                    {% for cat in suggested_categories %}
+                                    <option value="{{ cat }}"></option>
+                                    {% endfor %}
+                                </datalist>
+                            </label>
+
+                            <label class="pg-field" for="res-tags">
+                                <span class="pg-label">标签 <span class="req">*</span></span>
+                                <input type="text" id="res-tags" name="tags"
+                                    value="{{ tags_str if tags_str is defined else '' }}"
+                                    placeholder="空格或逗号分隔" required>
+                            </label>
+                        </div>
+                        <small class="pg-hint">标签用于搜索与筛选，建议 2–4 个，例如「东方 MAME 录屏」。</small>
+                    </div>
+                </section>
+
+                <section class="pg-panel">
+                    <div class="pg-panel__head">
+                        <h2><i data-lucide="link"></i> 提交内容</h2>
+                        <small>必填</small>
+                    </div>
+                    <div class="pg-panel__body">
+                        <label class="pg-field" for="res-content">
+                            <span class="pg-label">网盘链接 / 提取码 / 解压密码 <span class="req">*</span></span>
+                            <textarea id="res-content" name="content" rows="6" required
+                                placeholder="链接：https://…&#10;提取码：xxxx&#10;解压密码：xxxx">{{ (resource.content if resource else '') }}</textarea>
+                            <small class="pg-hint">一行一条更清晰。链接会自动识别为可点击；不要把个人隐私信息写进来。</small>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="pg-panel">
+                    <div class="pg-panel__head">
+                        <h2><i data-lucide="align-left"></i> 介绍与封面</h2>
+                        <small>选填</small>
+                    </div>
+                    <div class="pg-panel__body">
+                        <label class="pg-field" for="res-intro">
+                            <span class="pg-label">资源介绍 <span class="opt">可选</span></span>
+                            <textarea id="res-intro" name="intro" rows="4"
+                                placeholder="版本说明、适用范围、安装步骤……">{{ (resource.intro if resource and resource.intro else '') }}</textarea>
+                        </label>
+
+                        <label class="pg-field" for="res-cover" style="margin-top: 1rem;">
+                            <span class="pg-label">封面图 <span class="opt">可选，小于 1MB</span></span>
+                            <input type="file" id="res-cover" name="cover" accept="image/jpeg,image/png,image/gif,image/webp">
+                            <small class="pg-hint">支持 JPG / PNG / WEBP / GIF。{% if is_edit and resource and resource.cover_image %}不选则保留现有封面。{% endif %}</small>
+                        </label>
+                    </div>
+                    <div class="pg-panel__foot">
+                        <div class="pg-actions">
+                            <button type="submit" class="pg-btn">
+                                <i data-lucide="check"></i>
+                                {% if is_edit %}保存修改{% else %}提交资源{% endif %}
+                            </button>
+                            <a href="{% if is_edit and resource %}/resources/{{ resource.id }}{% else %}/resources{% endif %}" class="pg-btn pg-btn--ghost">取消</a>
+                        </div>
+                    </div>
+                </section>
+
+            </form>
+        </div>
+
+        <aside class="pg-side">
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="list-checks"></i> 提交须知</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <ul class="pg-side-list">
+                        <li><i data-lucide="check"></i><span><b>一个资源一条</b>，不要把本体和补丁塞进同一条。</span></li>
+                        <li><i data-lucide="check"></i><span>标题写清<b>版本号</b>与<b>语言</b>，避免同名条目混淆。</span></li>
+                        <li><i data-lucide="check"></i><span>链接失效后请回来编辑，或让其他人点「失效」反馈。</span></li>
+                        <li><i data-lucide="check"></i><span>只提交你有权分发的文件，商业作品请给官方购买渠道。</span></li>
+                    </ul>
+                </div>
+            </section>
+
+            <p class="pg-note pg-note--warn">
+                <i data-lucide="shield-alert"></i>
+                <span>不要在此填写手机号、邮箱等个人隐私；资源区对所有访客可见。</span>
+            </p>
+        </aside>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

@@ -1,116 +1,242 @@
 {% extends "base.html" %}
 
 {% block title %}资源索引 - STG社区评价{% endblock %}
+{% block description %}STG Ratings 资源索引：游戏本体、补丁、OST、DLC 与攻略文档的下载信息，按热度与标签整理。{% endblock %}
 
-{% block content %}
-<section>
-  <h2>资源索引</h2>
-  <p>这里是与作品标签完全隔离的资源分发区，用于整理各种本体、补丁、OST 等下载信息。</p>
-
-  <form method="get" class="grid" style="align-items: flex-end; gap: 0.75rem;">
-    <div>
-      <label for="q">搜索关键词</label>
-      <input type="search" id="q" name="q" placeholder="按标题或标签搜索" value="{{ q }}">
-    </div>
-    <div>
-      <label for="tag">标签筛选</label>
-      <select id="tag" name="tag">
-        <option value="">全部标签</option>
-        {% for item in popular_tags %}
-          <option value="{{ item.tag.name }}" {% if active_tag == item.tag.name %}selected{% endif %}>
-            {{ item.tag.name }} ({{ item.count }})
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-    <div>
-      <label>&nbsp;</label>
-      <button type="submit">筛选</button>
-    </div>
-    <div style="text-align:right;">
-      <label>&nbsp;</label>
-      <a href="/resources/submit" role="button" class="secondary">提交新资源</a>
-    </div>
-  </form>
-
-  <small>共 {{ total_count }} 个资源，当前第 {{ page }} / {{ total_pages }} 页</small>
-
-  <table role="grid">
-    <thead>
-      <tr>
-        <th style="width:5rem;">热度</th>
-        <th>标题</th>
-        <th style="width:8rem;">分类</th>
-        <th style="width:10rem;">标签</th>
-        <th style="width:7rem;">状态</th>
-        <th style="width:9rem;">上传者</th>
-        <th style="width:8rem;">时间</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for res in resources %}
-      <tr>
-        <td>
-          <span class="badge {% if res.heat > 0 %}contrast{% elif res.heat < 0 %}secondary outline{% endif %}">
-            {{ res.heat }}
-          </span>
-        </td>
-        <td>
-          <a href="/resources/{{ res.id }}">{{ res.title }}</a>
-        </td>
-        <td>
-          <small>{{ res.category }}</small>
-        </td>
-        <td>
-          {% for tag in res.tags[:3] %}
-            <a href="/resources?tag={{ tag.name | urlencode }}" class="secondary outline" style="margin-right: .25rem; font-size: .75rem;">
-              {{ tag.name }}
-            </a>
-          {% endfor %}
-          {% if res.tags|length > 3 %}
-            <small>+{{ res.tags|length - 3 }}</small>
-          {% endif %}
-        </td>
-        <td>
-          {% if res.status == "valid" %}
-            <span class="badge">🟢 有效</span>
-          {% else %}
-            <span class="badge secondary outline">🔴 失效</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if res.uploader %}
-            <a href="/user/{{ res.uploader.id }}">{{ res.uploader.username }}</a>
-          {% else %}
-            <small>已删除用户</small>
-          {% endif %}
-        </td>
-        <td>
-          <small>{{ res.created_at.strftime("%Y-%m-%d") if res.created_at else "" }}</small>
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="7"><small>暂无资源。</small></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  {% if total_pages > 1 %}
-  <nav aria-label="资源分页" style="margin-top: 1rem; display:flex; justify-content:center; gap:.5rem;">
-    {% set base_q = '&q=' + q if q else '' %}
-    {% set base_tag = '&tag=' + active_tag if active_tag else '' %}
-    <a href="/resources?page={{ [1, page-1]|max }}{{ base_q }}{{ base_tag }}" role="button" class="secondary" {% if page == 1 %}aria-disabled="true"{% endif %}>
-      上一页
-    </a>
-    <span style="align-self:center;">第 {{ page }} / {{ total_pages }} 页</span>
-    <a href="/resources?page={{ [total_pages, page+1]|min }}{{ base_q }}{{ base_tag }}" role="button" class="secondary" {% if page >= total_pages %}aria-disabled="true"{% endif %}>
-      下一页
-    </a>
-  </nav>
-  {% endif %}
-</section>
+{% block head %}
+<link rel="stylesheet" href="{{ asset_url('/static/css/pages.css') }}">
 {% endblock %}
 
+{% block content %}
+<div class="pg">
 
+    <nav class="pg-crumbs" aria-label="面包屑">
+        <a href="/">主页</a>
+        <i data-lucide="chevron-right"></i>
+        <span aria-current="page">资源索引</span>
+    </nav>
+
+    <header class="pg-hero">
+        <div class="pg-hero__inner">
+            <div>
+                <p class="pg-hero__eyebrow">
+                    <span>Index</span>
+                    <span class="dot"></span>
+                    <span>资源分发</span>
+                </p>
+                <h1>资源索引</h1>
+                <p class="pg-hero__lede">
+                    本体、补丁、OST、工具与攻略文档的集中入口。与作品标签完全隔离，按热度排序，失效可顶踩反馈。
+                </p>
+            </div>
+            <div class="pg-hero__aside">
+                <div class="pg-hero__stat">
+                    <b>{{ total_count }}</b>
+                    <small>在架资源</small>
+                </div>
+                {% if request.state.user %}
+                <a href="/resources/submit" class="pg-hero__cta">
+                    <i data-lucide="plus"></i>
+                    提交资源
+                </a>
+                {% else %}
+                <a href="/login?redirect=/resources/submit" class="pg-hero__cta">
+                    <i data-lucide="log-in"></i>
+                    登录后提交
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <div class="pg-layout">
+
+        <div class="pg-main">
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="search"></i> 筛选</h3>
+                    <small>{{ total_count }} 个结果</small>
+                </div>
+                <div class="pg-panel__body">
+                    <form method="get" class="pg-form" action="/resources">
+                        <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.6fr) auto; gap: 0.6rem; align-items: end;">
+                            <label class="pg-field" for="q">
+                                <span class="pg-label">关键词</span>
+                                <input type="search" id="q" name="q" placeholder="按标题或标签搜索" value="{{ q }}">
+                            </label>
+                            <label class="pg-field" for="tag">
+                                <span class="pg-label">标签</span>
+                                <select id="tag" name="tag">
+                                    <option value="">全部标签</option>
+                                    {% for item in popular_tags %}
+                                    <option value="{{ item.tag.name }}" {% if active_tag == item.tag.name %}selected{% endif %}>
+                                        {{ item.tag.name }} ({{ item.count }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <button type="submit" class="pg-btn" style="margin-bottom: 0.1rem;">
+                                <i data-lucide="filter"></i> 筛选
+                            </button>
+                        </div>
+                    </form>
+
+                    {% if popular_tags %}
+                    <ul class="pg-chip-row" style="margin-top: 0.9rem;">
+                        {% for item in popular_tags[:10] %}
+                        <li>
+                            <a class="pg-chip {% if active_tag == item.tag.name %}pg-chip--brand{% endif %}"
+                                href="/resources?tag={{ item.tag.name | urlencode }}">
+                                {{ item.tag.name }}<span style="opacity: .55;">{{ item.count }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+
+                    {% if q or active_tag %}
+                    <div class="pg-actions" style="margin-top: 0.9rem;">
+                        <span class="pg-chip pg-chip--accent">
+                            {% if q %}关键词「{{ q }}」{% endif %}
+                            {% if q and active_tag %} · {% endif %}
+                            {% if active_tag %}标签「{{ active_tag }}」{% endif %}
+                        </span>
+                        <a href="/resources" class="pg-btn pg-btn--sm pg-btn--ghost">
+                            <i data-lucide="x"></i> 清除筛选
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h2><i data-lucide="folder-open"></i> 资源列表</h2>
+                    <small>第 {{ page }} / {{ total_pages }} 页</small>
+                </div>
+
+                {% if resources %}
+                <ul class="pg-rows">
+                    {% for res in resources %}
+                    <li class="pg-row">
+                        <div class="pg-row__heat {% if res.heat > 0 %}pg-row__heat--hot{% endif %}">
+                            <b>{{ res.heat }}</b>
+                            <small>热度</small>
+                        </div>
+
+                        <div class="pg-row__main">
+                            <h3 class="pg-row__title">
+                                <a href="/resources/{{ res.id }}">{{ res.title }}</a>
+                            </h3>
+                            <div class="pg-row__meta">
+                                <span class="pg-chip">{{ res.category }}</span>
+                                <span class="sep">·</span>
+                                <span>
+                                    {% if res.uploader %}
+                                    <a href="/user/{{ res.uploader.id }}" style="color: inherit;">{{ res.uploader.username }}</a>
+                                    {% else %}已删除用户{% endif %}
+                                </span>
+                                <span class="sep">·</span>
+                                <span>{{ res.created_at.strftime("%Y-%m-%d") if res.created_at else "" }}</span>
+                                {% if res.status != "valid" %}
+                                <span class="pg-chip pg-chip--bad">失效</span>
+                                {% endif %}
+                            </div>
+                            {% if res.tags %}
+                            <div class="pg-row__tags">
+                                {% for tag in res.tags[:4] %}
+                                <a class="pg-chip" href="/resources?tag={{ tag.name | urlencode }}">#{{ tag.name }}</a>
+                                {% endfor %}
+                                {% if res.tags|length > 4 %}
+                                <span class="pg-chip">+{{ res.tags|length - 4 }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="pg-row__side">
+                            {% if res.status == "valid" %}
+                            <span class="pg-chip pg-chip--ok">有效</span>
+                            {% else %}
+                            <span class="pg-chip pg-chip--bad">失效</span>
+                            {% endif %}
+                            <a href="/resources/{{ res.id }}" class="pg-btn pg-btn--sm pg-btn--ghost">查看</a>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="pg-panel__body">
+                    <div class="pg-empty">
+                        <i data-lucide="folder-search"></i>
+                        <p>{% if q or active_tag %}没有匹配的资源，换个关键词试试。{% else %}还没有人提交资源。{% endif %}</p>
+                        {% if request.state.user %}
+                        <a href="/resources/submit" class="pg-btn pg-btn--sm" style="margin-top: 0.4rem;">提交第一个</a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </section>
+
+            {% if total_pages > 1 %}
+            {% set base_q = '&q=' + q if q else '' %}
+            {% set base_tag = '&tag=' + active_tag if active_tag else '' %}
+            <nav class="pg-pager" aria-label="资源分页">
+                <a href="/resources?page={{ [1, page-1]|max }}{{ base_q }}{{ base_tag }}"
+                    class="pg-btn pg-btn--sm pg-btn--ghost" {% if page == 1 %}aria-disabled="true"{% endif %}>
+                    <i data-lucide="chevron-left"></i> 上一页
+                </a>
+                <span class="pg-pager__info">{{ page }} / {{ total_pages }}</span>
+                <a href="/resources?page={{ [total_pages, page+1]|min }}{{ base_q }}{{ base_tag }}"
+                    class="pg-btn pg-btn--sm pg-btn--ghost" {% if page >= total_pages %}aria-disabled="true"{% endif %}>
+                    下一页 <i data-lucide="chevron-right"></i>
+                </a>
+            </nav>
+            {% endif %}
+
+        </div>
+
+        <aside class="pg-side">
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="layers"></i> 分类</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <ul class="pg-chip-row">
+                        {% for cat in suggested_categories %}
+                        <li><span class="pg-chip">{{ cat }}</span></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </section>
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="info"></i> 说明</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <ul class="pg-side-list">
+                        <li><i data-lucide="check"></i><span>列表只显示<b>有效</b>资源，失效条目仍可通过直链访问。</span></li>
+                        <li><i data-lucide="check"></i><span>排序依据是<b>热度</b>，顶一下 +1，失效反馈 −1。</span></li>
+                        <li><i data-lucide="check"></i><span>标签与作品标签完全隔离，互不影响。</span></li>
+                    </ul>
+                </div>
+            </section>
+
+            <p class="pg-note pg-note--warn">
+                <i data-lucide="shield-alert"></i>
+                <span>资源由社区提交，下载前请自行确认安全性；发现失效请点「失效/有问题」。</span>
+            </p>
+        </aside>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

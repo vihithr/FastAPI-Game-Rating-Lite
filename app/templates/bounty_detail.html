@@ -1,122 +1,237 @@
 {% extends "base.html" %}
 
-{% block title %}{{ bounty.title }} - 悬赏详情{% endblock %}
+{% block title %}{{ bounty.title }} - 悬赏详情 | STG社区评价{% endblock %}
+{% block description %}{{ bounty.title }} —— {{ bounty.reward }}。{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ asset_url('/static/css/pages.css') }}">
+{% endblock %}
 
 {% block content %}
-<article>
-    <header style="margin-bottom: 1.5rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
-            <h1 style="margin: 0; flex: 1;">{{ bounty.title }}</h1>
-            {% if bounty.is_completed %}
-            <span style="color: var(--pico-success); font-size: 1rem; font-weight: 600;">
-                <i data-lucide="check-circle"></i> 已完成
-            </span>
-            {% else %}
-            <span style="color: var(--pico-primary); font-size: 1rem; font-weight: 600;">
-                <i data-lucide="clock"></i> 进行中
-            </span>
-            {% endif %}
-        </div>
-        
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem;">
-            <span class="tag-badge">{{ bounty.category.name }}</span>
-            <span style="color: var(--pico-primary); font-weight: 600;">
-                <i data-lucide="gift"></i> 悬赏：{{ bounty.reward }}
-            </span>
-            {% if bounty.game_name %}
-            <span style="color: var(--pico-secondary-foreground);">
-                <i data-lucide="gamepad-2"></i> {{ bounty.game_name }}
-            </span>
-            {% endif %}
-        </div>
-        
-        {% if bounty.bounty_tags %}
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
-            {% for tag in bounty.bounty_tags %}
-            <span class="tag-badge">{{ tag.name }}</span>
-            {% endfor %}
-        </div>
-        {% endif %}
-        
-        <small style="color: var(--pico-muted-color);">
-            <i data-lucide="user"></i> 发布者：<a href="/user/{{ bounty.creator.id }}">{{ bounty.creator.username }}</a> · 
-            <i data-lucide="calendar"></i> {{ bounty.created_at.strftime('%Y-%m-%d %H:%M') }}
-            {% if bounty.completed_at %}
-            · <i data-lucide="check"></i> 完成于：{{ bounty.completed_at.strftime('%Y-%m-%d %H:%M') }}
-            {% endif %}
-        </small>
-    </header>
-    
-    <div style="margin-bottom: 2rem;">
-        <h3>悬赏内容</h3>
-        <div style="white-space: pre-wrap; line-height: 1.6;">{{ bounty.content }}</div>
-    </div>
-    
-    {% if bounty.contact_info %}
-    <div style="margin-bottom: 2rem; padding: 1rem; background-color: var(--pico-muted-background-color); border-radius: var(--pico-border-radius);">
-        <h4><i data-lucide="mail"></i> 联系方式</h4>
-        <p style="margin: 0; word-break: break-all;">{{ bounty.contact_info }}</p>
-    </div>
-    {% endif %}
-    
-    <!-- 操作按钮 -->
-    {% if can_edit %}
-    <div style="margin-bottom: 2rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <a href="/bounty/{{ bounty.id }}/edit" role="button" class="secondary outline">
-            <i data-lucide="edit"></i> 编辑悬赏
-        </a>
-        {% if not bounty.is_completed %}
-        <form method="post" action="/bounty/{{ bounty.id }}/complete" style="display: inline;">
-            <button type="submit" role="button" class="contrast outline">
-                <i data-lucide="check-circle"></i> 标记为已完成
-            </button>
-        </form>
-        {% endif %}
-        <form method="post" action="/bounty/{{ bounty.id }}/delete" style="display: inline;" onsubmit="return confirm('确定要删除此悬赏吗？此操作不可恢复。');">
-            <button type="submit" role="button" class="secondary outline" style="color: var(--pico-del-color);">
-                <i data-lucide="trash-2"></i> 删除悬赏
-            </button>
-        </form>
-    </div>
-    {% endif %}
-</article>
+<div class="pg">
 
-<!-- 评论区域 -->
-<article>
-    <header>
-        <h3><i data-lucide="message-circle"></i> 评论留言 ({{ bounty.comments|length }})</h3>
-    </header>
-    
-    {% if request.state.user %}
-    <form method="post" action="/bounty/{{ bounty.id }}/comment" style="margin-bottom: 2rem;">
-        <label for="comment-content">发表评论：</label>
-        <textarea id="comment-content" name="content" rows="4" required placeholder="请输入您的评论..."></textarea>
-        <button type="submit" role="button">
-            <i data-lucide="send"></i> 提交评论
-        </button>
-    </form>
-    {% else %}
-    <p><small>请<a href="/login">登录</a>后发表评论</small></p>
-    {% endif %}
-    
-    {% if bounty.comments %}
-    <div style="display: flex; flex-direction: column; gap: 1rem;">
-        {% for comment in bounty.comments %}
-        <div style="padding: 1rem; background-color: var(--pico-card-background-color); border: 1px solid var(--pico-card-border-color); border-radius: var(--pico-border-radius);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <strong><a href="/user/{{ comment.author.id }}">{{ comment.author.username }}</a></strong>
-                <small style="color: var(--pico-muted-color);">
-                    {{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}
-                </small>
+    <nav class="pg-crumbs" aria-label="面包屑">
+        <a href="/">主页</a>
+        <i data-lucide="chevron-right"></i>
+        <a href="/bounties">悬赏板</a>
+        <i data-lucide="chevron-right"></i>
+        <span aria-current="page">{{ bounty.title|truncate(26, true, '…') }}</span>
+    </nav>
+
+    <header class="pg-hero">
+        <div class="pg-hero__inner">
+            <div>
+                <p class="pg-hero__eyebrow">
+                    <span>{{ bounty.category.name }}</span>
+                    <span class="dot"></span>
+                    <span>{% if bounty.is_completed %}已完成{% else %}进行中{% endif %}</span>
+                </p>
+                <h1>{{ bounty.title }}</h1>
+                <div class="pg-hero__chips">
+                    <span class="pg-hero__chip">
+                        <i data-lucide="user"></i>
+                        {{ bounty.creator.username }}
+                    </span>
+                    <span class="pg-hero__chip">
+                        <i data-lucide="calendar"></i>
+                        {{ bounty.created_at.strftime('%Y-%m-%d %H:%M') }}
+                    </span>
+                    {% if bounty.game_name %}
+                    <span class="pg-hero__chip">
+                        <i data-lucide="gamepad-2"></i>
+                        {{ bounty.game_name }}
+                    </span>
+                    {% endif %}
+                    {% if bounty.completed_at %}
+                    <span class="pg-hero__chip">
+                        <i data-lucide="check-circle"></i>
+                        完成于 {{ bounty.completed_at.strftime('%Y-%m-%d') }}
+                    </span>
+                    {% endif %}
+                </div>
             </div>
-            <div style="white-space: pre-wrap; line-height: 1.6;">{{ comment.content }}</div>
+            <div class="pg-hero__aside">
+                <span class="pg-reward pg-reward--lg">
+                    <i data-lucide="gift"></i>
+                    {{ bounty.reward }}
+                </span>
+            </div>
         </div>
-        {% endfor %}
+    </header>
+
+    <div class="pg-layout">
+
+        <div class="pg-main">
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h2><i data-lucide="file-text"></i> 悬赏内容</h2>
+                    {% if bounty.is_completed %}
+                    <span class="pg-status pg-status--done"><i data-lucide="check-circle"></i> 已完成</span>
+                    {% else %}
+                    <span class="pg-status pg-status--active"><i data-lucide="clock"></i> 进行中</span>
+                    {% endif %}
+                </div>
+                <div class="pg-panel__body">
+                    <div class="pg-prose" style="white-space: pre-wrap;">{{ bounty.content }}</div>
+
+                    {% if bounty.bounty_tags %}
+                    <div class="pg-chip-row" style="margin-top: 1rem;">
+                        {% for tag in bounty.bounty_tags %}
+                        <span class="pg-chip">#{{ tag.name }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h2><i data-lucide="message-circle"></i> 评论留言</h2>
+                    <small>{{ bounty.comments|length }} 条</small>
+                </div>
+                <div class="pg-panel__body">
+
+                    {% if request.state.user %}
+                    <form method="post" action="/bounty/{{ bounty.id }}/comment" class="pg-form">
+                        <label class="pg-field" for="comment-content">
+                            <span class="pg-label">发表评论</span>
+                            <textarea id="comment-content" name="content" rows="4" required
+                                placeholder="补充信息、认领悬赏，或者说明你的进度……"></textarea>
+                        </label>
+                        <div class="pg-actions">
+                            <button type="submit" class="pg-btn">
+                                <i data-lucide="send"></i> 提交评论
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <p class="pg-note">
+                        <i data-lucide="log-in"></i>
+                        <span><a href="/login?redirect=/bounty/{{ bounty.id }}">登录</a>后可以发表评论。</span>
+                    </p>
+                    {% endif %}
+
+                    {% if bounty.comments %}
+                    <ul class="pg-comment-list" style="margin-top: 1.1rem;">
+                        {% for comment in bounty.comments %}
+                        <li>
+                            <div class="pg-comment">
+                                <div class="pg-comment__head">
+                                    <strong><a href="/user/{{ comment.author.id }}">{{ comment.author.username }}</a></strong>
+                                    <small>{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </div>
+                                <div class="pg-comment__body">{{ comment.content }}</div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="pg-empty" style="margin-top: 1.1rem; padding: 1.8rem 1rem;">
+                        <i data-lucide="message-circle"></i>
+                        <p>还没有人回应，来发第一条吧。</p>
+                    </div>
+                    {% endif %}
+
+                </div>
+            </section>
+
+        </div>
+
+        <aside class="pg-side">
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="info"></i> 悬赏信息</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <dl class="pg-kv">
+                        <div>
+                            <dt>悬赏奖励</dt>
+                            <dd style="color: color-mix(in srgb, var(--accent-500) 72%, var(--pico-color));">{{ bounty.reward }}</dd>
+                        </div>
+                        <div>
+                            <dt>板块</dt>
+                            <dd>{{ bounty.category.name }}</dd>
+                        </div>
+                        {% if bounty.game_name %}
+                        <div>
+                            <dt>关联游戏</dt>
+                            <dd>{{ bounty.game_name }}</dd>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <dt>状态</dt>
+                            <dd>
+                                {% if bounty.is_completed %}
+                                <span class="pg-chip pg-chip--ok">已完成</span>
+                                {% else %}
+                                <span class="pg-chip pg-chip--brand">进行中</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>发布者</dt>
+                            <dd><a href="/user/{{ bounty.creator.id }}">{{ bounty.creator.username }}</a></dd>
+                        </div>
+                        <div>
+                            <dt>发布于</dt>
+                            <dd>{{ bounty.created_at.strftime('%Y-%m-%d') }}</dd>
+                        </div>
+                        {% if bounty.completed_at %}
+                        <div>
+                            <dt>完成于</dt>
+                            <dd>{{ bounty.completed_at.strftime('%Y-%m-%d') }}</dd>
+                        </div>
+                        {% endif %}
+                    </dl>
+                </div>
+
+                {% if can_edit %}
+                <div class="pg-panel__foot">
+                    <div class="pg-actions">
+                        <a href="/bounty/{{ bounty.id }}/edit" class="pg-btn pg-btn--sm pg-btn--ghost">
+                            <i data-lucide="pencil"></i> 编辑
+                        </a>
+                        {% if not bounty.is_completed %}
+                        <form method="post" action="/bounty/{{ bounty.id }}/complete" style="margin: 0;">
+                            <button type="submit" class="pg-btn pg-btn--sm">
+                                <i data-lucide="check-circle"></i> 标记完成
+                            </button>
+                        </form>
+                        {% endif %}
+                        <form method="post" action="/bounty/{{ bounty.id }}/delete" style="margin: 0;"
+                            onsubmit="return confirm('确定要删除此悬赏吗？此操作不可恢复。');">
+                            <button type="submit" class="pg-btn pg-btn--sm pg-btn--danger">
+                                <i data-lucide="trash-2"></i> 删除
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </section>
+
+            {% if bounty.contact_info %}
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="mail"></i> 联系方式</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <div class="pg-code" style="font-size: 0.8rem;">{{ bounty.contact_info }}</div>
+                    <small class="pg-hint">仅在本页展示，不会出现在列表页。</small>
+                </div>
+            </section>
+            {% endif %}
+
+            <a href="/bounties" class="pg-btn pg-btn--ghost" style="justify-content: center;">
+                <i data-lucide="arrow-left"></i> 返回悬赏板
+            </a>
+
+        </aside>
+
     </div>
-    {% else %}
-    <p style="color: var(--pico-muted-color);">暂无评论，快来发表第一条评论吧！</p>
-    {% endif %}
-</article>
+
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -124,4 +239,3 @@
     lucide.createIcons();
 </script>
 {% endblock %}
-

@@ -1,9 +1,8 @@
 # app/routers/admin.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from .. import models, database, auth
-from app.config.constants import BASE_DIR
+from app.services.uploads import delete_static_file
 
 router = APIRouter(
     prefix="/admin",  # 所有此文件的路由都以 /admin 开头
@@ -42,11 +41,8 @@ async def delete_game_by_admin(
     if not game_to_delete:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="找不到该游戏")
 
-    # 1. 删除封面图片文件（使用绝对路径）
-    if game_to_delete.image_url:
-        image_file_path = BASE_DIR / "app" / game_to_delete.image_url.lstrip("/static/")
-        if image_file_path.exists():
-            image_file_path.unlink()
+    # 1. 记录封面路径，提交成功后再删除文件
+    cover_url = game_to_delete.image_url
     
     # 2. 删除游戏记录
     # 由于在 Game 模型中设置了 cascade="all, delete-orphan"，
@@ -57,6 +53,7 @@ async def delete_game_by_admin(
     
     db.delete(game_to_delete)
     db.commit()
+    delete_static_file(cover_url)
     
     # 清理无引用的标签（可选：在删除游戏后自动清理）
     # cleanup_orphaned_tags(db)

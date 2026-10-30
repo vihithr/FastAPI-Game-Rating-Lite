@@ -1,60 +1,71 @@
-# STG Community Website Caddyfile
-# This file should be placed at /etc/caddy/Caddyfile or configured via Caddy API
 
-# Your domain name
 vote.stgcaomenlibrary.top {
-    # Enable automatic HTTPS
-    # Caddy will automatically obtain and renew SSL certificates from Let's Encrypt
-    
-    # Reverse proxy to Gunicorn
+    # 反向代理到 Gunicorn (FastAPI)
     reverse_proxy 127.0.0.1:8000 {
-        # Health check
+        # 健康检查 (可选，为了稳定)
         health_uri /health
         health_interval 10s
         health_timeout 5s
         
-        # Headers
+        # 传递真实 IP (配合 Cloudflare 使用)
         header_up Host {host}
         header_up X-Real-IP {remote}
         header_up X-Forwarded-For {remote}
         header_up X-Forwarded-Proto {scheme}
     }
     
-    # Enable compression
+    # 开启压缩
     encode gzip zstd
+
+    # 静态资源长缓存：URL 带 ?v=mtime 版本参数，内容变更即换 URL
+    @static_assets path /static/*
+    header @static_assets Cache-Control "public, max-age=31536000, immutable"
+
+    # 动态页面禁止启发式缓存，避免浏览器/中间层展示旧 HTML
+    @dynamic not path /static/*
+    header @dynamic Cache-Control "no-cache"
     
-    # Static file serving (optional, FastAPI can handle this)
-    # Uncomment if you want Caddy to serve static files directly
-    # @static {
-    #     path /static/*
-    # }
-    # handle @static {
-    #     root * /opt/stg_website/stg_website/app/static
-    #     file_server
-    #     encode gzip
-    # }
-    
-    # Security headers
+    # 安全响应头
     header {
-        # Enable HSTS
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        # Prevent clickjacking
         X-Frame-Options "SAMEORIGIN"
-        # XSS Protection
         X-Content-Type-Options "nosniff"
-        # Referrer Policy
         Referrer-Policy "strict-origin-when-cross-origin"
     }
     
-    # Logging
+    # 日志
     log {
         output file /var/log/caddy/stg_website.log
         format json
     }
 }
+# ==========================================
+# 2. AList 网盘 (主域名)
+# 对应你旧 Nginx 配置中的 server_name stgcaomenlibrary.top
+# ==========================================
+alist.stgcaomenlibrary.top {
+    # AList 运行在 5244 端口
+    reverse_proxy 127.0.0.1:5244 {
+        # 传递 Host 头，防止 AList 无法识别域名
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
 
-# Optional: Redirect www to non-www (or vice versa)
-# www.vote.stgcaomenlibrary.top {
-#     redir https://vote.stgcaomenlibrary.top{uri} permanent
-# }
+    # 开启压缩
+    encode gzip zstd
 
+    # Caddy 默认没有上传大小限制，所以不需要像 Nginx 那样配置 client_max_body_size
+
+    # 安全响应头 (可选)
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+
+    # 日志
+    log {
+        output file /var/log/caddy/alist.log
+        format json
+    }
+}

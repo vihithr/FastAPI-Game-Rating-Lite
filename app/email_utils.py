@@ -19,6 +19,7 @@ mail_sender = EmailSender(
     password=None,
     use_starttls=False,
     cls_smtp=smtplib.SMTP,
+    timeout=10,
 )
 
 

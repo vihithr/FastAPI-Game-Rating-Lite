@@ -1,108 +1,220 @@
 {% extends "base.html" %}
 
-{% block title %}{% if article %}编辑文章{% else %}新建文章{% endif %}{% endblock %}
+{% block title %}{% if article %}编辑文章{% else %}新建文章{% endif %} - STG社区评价{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ asset_url('/static/css/pages.css') }}">
+<link rel="stylesheet" href="{{ asset_url('/static/vendor/toastui-editor.min.css') }}">
+{% endblock %}
 
 {% block content %}
-<h2><i data-lucide="file-text"></i> {% if article %}编辑文章{% else %}新建文章{% endif %}</h2>
+<div class="pg">
 
-<form id="article-form" action="{% if article %}/admin/articles/{{ article.id }}/edit{% else %}/admin/articles/new{% endif %}" method="post" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 1rem;">
-    <div>
-        <label>
-            标题
-            <input type="text" name="title" value="{{ article.title if article else '' }}" required>
-        </label>
-        <label>
-            {% if not article %}自定义 slug（可选，不填自动由标题生成）{% else %}slug{% endif %}
-            <input type="text" name="slug" placeholder="例如: stg-manual" value="{{ article.slug if article else '' }}" {% if article %}readonly{% endif %}>
-        </label>
-        {% if article %}
-        <input type="hidden" name="slug_current" value="{{ article.slug }}">
-        {% endif %}
-    </div>
+    <nav class="pg-crumbs" aria-label="面包屑">
+        <a href="/">主页</a>
+        <i data-lucide="chevron-right"></i>
+        <a href="/articles">文章 / 专栏</a>
+        <i data-lucide="chevron-right"></i>
+        <span aria-current="page">{% if article %}编辑文章{% else %}新建文章{% endif %}</span>
+    </nav>
 
-    <div>
-        <fieldset>
-            <legend>内容模式</legend>
-            <label><input type="radio" name="content_mode" value="text" {% if not article or (article and not article.static_path) %}checked{% endif %}> 纯文本</label>
-            <label><input type="radio" name="content_mode" value="static" {% if article and article.static_path and not article.content_md %}checked{% endif %}> 纯静态包</label>
-            <label><input type="radio" name="content_mode" value="mixed" {% if article and article.static_path and article.content_md %}checked{% endif %}> 混合（文本+静态）</label>
-        </fieldset>
-    </div>
-
-    <div id="editor-block">
-        <label>
-            正文（Markdown / 所见即所得）
-            <textarea name="content_md" rows="12" placeholder="支持 Markdown" id="content-md" style="display:none;">{{ article.content_md if article else '' }}</textarea>
-            <div id="editor-wrapper" style="position: relative;">
-                <div id="editor-root"></div>
-                <button type="button" id="editor-exit" class="secondary outline editor-exit-btn" style="display:none;">退出全屏</button>
+    <header class="pg-hero">
+        <div class="pg-hero__inner">
+            <div>
+                <p class="pg-hero__eyebrow">
+                    <span>Admin</span>
+                    <span class="dot"></span>
+                    <span>内容管理</span>
+                </p>
+                <h1>{% if article %}编辑文章{% else %}新建文章{% endif %}</h1>
+                <p class="pg-hero__lede">
+                    正文支持 Markdown 与所见即所得编辑，也可以只上传一份静态资料包。
+                </p>
             </div>
-        </label>
-        <div class="grid" style="margin-top: 0.25rem; grid-template-columns: repeat(auto-fit, minmax(120px, auto)); gap: 0.5rem;">
-            <button type="button" id="preview-btn" class="secondary outline">预览 Markdown</button>
-            <button type="button" id="editor-grow" class="secondary outline">放大编辑区</button>
-            <button type="button" id="editor-shrink" class="secondary outline">缩小编辑区</button>
-            <button type="button" id="editor-fullscreen" class="secondary outline">全屏/退出全屏</button>
+            <div class="pg-hero__aside">
+                <a href="{% if article %}/article/{{ article.slug }}{% else %}/articles{% endif %}" class="pg-hero__cta">
+                    <i data-lucide="arrow-left"></i>
+                    返回
+                </a>
+            </div>
         </div>
+    </header>
+
+    <div class="pg-layout">
+
+        <div class="pg-main">
+            <form id="article-form"
+                action="{% if article %}/admin/articles/{{ article.id }}/edit{% else %}/admin/articles/new{% endif %}"
+                method="post" enctype="multipart/form-data" class="pg-form">
+
+                <section class="pg-panel">
+                    <div class="pg-panel__head">
+                        <h2><i data-lucide="type"></i> 基础信息</h2>
+                        <small>标题必填</small>
+                    </div>
+                    <div class="pg-panel__body">
+                        <label class="pg-field" for="article-title">
+                            <span class="pg-label">标题 <span class="req">*</span></span>
+                            <input type="text" id="article-title" name="title"
+                                value="{{ article.title if article else '' }}" required
+                                placeholder="例如：怒首领蜂 大往生 通关心得">
+                        </label>
+
+                        <label class="pg-field" for="article-slug" style="margin-top: 1rem;">
+                            <span class="pg-label">
+                                链接标识 slug
+                                <span class="opt">{% if article %}创建后不可修改{% else %}留空则由标题自动生成{% endif %}</span>
+                            </span>
+                            <input type="text" id="article-slug" name="slug"
+                                placeholder="例如：ddp-daioujou-notes"
+                                value="{{ article.slug if article else '' }}" {% if article %}readonly{% endif %}>
+                            <small class="pg-hint">会出现在 <code>/article/&lt;slug&gt;</code> 里，建议用英文与连字符。</small>
+                        </label>
+
+                        {% if article %}
+                        <input type="hidden" name="slug_current" value="{{ article.slug }}">
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="pg-panel">
+                    <div class="pg-panel__head">
+                        <h2><i data-lucide="layout-template"></i> 内容模式</h2>
+                        <small>决定下方显示哪些区块</small>
+                    </div>
+                    <div class="pg-panel__body">
+                        <div class="pg-radios">
+                            <label class="pg-radio">
+                                <input type="radio" name="content_mode" value="text"
+                                    {% if not article or (article and not article.static_path) %}checked{% endif %}>
+                                <span>长文<small>只有 Markdown 正文</small></span>
+                            </label>
+                            <label class="pg-radio">
+                                <input type="radio" name="content_mode" value="static"
+                                    {% if article and article.static_path and not article.content_md %}checked{% endif %}>
+                                <span>纯静态包<small>只上传资料包</small></span>
+                            </label>
+                            <label class="pg-radio">
+                                <input type="radio" name="content_mode" value="mixed"
+                                    {% if article and article.static_path and article.content_md %}checked{% endif %}>
+                                <span>图文混合<small>正文 + 静态资料</small></span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="pg-panel" id="editor-block">
+                    <div class="pg-panel__head">
+                        <h2><i data-lucide="pen-line"></i> 正文</h2>
+                        <small>Markdown / 所见即所得</small>
+                    </div>
+                    <div class="pg-panel__body">
+                        <div class="pg-field">
+                            <span class="pg-label">正文内容</span>
+                            <textarea name="content_md" rows="12" placeholder="支持 Markdown" id="content-md"
+                                style="display: none;">{{ article.content_md if article else '' }}</textarea>
+
+                            <div class="pg-editor-shell">
+                                <div class="pg-editor-toolbar">
+                                    <button type="button" id="preview-btn" class="pg-btn pg-btn--sm pg-btn--ghost">
+                                        <i data-lucide="eye"></i> 预览
+                                    </button>
+                                    <button type="button" id="editor-grow" class="pg-btn pg-btn--sm pg-btn--ghost">
+                                        <i data-lucide="maximize-2"></i> 放大
+                                    </button>
+                                    <button type="button" id="editor-shrink" class="pg-btn pg-btn--sm pg-btn--ghost">
+                                        <i data-lucide="minimize-2"></i> 缩小
+                                    </button>
+                                    <button type="button" id="editor-fullscreen" class="pg-btn pg-btn--sm pg-btn--ghost">
+                                        <i data-lucide="expand"></i> 全屏
+                                    </button>
+                                </div>
+                                <div id="editor-wrapper" style="position: relative;">
+                                    <div id="editor-root"></div>
+                                    <button type="button" id="editor-exit" class="pg-btn pg-btn--sm pg-editor-exit" style="display: none;">
+                                        退出全屏
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="preview-section" class="pg-preview" style="display: none;">
+                            <header>预览</header>
+                            <div id="preview-html" class="pg-prose"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="pg-panel" id="static-block">
+                    <div class="pg-panel__head">
+                        <h2><i data-lucide="package"></i> 静态资料包</h2>
+                        <small>zip · 50MB 内</small>
+                    </div>
+                    <div class="pg-panel__body">
+                        <label class="pg-field" for="static-package">
+                            <span class="pg-label">上传 zip 压缩包 <span class="opt">可选</span></span>
+                            <input type="file" id="static-package" name="static_package" accept=".zip">
+                            <small class="pg-hint">解压后会放到 <code>/static/articles/&lt;slug&gt;/</code>，若含 <code>index.html</code> 可直接访问。</small>
+                        </label>
+
+                        {% if article and article.static_path %}
+                        <p class="pg-note" style="margin-top: 0.85rem;">
+                            <i data-lucide="folder-check"></i>
+                            <span>当前静态路径：<a href="{{ article.static_path }}" target="_blank" rel="noopener">{{ article.static_path }}</a></span>
+                        </p>
+                        {% endif %}
+
+                        <progress id="upload-progress" value="0" max="100" style="width: 100%; display: none; margin-top: 0.85rem;"></progress>
+                        <small id="upload-hint" class="pg-hint">
+                            大文件如被反代拒绝（413），需调大 Caddy 的请求体上限。
+                        </small>
+                    </div>
+                </section>
+
+                {# 提交动作放在 #static-block 之外：纯文本模式下那块会整块隐藏，按钮不能跟着消失 #}
+                <div class="pg-actions" style="margin-top: 0.2rem;">
+                    <button type="submit" class="pg-btn">
+                        <i data-lucide="check"></i>
+                        {% if article %}保存修改{% else %}创建文章{% endif %}
+                    </button>
+                    <a href="{% if article %}/article/{{ article.slug }}{% else %}/articles{% endif %}" class="pg-btn pg-btn--ghost">取消</a>
+                </div>
+
+            </form>
+        </div>
+
+        <aside class="pg-side">
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="list-checks"></i> 格式说明</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <ul class="pg-side-list">
+                        <li><i data-lucide="check"></i><span>正文支持 <b>Markdown</b>，保存时渲染为 HTML。</span></li>
+                        <li><i data-lucide="check"></i><span>编辑器内可直接粘贴或拖入图片，自动上传。</span></li>
+                        <li><i data-lucide="check"></i><span>静态包解压到 <code>/static/articles/{slug}/</code>。</span></li>
+                        <li><i data-lucide="check"></i><span>纯静态模式下正文区块会隐藏，不必留空内容。</span></li>
+                    </ul>
+                </div>
+            </section>
+
+            <p class="pg-note pg-note--warn">
+                <i data-lucide="alert-triangle"></i>
+                <span>编辑已有文章的 slug 不可更改；如需换地址，请新建文章后删除旧的。</span>
+            </p>
+        </aside>
+
     </div>
 
-    <div id="static-block">
-        <label>
-            静态包上传（zip，可选，50MB 内）
-            <input type="file" name="static_package" accept=".zip">
-            {% if article and article.static_path %}
-            <small>当前静态资源路径：<a href="{{ article.static_path }}" target="_blank">{{ article.static_path }}</a></small>
-            {% endif %}
-        </label>
-        <progress id="upload-progress" value="0" max="100" style="width: 100%; display: none;"></progress>
-        <small id="upload-hint" style="color: var(--pico-muted-color); display: block; margin-top: 0.25rem;">大文件如被 Nginx 拒绝(413)，需增大 client_max_body_size。</small>
-    </div>
+</div>
+{% endblock %}
 
-    <div style="display:flex; gap: 0.5rem; flex-wrap: wrap;">
-        <button type="submit">{% if article %}保存{% else %}创建{% endif %}</button>
-        <a href="{% if article %}/article/{{ article.slug }}{% else %}/articles{% endif %}" role="button" class="secondary outline">返回</a>
-    </div>
-</form>
-
-<section id="preview-section" style="margin-top: 1rem; display: none;">
-    <header><strong>预览</strong></header>
-    <div id="preview-html" style="padding: 1rem; border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius);"></div>
-</section>
-
-<details style="margin-top: 1rem;">
-    <summary role="button" class="secondary">格式说明</summary>
-    <ul>
-        <li>正文支持 Markdown，保存时会渲染为 HTML。</li>
-        <li>静态包请上传 zip，解压后会放到 /static/articles/{slug}/ 下，如包含 index.html，可直接访问。</li>
-        <li>如遇 413 Request Entity Too Large，请在 nginx 配置中调大 client_max_body_size（如 20m）。</li>
-    </ul>
-</details>
-
-<link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css">
-<script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
-<style>
-.editor-fullscreen {
-    position: fixed !important;
-    z-index: 9999;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--pico-card-background-color);
-    padding: 1rem;
-}
-.editor-fullscreen #editor-root {
-    height: calc(100vh - 140px) !important;
-}
-.editor-exit-btn {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 10001;
-}
-</style>
+{% block scripts %}
+<script src="{{ asset_url('/static/vendor/toastui-editor-all.min.js') }}" defer></script>
 <script>
 (() => {
+    if (window.lucide) lucide.createIcons();
+
     const form = document.getElementById('article-form');
     const previewBtn = document.getElementById('preview-btn');
     const previewSection = document.getElementById('preview-section');
@@ -156,12 +268,12 @@
     function toggleFullscreen() {
         isFullscreen = !isFullscreen;
         if (isFullscreen) {
-            editorWrapper.classList.add('editor-fullscreen');
-            editorHeight = window.innerHeight - 120;
+            editorWrapper.classList.add('pg-editor-fullscreen');
+            editorHeight = window.innerHeight - 130;
             applyHeight();
             if (exitBtn) exitBtn.style.display = 'inline-flex';
         } else {
-            editorWrapper.classList.remove('editor-fullscreen');
+            editorWrapper.classList.remove('pg-editor-fullscreen');
             editorHeight = 500;
             applyHeight();
             if (exitBtn) exitBtn.style.display = 'none';
@@ -188,7 +300,7 @@
                 previewHtml.innerHTML = data.html || '';
                 previewSection.style.display = 'block';
             } catch (e) {
-                previewHtml.innerHTML = '<p style="color: var(--pico-color-red-500);">预览失败</p>';
+                previewHtml.innerHTML = '<p style="color: #e03131;">预览失败</p>';
                 previewSection.style.display = 'block';
             } finally {
                 previewBtn.removeAttribute('aria-busy');
@@ -196,7 +308,6 @@
         });
     }
 
-    // 调整高度
     btnGrow?.addEventListener('click', () => {
         editorHeight = Math.min(editorHeight + 200, 2000);
         applyHeight();
@@ -205,16 +316,12 @@
         editorHeight = Math.max(editorHeight - 200, 300);
         applyHeight();
     });
-    btnFullscreen?.addEventListener('click', () => {
-        toggleFullscreen();
-    });
+    btnFullscreen?.addEventListener('click', toggleFullscreen);
     exitBtn?.addEventListener('click', () => {
         if (isFullscreen) toggleFullscreen();
     });
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && isFullscreen) {
-            toggleFullscreen();
-        }
+        if (e.key === 'Escape' && isFullscreen) toggleFullscreen();
     });
 
     // 静态包独立上传，成功后写 hidden 并提交表单
@@ -224,13 +331,12 @@
             const selectedMode = Array.from(modeRadios || []).find(r => r.checked)?.value || 'text';
             const hasFile = staticInput.files && staticInput.files.length > 0;
 
-            // 纯文本模式不处理静态包
             if (selectedMode === 'text') {
                 if (staticInput) staticInput.value = '';
                 return;
             }
 
-            if (!hasFile) return; // 无文件走默认
+            if (!hasFile) return;
 
             e.preventDefault();
             const fd = new FormData();
@@ -269,15 +375,16 @@
             xhr.send(fd);
         });
     } else if (form) {
-        // 无静态包时，提交前回填 Markdown
         form.addEventListener('submit', () => {
             if (editorInstance && contentMd) contentMd.value = editorInstance.getMarkdown();
         });
     }
 
-    initEditor();
-    applyHeight();
+    // ToastUI 是 defer 加载，等 DOMContentLoaded 之后再初始化
+    window.addEventListener('DOMContentLoaded', () => {
+        initEditor();
+        applyHeight();
+    });
 })();
 </script>
 {% endblock %}
-

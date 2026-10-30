@@ -3,11 +3,13 @@
 {% block title %}登录 - STG社区评价{% endblock %}
 
 {% block content %}
-<article>
+<article class="auth-card">
     <header>
-        <h2><i data-lucide="log-in"></i> 登录</h2>
+        <span class="auth-icon"><i data-lucide="log-in"></i></span>
+        <h2>登录</h2>
     </header>
     <form action="/login" method="post" id="login-form">
+        <input type="hidden" name="redirect" value="{{ redirect_target }}">
         <label for="username">
             用户名
             <input type="text" id="username" name="username" placeholder="用户名" required>

@@ -84,7 +84,7 @@ def authenticate_user(db: Session, username: str, password: str):
     return user
 
 async def get_current_user(
-    token: str = Depends(cookie_auth),  # 使用自定义的认证方式
+    token: Optional[str] = Depends(cookie_auth),  # 使用自定义的认证方式
     db: Session = Depends(database.get_db)
 ) -> models.User:
     credentials_exception = HTTPException(
@@ -92,16 +92,24 @@ async def get_current_user(
         detail="无法验证凭证",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
+    if not token:
+        raise credentials_exception
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if not username:
             raise credentials_exception
+        try:
+            token_version = int(payload.get("ver", 0))
+        except (TypeError, ValueError):
+            raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
-    if user := get_user(db, username=username):
+
+    user = get_user(db, username=username)
+    if user and user.token_version == token_version:
         return user
     raise credentials_exception
 

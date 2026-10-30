@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}STG 资料库 - STG社区评价{% endblock %}
+{% block description %}901 部射击游戏的档案库：封面、开发商、年份、平台、简介与外部资料链接，支持按关键词、平台、年代、标签筛选。{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ asset_url('/static/css/pages.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="pg">
+
+    <nav class="pg-crumbs" aria-label="面包屑">
+        <a href="/">主页</a>
+        <i data-lucide="chevron-right"></i>
+        <span aria-current="page">资料库</span>
+    </nav>
+
+    <header class="pg-hero">
+        <div class="pg-hero__inner">
+            <div>
+                <p class="pg-hero__eyebrow">
+                    <span>Shooting Game Archive</span>
+                    <span class="dot"></span>
+                    <span>本机采集</span>
+                </p>
+                <h1>STG 资料库</h1>
+                <p class="pg-hero__lede">
+                    {{ stats.total }} 部射击游戏的档案：封面、开发商、年份、平台与简介，
+                    资料来源为 shmups.wiki、Arcade Database (MAME)、Steam 商店 API 与日／英维基百科。
+                    这里是<b>只读档案</b>，评分与讨论仍然在「浏览作品」里。
+                </p>
+            </div>
+            <div class="pg-hero__aside">
+                <div class="pg-hero__stat">
+                    <b>{{ stats.total }}</b>
+                    <small>收录作品</small>
+                </div>
+                <div class="pg-hero__stat">
+                    <b>{{ stats.covers }}</b>
+                    <small>有封面</small>
+                </div>
+                <div class="pg-hero__stat">
+                    <b>{{ stats.desc }}</b>
+                    <small>有简介</small>
+                </div>
+                <div class="pg-hero__stat">
+                    <b>{{ stats.earliest }}–{{ stats.latest }}</b>
+                    <small>年份跨度</small>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="pg-layout">
+
+        <div class="pg-main">
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="search"></i> 检索</h3>
+                    <small>{{ total_count }} 个结果</small>
+                </div>
+                <div class="pg-panel__body">
+                    <form method="get" class="pg-form" action="/library">
+                        <div class="pg-lib-filters">
+                            <label class="pg-field" for="q" style="grid-column: 1 / -1;">
+                                <span class="pg-label">关键词</span>
+                                <input type="search" id="q" name="q" value="{{ q }}"
+                                    placeholder="作品名 / 开发商 / 系列 / 年份（中英日文均可，空格分词）">
+                            </label>
+                            <label class="pg-field" for="platform">
+                                <span class="pg-label">平台</span>
+                                <select id="platform" name="platform">
+                                    <option value="">全部平台</option>
+                                    {% for key, count in platforms %}
+                                    <option value="{{ key }}" {% if active_platform == key %}selected{% endif %}>
+                                        {{ platform_label(key) }} ({{ count }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label class="pg-field" for="decade">
+                                <span class="pg-label">年代</span>
+                                <select id="decade" name="decade">
+                                    <option value="">全部年代</option>
+                                    {% for year, count in decades %}
+                                    <option value="{{ year }}" {% if active_decade == year|string %}selected{% endif %}>
+                                        {{ year }}s ({{ count }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label class="pg-field" for="tag">
+                                <span class="pg-label">标签</span>
+                                <select id="tag" name="tag">
+                                    <option value="">全部标签</option>
+                                    {% for name, count in tags %}
+                                    <option value="{{ name }}" {% if active_tag == name %}selected{% endif %}>
+                                        {{ name }} ({{ count }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label class="pg-field" for="sort">
+                                <span class="pg-label">排序</span>
+                                <select id="sort" name="sort">
+                                    {% for key, label in sorts.items() %}
+                                    <option value="{{ key }}" {% if sort == key %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <button type="submit" class="pg-btn pg-btn--sm" style="align-self: end; margin-bottom: 0.15rem;">
+                                <i data-lucide="filter"></i> 应用
+                            </button>
+                        </div>
+                    </form>
+
+                    {% if q or active_platform or active_tag or active_decade %}
+                    <div class="pg-actions" style="margin-top: 0.9rem;">
+                        <span class="pg-chip pg-chip--accent">
+                            {% if q %}关键词「{{ q }}」{% endif %}
+                            {% if q and active_platform %} · {% endif %}
+                            {% if active_platform %}平台「{{ platform_label(active_platform) }}」{% endif %}
+                            {% if active_tag %} · 标签「{{ active_tag }}」{% endif %}
+                            {% if active_decade %} · {{ active_decade }}s{% endif %}
+                        </span>
+                        <a href="/library" class="pg-btn pg-btn--sm pg-btn--ghost">
+                            <i data-lucide="x"></i> 清空条件
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            {% if items %}
+            <div class="pg-lib-grid">
+                {% for item in items %}
+                <a class="pg-lib-card" href="/library/{{ item.id }}">
+                    <div class="pg-lib-card__cover">
+                        {% if item.cover %}
+                        <span class="pg-lib-card__bg"
+                            style="background-image:url('/static/library/covers/{{ item.cover }}')"></span>
+                        <img class="pg-lib-card__img{% if item.wide %} is-wide{% endif %}"
+                            src="/static/library/covers/{{ item.cover }}"
+                            alt="{{ item.title }}" loading="lazy" decoding="async">
+                        {% else %}
+                        <span class="pg-lib-card__noimg">
+                            <i data-lucide="image-off"></i>
+                            <small>暂无封面</small>
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="pg-lib-card__body">
+                        <strong class="pg-lib-card__title">{{ item.zh or item.title }}</strong>
+                        {% if item.sub %}
+                        <span class="pg-lib-card__sub">{{ item.sub }}</span>
+                        {% endif %}
+                        <div class="pg-lib-card__foot">
+                            <span>{{ item.year or '—' }}</span>
+                            <span>{{ item.company or '—' }}</span>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+
+            {% if total_pages > 1 %}
+            {% set qs = 'q=' ~ (q|urlencode) ~ '&platform=' ~ (active_platform|urlencode) ~ '&tag=' ~ (active_tag|urlencode) ~ '&decade=' ~ active_decade ~ '&sort=' ~ sort %}
+            <nav class="pg-pager" aria-label="资料库分页">
+                <a href="/library?page={{ [1, page-1]|max }}&{{ qs }}"
+                    class="pg-btn pg-btn--sm pg-btn--ghost" {% if page == 1 %}aria-disabled="true"{% endif %}>
+                    <i data-lucide="chevron-left"></i> 上一页
+                </a>
+                <span class="pg-pager__info">{{ page }} / {{ total_pages }}</span>
+                <a href="/library?page={{ [total_pages, page+1]|min }}&{{ qs }}"
+                    class="pg-btn pg-btn--sm pg-btn--ghost" {% if page >= total_pages %}aria-disabled="true"{% endif %}>
+                    下一页 <i data-lucide="chevron-right"></i>
+                </a>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="pg-empty">
+                <i data-lucide="search-x"></i>
+                <p>没有匹配的作品。试试缩短关键词，或清空筛选条件。</p>
+                <a href="/library" class="pg-btn pg-btn--sm pg-btn--ghost">清空条件</a>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <aside class="pg-side">
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="gamepad-2"></i> 平台</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <ul class="pg-chip-row">
+                        <li>
+                            <a class="pg-chip {% if not active_platform %}pg-chip--brand{% endif %}" href="/library">全部</a>
+                        </li>
+                        {% for key, count in platforms %}
+                        <li>
+                            <a class="pg-chip {% if active_platform == key %}pg-chip--brand{% endif %}"
+                                href="/library?platform={{ key }}&sort={{ sort }}">
+                                {{ platform_label(key) }}<span style="opacity: .55;">{{ count }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </section>
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="calendar-days"></i> 年代</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <ul class="pg-chip-row">
+                        {% for year, count in decades %}
+                        <li>
+                            <a class="pg-chip {% if active_decade == year|string %}pg-chip--brand{% endif %}"
+                                href="/library?decade={{ year }}&sort={{ sort }}">
+                                {{ year }}s<span style="opacity: .55;">{{ count }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </section>
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="tags"></i> 热门标签</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <ul class="pg-chip-row">
+                        {% for name, count in tags %}
+                        <li>
+                            <a class="pg-chip {% if active_tag == name %}pg-chip--brand{% endif %}"
+                                href="/library?tag={{ name|urlencode }}&sort={{ sort }}">
+                                {{ name }}<span style="opacity: .55;">{{ count }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </section>
+
+            <p class="pg-note">
+                <i data-lucide="info"></i>
+                <span>
+                    资料库是采集归档，字段完整度不一（{{ stats.year }} 条有年份、{{ stats.steam }} 条有 Steam 页）。
+                    封面版权归各发行商所有，仅作资料整理用途。
+                </span>
+            </p>
+
+        </aside>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

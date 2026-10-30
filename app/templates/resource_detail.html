@@ -1,167 +1,253 @@
 {% extends "base.html" %}
 
-{% block title %}{{ resource.title }} - 资源详情{% endblock %}
+{% block title %}{{ resource.title }} - 资源索引 | STG社区评价{% endblock %}
+{% block description %}{{ resource.title }} —— {{ resource.category }}，由 {{ resource.uploader.username if resource.uploader else '社区' }} 提交到 STG Ratings 资源索引。{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ asset_url('/static/css/pages.css') }}">
+{% endblock %}
 
 {% block content %}
-<section aria-labelledby="resource-title">
-  <!-- 顶部信息（封面 + 元数据在同一层） -->
-  <article style="padding: 1rem 1.25rem; border-radius:.75rem; border:1px solid var(--pico-muted-border-color); background: color-mix(in srgb, var(--pico-background-color) 90%, var(--pico-muted-border-color));">
-    <!-- 顶部：标题 + 右上角返回按钮 -->
-    <header style="display:flex; justify-content:space-between; align-items:center; gap:.75rem; margin-bottom:.75rem; flex-wrap:wrap;">
-      <h2 id="resource-title" style="margin:0;">{{ resource.title }}</h2>
-      <a href="/resources" class="secondary outline" role="button" style="white-space:nowrap;">← 返回列表</a>
+<div class="pg">
+
+    <nav class="pg-crumbs" aria-label="面包屑">
+        <a href="/">主页</a>
+        <i data-lucide="chevron-right"></i>
+        <a href="/resources">资源索引</a>
+        <i data-lucide="chevron-right"></i>
+        <span aria-current="page">{{ resource.title|truncate(28, true, '…') }}</span>
+    </nav>
+
+    <header class="pg-hero">
+        <div class="pg-res-hero__inner">
+            {% if resource.cover_image %}
+            <figure class="pg-res-hero__cover">
+                <img src="{{ cover_thumb(resource.cover_image, 800) }}" alt="{{ resource.title }} 封面" decoding="async">
+            </figure>
+            {% endif %}
+
+            <div>
+                <p class="pg-hero__eyebrow">
+                    <span>{{ resource.category }}</span>
+                    <span class="dot"></span>
+                    <span>
+                        {% if resource.status == "valid" %}有效{% else %}失效{% endif %}
+                    </span>
+                </p>
+                <h1>{{ resource.title }}</h1>
+
+                <div class="pg-hero__chips">
+                    <span class="pg-hero__chip">
+                        <i data-lucide="user"></i>
+                        {% if resource.uploader %}{{ resource.uploader.username }}{% else %}已删除用户{% endif %}
+                    </span>
+                    {% if resource.created_at %}
+                    <span class="pg-hero__chip">
+                        <i data-lucide="calendar"></i>
+                        {{ resource.created_at.strftime("%Y-%m-%d") }}
+                    </span>
+                    {% endif %}
+                    <span class="pg-hero__chip">
+                        <i data-lucide="flame"></i>
+                        热度 <b id="resource-heat" style="margin-left: .2rem;">{{ resource.heat }}</b>
+                    </span>
+                </div>
+
+                {% if resource.tags %}
+                <div class="pg-hero__chips">
+                    {% for tag in resource.tags %}
+                    <a class="pg-hero__chip" href="/resources?tag={{ tag.name | urlencode }}">#{{ tag.name }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
     </header>
 
-    <div class="grid" style="gap:1.5rem; align-items:flex-start;">
-      {% if resource.cover_image %}
-        <aside>
-          <figure style="max-width: 260px; margin: 0;">
-            <img src="{{ resource.cover_image }}" alt="资源封面" style="width:100%; border-radius: .75rem;">
-          </figure>
-        </aside>
-      {% endif %}
+    <div class="pg-layout">
 
-      <div>
-        <p style="margin:0; font-size:.9rem;">
-          上传者：
-          {% if resource.uploader %}
-            <a href="/user/{{ resource.uploader.id }}">{{ resource.uploader.username }}</a>
-          {% else %}
-            <span>已删除用户</span>
-          {% endif %}
-        </p>
-        <p style="margin:.25rem 0; font-size:.9rem;">
-          分类：<strong>{{ resource.category }}</strong>
-          {% if resource.created_at %}
-            · 上传于 {{ resource.created_at.strftime("%Y-%m-%d %H:%M") }}
-          {% endif %}
-        </p>
-        <p style="margin:.25rem 0; font-size:.9rem;">
-          状态：
-          {% if resource.status == "valid" %}
-            <span class="badge">🟢 有效</span>
-          {% else %}
-            <span class="badge secondary outline">🔴 失效</span>
-          {% endif %}
-          · 热度：<strong id="resource-heat">{{ resource.heat }}</strong>
-        </p>
-        <p style="margin-top:.5rem; font-size:.85rem;">
-          <span>标签：</span>
-          {% for tag in resource.tags %}
-            <a href="/resources?tag={{ tag.name | urlencode }}" class="secondary outline" style="margin-right:.25rem; font-size:.75rem;">
-              {{ tag.name }}
+        <div class="pg-main">
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h2><i data-lucide="link"></i> 获取方式</h2>
+                    <button type="button" class="pg-btn pg-btn--sm pg-btn--ghost" id="copy-content" style="margin-left: auto;">
+                        <i data-lucide="copy"></i> 复制
+                    </button>
+                </div>
+                <div class="pg-panel__body">
+                    <div class="pg-code" id="resource-content">{{ resource.content | urlize(target="_blank", rel="noopener") }}</div>
+                    <small class="pg-hint">链接由提交者提供，提取码与解压密码通常写在同一条里。</small>
+                </div>
+            </section>
+
+            {% if resource.intro %}
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h2><i data-lucide="align-left"></i> 资源介绍</h2>
+                </div>
+                <div class="pg-panel__body">
+                    <div class="pg-prose" style="white-space: pre-wrap;">{{ resource.intro }}</div>
+                </div>
+            </section>
+            {% endif %}
+
+        </div>
+
+        <aside class="pg-side">
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="thumbs-up"></i> 这条资源好用吗</h3>
+                </div>
+                <div class="pg-panel__body">
+                    {% if request.state.user %}
+                    <div class="pg-votes">
+                        <form id="vote-up-form" method="post" action="/resources/{{ resource.id }}/vote">
+                            <input type="hidden" name="direction" value="up">
+                            <button type="submit" class="pg-vote pg-vote--up {% if current_vote_value == 1 %}is-active{% endif %}">
+                                <i data-lucide="thumbs-up"></i> 顶一下
+                            </button>
+                        </form>
+                        <form id="vote-down-form" method="post" action="/resources/{{ resource.id }}/vote">
+                            <input type="hidden" name="direction" value="down">
+                            <button type="submit" class="pg-vote pg-vote--down {% if current_vote_value == -1 %}is-active{% endif %}">
+                                <i data-lucide="thumbs-down"></i> 失效
+                            </button>
+                        </form>
+                    </div>
+                    <small class="pg-hint">每人每资源一票，重复投票不叠加。</small>
+                    {% else %}
+                    <p class="pg-note">
+                        <i data-lucide="log-in"></i>
+                        <span><a href="/login?redirect=/resources/{{ resource.id }}">登录</a>后可以对资源顶踩反馈。</span>
+                    </p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="info"></i> 条目信息</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <dl class="pg-kv">
+                        <div>
+                            <dt>分类</dt>
+                            <dd>{{ resource.category }}</dd>
+                        </div>
+                        <div>
+                            <dt>状态</dt>
+                            <dd>
+                                {% if resource.status == "valid" %}
+                                <span class="pg-chip pg-chip--ok">有效</span>
+                                {% else %}
+                                <span class="pg-chip pg-chip--bad">失效</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>上传者</dt>
+                            <dd>
+                                {% if resource.uploader %}
+                                <a href="/user/{{ resource.uploader.id }}">{{ resource.uploader.username }}</a>
+                                {% else %}已删除用户{% endif %}
+                            </dd>
+                        </div>
+                        {% if resource.created_at %}
+                        <div>
+                            <dt>上传时间</dt>
+                            <dd>{{ resource.created_at.strftime("%Y-%m-%d %H:%M") }}</dd>
+                        </div>
+                        {% endif %}
+                    </dl>
+                </div>
+
+                {% if request.state.user and (request.state.user.is_admin or request.state.user.id == resource.uploader_id) %}
+                <div class="pg-panel__foot">
+                    <div class="pg-actions">
+                        <a href="/resources/{{ resource.id }}/edit" class="pg-btn pg-btn--sm pg-btn--ghost">
+                            <i data-lucide="pencil"></i> 编辑
+                        </a>
+                        <form method="post" action="/resources/{{ resource.id }}/delete" style="margin: 0;"
+                            onsubmit="return confirm('确定删除该资源吗？此操作不可撤销');">
+                            <button type="submit" class="pg-btn pg-btn--sm pg-btn--danger">
+                                <i data-lucide="trash-2"></i> 删除
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </section>
+
+            <a href="/resources" class="pg-btn pg-btn--ghost" style="justify-content: center;">
+                <i data-lucide="arrow-left"></i> 返回资源索引
             </a>
-          {% else %}
-            <small>无标签</small>
-          {% endfor %}
-        </p>
-      </div>
+
+        </aside>
+
     </div>
-  </article>
 
-  <!-- 第二层：操作区（顶/踩 + 编辑删除图标） -->
-  <section aria-label="操作区" style="margin-top:1rem;">
-    {% if request.state.user %}
-      <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
-        <!-- 四个并列按钮：统一视觉风格，灰度略有区别 -->
-        <form id="vote-up-form" method="post" action="/resources/{{ resource.id }}/vote" style="flex:1 1 150px;">
-          <input type="hidden" name="direction" value="up">
-          <button type="submit"
-                  class="secondary"
-                  style="width:100%; filter:brightness(1.05);">
-            👍 顶一下
-          </button>
-        </form>
-
-        <form id="vote-down-form" method="post" action="/resources/{{ resource.id }}/vote" style="flex:1 1 150px;">
-          <input type="hidden" name="direction" value="down">
-          <button type="submit"
-                  class="secondary"
-                  style="width:100%; filter:brightness(0.98);">
-            👎 失效/有问题
-          </button>
-        </form>
-
-        {% if request.state.user.is_admin or request.state.user.id == resource.uploader_id %}
-          <form method="get"
-                action="/resources/{{ resource.id }}/edit"
-                style="flex:1 1 140px;">
-            <button type="submit"
-                    class="secondary"
-                    title="编辑"
-                    style="width:100%; filter:brightness(1.0);">
-              ✏️ 编辑
-            </button>
-          </form>
-          <form method="post"
-                action="/resources/{{ resource.id }}/delete"
-                style="flex:1 1 140px;"
-                onsubmit="return confirm('确定删除该资源吗？此操作不可撤销');">
-            <button type="submit"
-                    class="secondary"
-                    title="删除"
-                    style="width:100%; filter:brightness(0.9);">
-              🗑 删除
-            </button>
-          </form>
-        {% endif %}
-      </div>
-    {% else %}
-      <small>登录后可以对资源进行顶/踩反馈。</small>
-    {% endif %}
-  </section>
-
-  <!-- 第三层：内容（整行占满） -->
-  <section style="margin-top:1.5rem;">
-    {% if resource.intro %}
-      <section style="margin-bottom:1rem;">
-        <h3>资源介绍</h3>
-        <p style="white-space: pre-wrap;">{{ resource.intro }}</p>
-      </section>
-    {% endif %}
-
-    <section>
-      <h3>提交内容</h3>
-      <div style="white-space: pre-wrap; padding:.75rem 1rem; border-radius:.5rem; border:1px solid var(--pico-muted-border-color); background-color: var(--pico-muted-border-color, rgba(0,0,0,0.03));">
-        {{ resource.content | urlize(target="_blank", rel="noopener") }}
-      </div>
-    </section>
-  </section>
-</section>
+</div>
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
 <script>
-  // 简单的 AJAX 投票（避免整页刷新）
-  (function() {
-    function bindVote(formId) {
-      const form = document.getElementById(formId);
-      if (!form) return;
-      form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const formData = new FormData(form);
-        try {
-          const resp = await fetch(form.action, {
-            method: 'POST',
-            body: formData,
-          });
-          if (!resp.ok) return;
-          const data = await resp.json();
-          if (typeof data.heat !== 'undefined') {
-            const heatEl = document.getElementById('resource-heat');
-            if (heatEl) heatEl.textContent = data.heat;
-          }
-        } catch (err) {
-          console.error('投票失败', err);
+    lucide.createIcons();
+
+    // 复制提交内容（纯文本）
+    (function () {
+        const btn = document.getElementById('copy-content');
+        const box = document.getElementById('resource-content');
+        if (!btn || !box) return;
+        btn.addEventListener('click', async () => {
+            const text = box.innerText.trim();
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch (e) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+            }
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="check"></i> 已复制';
+            if (window.lucide) lucide.createIcons();
+            window.setTimeout(() => { btn.innerHTML = original; if (window.lucide) lucide.createIcons(); }, 1800);
+        });
+    })();
+
+    // AJAX 投票（避免整页刷新）
+    (function () {
+        function bindVote(formId) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const formData = new FormData(form);
+                try {
+                    const resp = await fetch(form.action, { method: 'POST', body: formData });
+                    if (!resp.ok) return;
+                    const data = await resp.json();
+                    if (typeof data.heat !== 'undefined') {
+                        const heatEl = document.getElementById('resource-heat');
+                        if (heatEl) heatEl.textContent = data.heat;
+                    }
+                    if (typeof data.vote !== 'undefined') {
+                        document.querySelectorAll('.pg-vote').forEach(el => el.classList.remove('is-active'));
+                        const target = form.querySelector('.pg-vote');
+                        if (target) target.classList.add('is-active');
+                    }
+                } catch (err) {
+                    console.error('投票失败', err);
+                }
+            });
         }
-      });
-    }
-    bindVote('vote-up-form');
-    bindVote('vote-down-form');
-  })();
+        bindVote('vote-up-form');
+        bindVote('vote-down-form');
+    })();
 </script>
 {% endblock %}
-
-
-

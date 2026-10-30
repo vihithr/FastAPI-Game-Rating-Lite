@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, Boolean, Table, UniqueConstraint
+from sqlalchemy import Column, Float, Integer, String, ForeignKey, Text, DateTime, Boolean, Table, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -29,6 +29,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
+    token_version = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     comments = relationship("Comment", back_populates="author")
@@ -56,6 +57,12 @@ class Game(Base):
     description = Column(Text, nullable=True)
     image_url = Column(String, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    # +++ 采集档案带来的元数据（可为空，老数据没有）+++
+    # 同一款游戏在不同平台是不同条目，靠这个字段区分；多平台用 "/" 分隔
+    platform = Column(String, nullable=True, index=True)
+    release_year = Column(Integer, nullable=True)
+    series = Column(String, nullable=True)
     
     # --- 原有的 aliases, translations, difficulty_levels, ship_types 等字段已被移除 ---
     
@@ -141,6 +148,7 @@ class QualityRating(Base):
     depth = Column(Integer)
     performance = Column(Integer)
     story = Column(Integer)
+    overall = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     game = relationship("Game", back_populates="quality_ratings")
 
@@ -159,6 +167,7 @@ class DifficultyRating(Base):
     dodge = Column(Integer)
     strategy = Column(Integer)
     execution = Column(Integer)
+    overall = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     game = relationship("Game", back_populates="difficulty_ratings")

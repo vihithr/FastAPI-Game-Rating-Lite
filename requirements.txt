@@ -33,6 +33,9 @@ markdown>=3.7.0
 markdown-it-py>=3.0.0
 bleach>=6.1.0
 
+# Image Processing
+Pillow>=10.0.0
+
 # HTTP Client
 httpx>=0.28.0
 

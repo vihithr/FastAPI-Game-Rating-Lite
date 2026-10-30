@@ -745,45 +745,15 @@ sync_code() {
     
     # 复制所有文件（排除不必要的文件）
     print_info "复制应用文件..."
-    
-    # 检查目标位置是否已有数据库文件（用于判断是首次安装还是更新）
-    local EXISTING_DB=""
-    if [ -f "$INSTALL_DIR/stg_website.db" ]; then
-        EXISTING_DB="$INSTALL_DIR/stg_website.db"
-        print_info "检测到现有数据库文件，将在更新时保留它"
-    fi
-    
     if command -v rsync &> /dev/null; then
         print_info "使用 rsync 复制文件（显示详细输出）..."
-        # 更新时排除数据库文件，避免覆盖现有数据
-        # 但如果是首次安装（目标位置没有数据库），则允许从源目录拷贝数据库
-        if [ -n "$EXISTING_DB" ]; then
-            # 已有数据库，排除 .db 文件以保护现有数据
-            rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
-                --exclude='venv' --exclude='*.db' --exclude='copy_files.py' \
-                "$source_dir/" "$INSTALL_DIR/"
-            print_info "已保留现有数据库文件: $EXISTING_DB"
-        else
-            # 首次安装，允许拷贝数据库文件（如果源目录有的话）
-            rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
-                --exclude='venv' --exclude='copy_files.py' \
-                "$source_dir/" "$INSTALL_DIR/"
-            print_info "首次安装，已同步所有文件（包括数据库文件，如果存在）"
-        fi
+        rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
+            --exclude='venv' --exclude='*.db' --exclude='copy_files.py' \
+            "$source_dir/" "$INSTALL_DIR/"
     else
         # 如果没有 rsync，使用 cp
         print_info "使用 cp 复制文件..."
-        if [ -n "$EXISTING_DB" ]; then
-            # 已有数据库，先备份，然后拷贝，最后恢复
-            local DB_BACKUP="${EXISTING_DB}.backup.$$"
-            cp "$EXISTING_DB" "$DB_BACKUP"
-            cp -rv "$source_dir"/* "$INSTALL_DIR/" 2>&1 || true
-            mv "$DB_BACKUP" "$EXISTING_DB"
-            print_info "已保留现有数据库文件: $EXISTING_DB"
-        else
-            cp -rv "$source_dir"/* "$INSTALL_DIR/" 2>&1 || true
-            print_info "首次安装，已同步所有文件（包括数据库文件，如果存在）"
-        fi
+        cp -rv "$source_dir"/* "$INSTALL_DIR/" 2>&1 || true
         # 清理不需要的文件
         print_info "清理临时文件..."
         find "$INSTALL_DIR" -type d -name "__pycache__" -exec rm -rf {} + 2>&1 || true
@@ -799,13 +769,6 @@ sync_code() {
     # 确保 Caddy 二进制保持可执行（避免被上面的 644 覆盖）
     if [ -f "$CADDY_DIR/caddy" ]; then
         chmod +x "$CADDY_DIR/caddy"
-    fi
-    
-    # 特别处理数据库文件权限（如果存在）
-    if [ -f "$INSTALL_DIR/stg_website.db" ]; then
-        chmod 600 "$INSTALL_DIR/stg_website.db"
-        chown "$SERVICE_USER:$SERVICE_GROUP" "$INSTALL_DIR/stg_website.db"
-        print_info "已设置数据库文件权限: $INSTALL_DIR/stg_website.db"
     fi
     
     # 使脚本可执行
@@ -1293,33 +1256,10 @@ setup_database() {
             mkdir -p "$DB_DIR"
             chown "$SERVICE_USER:$SERVICE_GROUP" "$DB_DIR"
         fi
-        
-        # 检查数据库文件是否已存在
-        if [ -f "$DB_PATH" ]; then
-            # 获取数据库文件大小
-            DB_SIZE=$(stat -f%z "$DB_PATH" 2>/dev/null || stat -c%s "$DB_PATH" 2>/dev/null || echo "0")
-            if [ "$DB_SIZE" -gt 0 ]; then
-                print_info "检测到现有数据库文件: $DB_PATH (大小: ${DB_SIZE} 字节)"
-                print_info "将保留现有数据库数据，仅更新表结构（如果需要）"
-                DB_EXISTS=true
-            else
-                print_warn "数据库文件存在但为空，将重新初始化"
-                DB_EXISTS=false
-            fi
-        else
-            print_info "数据库文件不存在，将创建新数据库"
-            DB_EXISTS=false
-        fi
-    else
-        DB_EXISTS=false
     fi
     
     # 初始化数据库表
-    if [ "$DB_EXISTS" = true ]; then
-        print_info "更新数据库表结构（保留现有数据）..."
-    else
-        print_info "创建数据库表..."
-    fi
+    print_info "创建数据库表..."
     print_info "正在执行数据库初始化（这可能需要几秒钟）..."
     
     # 准备环境变量字符串

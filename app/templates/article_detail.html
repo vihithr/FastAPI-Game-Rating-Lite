@@ -1,37 +1,157 @@
 {% extends "base.html" %}
 
-{% block title %}{{ article.title }}{% endblock %}
+{% block title %}{{ article.title }} - 文章专栏 | STG社区评价{% endblock %}
+{% block description %}{{ article.title }} —— STG Ratings 文章专栏。{% endblock %}
+{% block og_title %}{{ article.title }}{% endblock %}
 
-{% block content %}
-<article>
-    <header>
-        <h1>{{ article.title }}</h1>
-        <small style="color: var(--pico-muted-color);">
-            作者 {% if article.author %}<a href="/user/{{ article.author.id }}">{{ article.author.username }}</a>{% else %}管理员{% endif %} ·
-            发布于 {{ article.created_at.strftime('%Y-%m-%d %H:%M') }}
-        </small>
-    </header>
-    <hr>
-    <div>
-        {{ article.content_html | safe }}
-    </div>
-
-    {% if article.static_path %}
-    <div style="margin-top: 1rem;">
-        <strong>静态资料：</strong>
-        <a href="/article/{{ article.slug }}/static" target="_blank">进入静态入口</a>
-        <small style="color: var(--pico-muted-color);">自动尝试 index.html / index.htm，若无则浏览静态目录。</small>
-    </div>
-    {% endif %}
-
-    {% if request.state.user and request.state.user.is_admin %}
-    <div style="margin-top: 1rem;" class="grid">
-        <a href="/admin/articles/{{ article.id }}/edit" role="button" class="secondary outline">编辑</a>
-        <form action="/admin/articles/{{ article.id }}/delete" method="post" onsubmit="return confirm('确定删除该文章？');">
-            <button type="submit" class="secondary">删除</button>
-        </form>
-    </div>
-    {% endif %}
-</article>
+{% block head %}
+<link rel="stylesheet" href="{{ asset_url('/static/css/pages.css') }}">
 {% endblock %}
 
+{% block content %}
+{% set is_static = article.static_path and (not article.content_md or not article.content_md.strip()) %}
+{% set is_mixed = article.static_path and article.content_md and article.content_md.strip() %}
+{% set mode_label = '纯静态' if is_static else ('图文混合' if is_mixed else '长文') %}
+
+<div class="pg">
+
+    <nav class="pg-crumbs" aria-label="面包屑">
+        <a href="/">主页</a>
+        <i data-lucide="chevron-right"></i>
+        <a href="/articles">文章 / 专栏</a>
+        <i data-lucide="chevron-right"></i>
+        <span aria-current="page">{{ article.title|truncate(28, true, '…') }}</span>
+    </nav>
+
+    <header class="pg-hero">
+        <div class="pg-hero__inner">
+            <div>
+                <p class="pg-hero__eyebrow">
+                    <span>{{ mode_label }}</span>
+                    <span class="dot"></span>
+                    <span>{{ article.created_at.strftime('%Y-%m-%d') }}</span>
+                </p>
+                <h1>{{ article.title }}</h1>
+                <div class="pg-hero__chips">
+                    <span class="pg-hero__chip">
+                        <i data-lucide="user"></i>
+                        {% if article.author %}{{ article.author.username }}{% else %}管理员{% endif %}
+                    </span>
+                    <span class="pg-hero__chip">
+                        <i data-lucide="calendar"></i>
+                        {{ article.created_at.strftime('%Y-%m-%d %H:%M') }}
+                    </span>
+                    {% if article.static_path %}
+                    <span class="pg-hero__chip">
+                        <i data-lucide="folder-open"></i>
+                        含静态资料
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="pg-hero__aside">
+                <a href="/articles" class="pg-hero__cta">
+                    <i data-lucide="arrow-left"></i>
+                    返回专栏
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="pg-layout">
+
+        <div class="pg-main">
+            <section class="pg-panel">
+                <div class="pg-panel__body">
+                    <div class="pg-prose">
+                        {{ article.content_html | safe }}
+                    </div>
+                </div>
+            </section>
+
+            {% if article.static_path %}
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="folder-open"></i> 静态资料</h3>
+                    <small>独立页面包</small>
+                </div>
+                <div class="pg-panel__body">
+                    <p class="pg-note">
+                        <i data-lucide="info"></i>
+                        <span>本文附带一份静态资料包，会自动尝试打开其中的 <code>index.html</code>；若不存在则浏览目录。</span>
+                    </p>
+                    <div class="pg-actions" style="margin-top: 0.85rem;">
+                        <a href="/article/{{ article.slug }}/static" target="_blank" rel="noopener" class="pg-btn">
+                            <i data-lucide="external-link"></i>
+                            进入静态入口
+                        </a>
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+        </div>
+
+        <aside class="pg-side">
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="file-text"></i> 文章信息</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <dl class="pg-kv">
+                        <div>
+                            <dt>作者</dt>
+                            <dd>
+                                {% if article.author %}
+                                <a href="/user/{{ article.author.id }}">{{ article.author.username }}</a>
+                                {% else %}管理员{% endif %}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>发布</dt>
+                            <dd>{{ article.created_at.strftime('%Y-%m-%d') }}</dd>
+                        </div>
+                        <div>
+                            <dt>内容形式</dt>
+                            <dd>{{ mode_label }}</dd>
+                        </div>
+                        <div>
+                            <dt>链接标识</dt>
+                            <dd style="font-family: var(--font-mono); font-size: 0.74rem;">{{ article.slug }}</dd>
+                        </div>
+                    </dl>
+                </div>
+                {% if request.state.user and request.state.user.is_admin %}
+                <div class="pg-panel__foot">
+                    <div class="pg-actions">
+                        <a href="/admin/articles/{{ article.id }}/edit" class="pg-btn pg-btn--sm pg-btn--ghost">
+                            <i data-lucide="pencil"></i>
+                            编辑
+                        </a>
+                        <form action="/admin/articles/{{ article.id }}/delete" method="post"
+                            onsubmit="return confirm('确定删除该文章？静态资料目录也会一并删除。');" style="margin: 0;">
+                            <button type="submit" class="pg-btn pg-btn--sm pg-btn--danger">
+                                <i data-lucide="trash-2"></i>
+                                删除
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </section>
+
+            <p class="pg-note">
+                <i data-lucide="lightbulb"></i>
+                <span>读完后不妨去<a href="/games">作品库</a>给对应作品打个分，让这篇内容落到数据上。</span>
+            </p>
+        </aside>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

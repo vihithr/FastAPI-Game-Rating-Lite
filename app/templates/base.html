@@ -1,139 +1,228 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme=""> <head>
+<html lang="zh-CN" data-theme="">
+<head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}STG社区评价{% endblock %}</title>
+    <meta name="description" content="{% block description %}STG 社区评价：为每一款射击游戏留下可比较的品质与难度记录，包含作品评分、难度统计、专栏文章与资源索引。{% endblock %}">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f7fb">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1219">
+    <meta property="og:site_name" content="STG Ratings">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{% block og_title %}STG 社区评价{% endblock %}">
+    <meta property="og:description" content="为每一款射击游戏留下可比较的品质与难度记录。">
+    <link rel="icon" href="{{ asset_url('/static/favicon.svg') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ asset_url('/static/favicon.svg') }}">
+
     <script>
         // 在首帧渲染前设置主题，避免暗→亮闪烁
-        (function() {
+        (function () {
             try {
-                const saved = localStorage.getItem('theme');
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const initial = saved || (prefersDark ? 'dark' : 'light');
-                document.documentElement.setAttribute('data-theme', initial);
+                var saved = localStorage.getItem('theme');
+                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
             } catch (e) {
-                // 出现异常时退回默认亮色
                 document.documentElement.setAttribute('data-theme', 'light');
             }
         })();
     </script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
-    <link rel="stylesheet" href="/static/css/style.css">
+
+    <link rel="stylesheet" href="{{ asset_url('/static/vendor/pico.min.css') }}">
+    <link rel="stylesheet" href="{{ asset_url('/static/css/style.css') }}">
+    {# 同步加载：模板中的内联脚本会直接调用 lucide.createIcons() #}
+    <script src="{{ asset_url('/static/js/icons.js') }}"></script>
+    {% block head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+
     {# 全局背景层 - 为所有页面提供统一的背景效果 #}
-    <div class="global-background-layer">
+    <div class="global-background-layer" aria-hidden="true">
         <div class="global-background-gradient"></div>
-        <div class="global-background-particles"></div>
         <div class="global-background-grid"></div>
     </div>
-    
+
     <header class="container site-header">
         <div class="header-bar">
             <button id="nav-toggle" class="nav-toggle" aria-label="打开导航" aria-expanded="false" aria-controls="site-nav">
                 <i data-lucide="menu"></i>
             </button>
-            <a href="/" class="contrast brand-link"><strong>STG Ratings</strong></a>
+            <a href="/" class="brand-link" aria-label="STG Ratings 主页">
+                <span class="brand-mark" aria-hidden="true"><i data-lucide="swords"></i></span>
+                <strong>STG Ratings</strong>
+            </a>
         </div>
-		<nav id="site-nav" class="site-nav">
-		  <ul class="nav-primary">
-			<li><a href="/" class="nav-link"><i data-lucide="home"></i><span>主页</span></a></li>
-			<li><a href="/games" class="nav-link"><i data-lucide="grid-3x3"></i><span>浏览作品</span></a></li>
-			<li><a href="/stats" class="nav-link"><i data-lucide="bar-chart-2"></i><span>难度统计</span></a></li>
-			<li><a href="/add-game" class="nav-link"><i data-lucide="plus-circle"></i><span>添加作品</span></a></li>
-            <li><a href="/articles" class="nav-link"><i data-lucide="book-open"></i><span>文章/专栏</span></a></li>
-            <li><a href="/resources" class="nav-link"><i data-lucide="folder-open"></i><span>资源索引</span></a></li>
-			<li><a href="/bounties" class="nav-link"><i data-lucide="gift"></i><span>悬赏</span></a></li>
-		  </ul>
-          <ul class="nav-meta">
-			{% if request.state.user %}
-				<li class="nav-hello"><a href="/user/{{ request.state.user.id }}" class="nav-link"><i data-lucide="user"></i><span>{{ request.state.user.username }}</span></a></li>
-				<li><a href="/logout" class="nav-link"><i data-lucide="log-out"></i><span>登出</span></a></li>
-			{% else %}
-				<li><a href="/login" class="nav-link"><i data-lucide="log-in"></i><span>登录</span></a></li>
-				<li><a href="/register" class="nav-link"><i data-lucide="user-plus"></i><span>注册</span></a></li>
-			{% endif %}
-			<li>
-				<button id="theme-switcher" class="nav-button-icon">
-					<i data-lucide="sun" class="light-icon" style="display: none;"></i>
-					<i data-lucide="moon" class="dark-icon"></i>
-				</button>
-			</li>
-		  </ul>
-		</nav>
+        <nav id="site-nav" class="site-nav" aria-label="主导航">
+            <ul class="nav-primary">
+                <li><a href="/" class="nav-link"><i data-lucide="home"></i><span>主页</span></a></li>
+                <li><a href="/games" class="nav-link"><i data-lucide="grid-3x3"></i><span>浏览作品</span></a></li>
+                <li><a href="/library" class="nav-link"><i data-lucide="library"></i><span>资料库</span></a></li>
+                <li><a href="/stats" class="nav-link"><i data-lucide="bar-chart-2"></i><span>难度统计</span></a></li>
+                <li><a href="/add-game" class="nav-link"><i data-lucide="plus-circle"></i><span>添加作品</span></a></li>
+                <li><a href="/articles" class="nav-link"><i data-lucide="book-open"></i><span>文章/专栏</span></a></li>
+                <li><a href="/resources" class="nav-link"><i data-lucide="folder-open"></i><span>资源索引</span></a></li>
+                <li><a href="/bounties" class="nav-link"><i data-lucide="gift"></i><span>悬赏</span></a></li>
+            </ul>
+            <ul class="nav-meta">
+                {% if request.state.user %}
+                    <li class="nav-hello"><a href="/user/{{ request.state.user.id }}" class="nav-link"><i data-lucide="user"></i><span>{{ request.state.user.username }}</span></a></li>
+                    <li><a href="/logout" class="nav-link"><i data-lucide="log-out"></i><span>登出</span></a></li>
+                {% else %}
+                    <li><a href="/login" class="nav-link"><i data-lucide="log-in"></i><span>登录</span></a></li>
+                    <li><a href="/register" class="nav-link"><i data-lucide="user-plus"></i><span>注册</span></a></li>
+                {% endif %}
+                <li>
+                    <button id="theme-switcher" class="nav-button-icon" type="button" aria-label="切换深色/浅色主题">
+                        <i data-lucide="sun" class="light-icon" style="display: none;"></i>
+                        <i data-lucide="moon" class="dark-icon"></i>
+                    </button>
+                </li>
+            </ul>
+        </nav>
         <div id="nav-overlay" class="nav-overlay" aria-hidden="true"></div>
-	</header>
+    </header>
 
-    <main class="container">
+    <main class="container" id="main-content" tabindex="-1">
         {% block content %}{% endblock %}
     </main>
-    
+
     <footer class="container">
-        <hr>
-        <small>Powered by FastAPI & Pico.css</small>
+        <div class="site-footer">
+            <div class="footer-brand">
+                <span class="brand-row">
+                    <span class="brand-mark" aria-hidden="true"><i data-lucide="swords"></i></span>
+                    <strong>STG Ratings</strong>
+                </span>
+                <p>为每一款射击游戏留下可比较的品质与难度记录，由社区共同书写、长期可查。</p>
+            </div>
+            <nav class="footer-col" aria-label="内容导航">
+                <h3>内容</h3>
+                <ul>
+                    <li><a href="/games">浏览作品</a></li>
+                    <li><a href="/library">资料库</a></li>
+                    <li><a href="/stats">难度统计</a></li>
+                    <li><a href="/articles">文章专栏</a></li>
+                    <li><a href="/resources">资源索引</a></li>
+                    <li><a href="/bounties">悬赏</a></li>
+                </ul>
+            </nav>
+            <nav class="footer-col" aria-label="社区导航">
+                <h3>社区</h3>
+                <ul>
+                    <li><a href="/add-game">添加作品</a></li>
+                    {% if request.state.user %}
+                    <li><a href="/user/{{ request.state.user.id }}">我的主页</a></li>
+                    <li><a href="/logout">登出</a></li>
+                    {% else %}
+                    <li><a href="/login">登录</a></li>
+                    <li><a href="/register">注册</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        <div class="footer-base">
+            <small>Powered by FastAPI &amp; Pico.css</small>
+            <small>&copy; 2026 STG Ratings 社区</small>
+        </div>
     </footer>
 
-    <script src="/static/vendor/lucide.min.js"></script>
+    <button class="back-to-top" id="back-to-top" type="button" aria-label="回到顶部" title="回到顶部">
+        <i data-lucide="chevron-up"></i>
+    </button>
+
+    <div id="flash-toast" class="flash-toast" role="status" aria-live="polite"></div>
     <script>
-        // 确保 lucide 加载后正确初始化图标
-        (function() {
-            function initIcons() {
-                if (typeof lucide !== 'undefined') {
-                    lucide.createIcons();
-                }
-            }
-            // 如果 DOM 已经加载完成，立即执行
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initIcons);
-            } else {
-                initIcons();
-            }
+        // 一次性 flash 消息：读取 cookie → 显示 toast → 立即清除 cookie
+        (function () {
+            var match = document.cookie.match(/(?:^|;\s*)stg_flash=([^;]+)/);
+            if (!match) return;
+            document.cookie = 'stg_flash=; Max-Age=0; Path=/';
+            var raw = decodeURIComponent(match[1]);
+            var sep = raw.indexOf('|');
+            var kind = sep === -1 ? 'info' : raw.slice(0, sep);
+            var message = sep === -1 ? raw : raw.slice(sep + 1);
+            if (!message) return;
+
+            var toast = document.getElementById('flash-toast');
+            toast.className = 'flash-toast show ' + kind;
+            toast.textContent = message;
+            window.setTimeout(function () { toast.classList.remove('show'); }, 4200);
         })();
     </script>
+
+    <script src="{{ asset_url('/static/js/theme-switcher.js') }}" defer></script>
     <script>
         // 移动端导航抽屉
-        (function() {
-            const toggle = document.getElementById('nav-toggle');
-            const nav = document.getElementById('site-nav');
-            const overlay = document.getElementById('nav-overlay');
+        (function () {
+            var toggle = document.getElementById('nav-toggle');
+            var nav = document.getElementById('site-nav');
+            var overlay = document.getElementById('nav-overlay');
             if (!toggle || !nav) return;
 
-            const closeNav = () => {
-                document.body.classList.remove('nav-open');
-                toggle.setAttribute('aria-expanded', 'false');
-            };
+            function setOpen(open) {
+                document.body.classList.toggle('nav-open', open);
+                toggle.setAttribute('aria-expanded', String(open));
+                toggle.setAttribute('aria-label', open ? '关闭导航' : '打开导航');
+                if (open) {
+                    // 等 visibility 过渡生效后再聚焦，否则抽屉内的链接不可聚焦
+                    window.requestAnimationFrame(function () {
+                        var first = nav.querySelector('a, button');
+                        if (first) first.focus();
+                    });
+                } else {
+                    toggle.focus();
+                }
+            }
 
-            toggle.addEventListener('click', () => {
-                const nextState = !document.body.classList.contains('nav-open');
-                document.body.classList.toggle('nav-open', nextState);
-                toggle.setAttribute('aria-expanded', String(nextState));
+            toggle.addEventListener('click', function () {
+                setOpen(!document.body.classList.contains('nav-open'));
             });
 
-            overlay?.addEventListener('click', closeNav);
-            window.addEventListener('resize', () => {
-                if (window.innerWidth > 768) {
-                    closeNav();
-                }
+            if (overlay) overlay.addEventListener('click', function () { setOpen(false); });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && document.body.classList.contains('nav-open')) setOpen(false);
+            });
+
+            nav.addEventListener('click', function (e) {
+                if (e.target.closest('a')) setOpen(false);
+            });
+
+            window.addEventListener('resize', function () {
+                if (window.innerWidth > 768 && document.body.classList.contains('nav-open')) setOpen(false);
             });
         })();
-    </script>
-    <script src="/static/js/theme-switcher.js" defer></script>
-    <script src="/static/js/card-3d.js" defer></script>
-    <script>
-        // 导航栏当前页面高亮
-        (function() {
-            const currentPath = window.location.pathname;
-            const navLinks = document.querySelectorAll('.nav-link');
-            
-            navLinks.forEach(link => {
-                const linkPath = new URL(link.href).pathname;
-                // 精确匹配或路径前缀匹配（用于子页面）
-                if (linkPath === currentPath || 
-                    (linkPath !== '/' && currentPath.startsWith(linkPath))) {
+
+        // 当前页面高亮
+        (function () {
+            var currentPath = window.location.pathname;
+            document.querySelectorAll('.nav-link').forEach(function (link) {
+                var linkPath;
+                try { linkPath = new URL(link.href).pathname; } catch (e) { return; }
+                if (linkPath === currentPath || (linkPath !== '/' && currentPath.indexOf(linkPath) === 0)) {
                     link.setAttribute('aria-current', 'page');
                     link.classList.add('active');
                 }
             });
+        })();
+
+        // 回到顶部
+        (function () {
+            var btn = document.getElementById('back-to-top');
+            if (!btn) return;
+            var ticking = false;
+            function update() {
+                btn.classList.toggle('is-visible', window.scrollY > 600);
+                ticking = false;
+            }
+            window.addEventListener('scroll', function () {
+                if (!ticking) { window.requestAnimationFrame(update); ticking = true; }
+            }, { passive: true });
+            btn.addEventListener('click', function () {
+                window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+            });
+            update();
         })();
     </script>
 

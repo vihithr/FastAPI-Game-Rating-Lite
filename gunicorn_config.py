@@ -37,7 +37,8 @@ tmp_upload_dir = None
 # Performance tuning
 max_requests = 1000
 max_requests_jitter = 50
-preload_app = True
+# Keep workers free to import the app on HUP so `systemctl reload` picks up code changes
+preload_app = False
 
 # Graceful timeout for worker restart
 graceful_timeout = 30

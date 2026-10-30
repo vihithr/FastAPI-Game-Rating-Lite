@@ -21,6 +21,11 @@
 ### 3. 数据库迁移
 - ✅ Alembic 配置 (`alembic.ini`) 已包含
 - ✅ Alembic 迁移脚本 (`alembic/`) 已包含
+- ⚠️ 含快速评分的版本必须先迁移再启动：
+  - `create_all` 不会给旧表加列，`deploy.sh` 不执行 Alembic
+  - 顺序：停服务 → SQLite backup API 备份 → `alembic upgrade head` → 启动
+  - 目标版本：`0004_rating_overall (head)`，两张评分表都应有可空 `overall` 列
+  - 若列已存在但版本仍为 `0003`，核对后 `alembic stamp 0004_rating_overall`，不要重复 ALTER
 
 ### 4. 配置文件
 - ✅ `requirements.txt` - Python 依赖列表

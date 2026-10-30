@@ -1,107 +1,273 @@
 {% extends "base.html" %}
 
 {% block title %}添加新作品 - STG社区评价{% endblock %}
+{% block description %}向 STG Ratings 收录一部新的射击游戏：填写作品名、公司/社团、标签、别名与难度分级，即可加入社区评价库。{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ asset_url('/static/css/pages.css') }}">
+{% endblock %}
 
 {% block content %}
-<article>
-    <header>
-        <h2><i data-lucide="plus-circle"></i> 添加新作品</h2>
+<div class="pg">
+
+    <nav class="pg-crumbs" aria-label="面包屑">
+        <a href="/">主页</a>
+        <i data-lucide="chevron-right"></i>
+        <a href="/games">浏览作品</a>
+        <i data-lucide="chevron-right"></i>
+        <span aria-current="page">添加作品</span>
+    </nav>
+
+    <header class="pg-hero">
+        <div class="pg-hero__inner">
+            <div>
+                <p class="pg-hero__eyebrow">
+                    <span>Contribute</span>
+                    <span class="dot"></span>
+                    <span>收录新作品</span>
+                </p>
+                <h1>添加新作品</h1>
+                <p class="pg-hero__lede">
+                    补齐库里还没有的射击游戏。填好基础信息就能建立条目，评分与难度数据由社区后续补充。
+                </p>
+            </div>
+            <div class="pg-hero__aside">
+                <div class="pg-hero__stat">
+                    <b>2</b>
+                    <small>必填项</small>
+                </div>
+                <div class="pg-hero__stat">
+                    <b>6</b>
+                    <small>选填项</small>
+                </div>
+                <div class="pg-hero__stat">
+                    <b>1MB</b>
+                    <small>封面上限</small>
+                </div>
+            </div>
+        </div>
     </header>
+
     {% if not request.state.user %}
-        <div class="alert">
-            <p>您需要<a href="/login?redirect=/add-game">登录</a>后才能添加新作品。</p>
-            <a href="/login?redirect=/add-game" role="button">立即登录</a>
+
+    <div class="pg-gate">
+        <span class="pg-gate__icon"><i data-lucide="lock"></i></span>
+        <h2>需要先登录</h2>
+        <p>收录条目会记在提交者名下，方便后续维护与修订。登录后即可填写。</p>
+        <div class="pg-actions" style="justify-content: center;">
+            <a href="/login?redirect=/add-game" class="pg-btn">
+                <i data-lucide="log-in"></i>
+                立即登录
+            </a>
+            <a href="/register" class="pg-btn pg-btn--ghost">还没有账号？注册</a>
         </div>
+    </div>
+
     {% else %}
-    <form action="/add-game" method="post" id="add-game-form" enctype="multipart/form-data">
-        <div class="grid">
-            <label for="company">
-                公司/社团 (必填)
-                <input type="text" name="company" id="company" placeholder="例如: Cave, ZUN Soft" required>
-            </label>
-            <label for="title">
-                作品名 (必填)
-                <input type="text" name="title" id="title" placeholder="例如: 怒首领蜂, 东方红魔乡" required>
-            </label>
-        </div>
-        
-        <label for="tags-input">游戏标签 (选填, 输入后按回车或逗号分隔)</label>
-        <div id="tags-container" class="tag-input-container">
-            <input type="text" id="tags-input" placeholder="例如: 弹幕, STG, 纵版, CAVE系...">
-        </div>
-        <input type="hidden" name="tags" id="tags-hidden-input">
 
-        <label for="translations-input">其他译名/标题 (选填, 输入后按回车或逗号分隔)</label>
-        <div id="translations-container" class="tag-input-container">
-            <input type="text" id="translations-input" placeholder="例如: Touhou Koumakyou, The Embodiment of Scarlet Devil">
+    <div class="pg-layout">
+
+        <div class="pg-main">
+            <form action="/add-game" method="post" id="add-game-form" enctype="multipart/form-data" class="pg-form">
+
+                <section class="pg-panel">
+                    <div class="pg-panel__head">
+                        <h2><i data-lucide="info"></i> 基本信息</h2>
+                        <small>公司与作品名为必填</small>
+                    </div>
+                    <div class="pg-panel__body">
+                        <div class="pg-grid-2">
+                            <label class="pg-field" for="company">
+                                <span class="pg-label">公司 / 社团 <span class="req">*</span></span>
+                                <input type="text" name="company" id="company" placeholder="例如：CAVE、ZUN Soft" required>
+                            </label>
+                            <label class="pg-field" for="title">
+                                <span class="pg-label">作品名 <span class="req">*</span></span>
+                                <input type="text" name="title" id="title" placeholder="例如：怒首领蜂、东方红魔乡" required>
+                            </label>
+                        </div>
+
+                        <label class="pg-field" for="description" style="margin-top: 1rem;">
+                            <span class="pg-label">作品介绍 <span class="opt">选填</span></span>
+                            <textarea name="description" id="description" rows="4"
+                                placeholder="游戏背景、系统特色、玩法要点……一两句话即可，不必长篇。"></textarea>
+                            <small class="pg-hint">建议用自己的话概括，避免整段转载维基或商店简介。</small>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="pg-panel">
+                    <div class="pg-panel__head">
+                        <h2><i data-lucide="tags"></i> 标签与别名</h2>
+                        <small>回车或逗号确认</small>
+                    </div>
+                    <div class="pg-panel__body">
+                        <label class="pg-field" for="tags-input">
+                            <span class="pg-label">游戏标签 <span class="opt">选填</span></span>
+                            <div id="tags-container" class="pg-tagbox">
+                                <input type="text" id="tags-input" placeholder="例如：弹幕、纵版、CAVE系……">
+                            </div>
+                            <input type="hidden" name="tags" id="tags-hidden-input">
+                            <small class="pg-hint">用于筛选与检索。建议沿用受控词表：纵版 / 横版 / 弹幕 / 同人 / 商业 / 街机 / 双人。</small>
+                        </label>
+
+                        <label class="pg-field" for="translations-input" style="margin-top: 1rem;">
+                            <span class="pg-label">其他译名 / 标题 <span class="opt">选填</span></span>
+                            <div id="translations-container" class="pg-tagbox">
+                                <input type="text" id="translations-input" placeholder="例如：Touhou Koumakyou、The Embodiment of Scarlet Devil">
+                            </div>
+                            <input type="hidden" name="translations" id="translations-hidden-input">
+                        </label>
+
+                        <label class="pg-field" for="aliases-input" style="margin-top: 1rem;">
+                            <span class="pg-label">常用别名 <span class="opt">选填</span></span>
+                            <div id="aliases-container" class="pg-tagbox">
+                                <input type="text" id="aliases-input" placeholder="例如：DDP、EoSD">
+                            </div>
+                            <input type="hidden" name="aliases" id="aliases-hidden-input">
+                            <small class="pg-hint">社区常用简称、缩写、版本代号都可以放这里，方便搜索命中。</small>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="pg-panel">
+                    <div class="pg-panel__head">
+                        <h2><i data-lucide="sliders-horizontal"></i> 难度与机体</h2>
+                        <small>评分时按此分类</small>
+                    </div>
+                    <div class="pg-panel__body">
+                        <label class="pg-field" for="difficulty_levels-input">
+                            <span class="pg-label">难度分级名称 <span class="opt">选填</span></span>
+                            <div id="difficulty_levels-container" class="pg-tagbox">
+                                <input type="text" id="difficulty_levels-input" placeholder="例如：Easy、Normal、Hard、Lunatic">
+                            </div>
+                            <input type="hidden" name="difficulty_levels" id="difficulty_levels-hidden-input">
+                            <small class="pg-hint">按游戏内的实际叫法填写，顺序即为从易到难。</small>
+                        </label>
+
+                        <label class="pg-field" for="ship_types-input" style="margin-top: 1rem;">
+                            <span class="pg-label">机体 / 角色名称 <span class="opt">选填</span></span>
+                            <div id="ship_types-container" class="pg-tagbox">
+                                <input type="text" id="ship_types-input" placeholder="例如：Type-A、Reimu Hakurei、Marisa Kirisame">
+                            </div>
+                            <input type="hidden" name="ship_types" id="ship_types-hidden-input">
+                        </label>
+                    </div>
+                </section>
+
+                <section class="pg-panel">
+                    <div class="pg-panel__head">
+                        <h2><i data-lucide="image"></i> 封面</h2>
+                        <small>选填</small>
+                    </div>
+                    <div class="pg-panel__body">
+                        <label class="pg-field" for="image_file">
+                            <span class="pg-label">上传封面图 <span class="opt">不大于 1MB</span></span>
+                            <input type="file" name="image_file" id="image_file"
+                                accept="image/jpeg, image/png, image/gif, image/webp">
+                            <small class="pg-hint">推荐 3:4 竖版海报，宽度 600px 以上。支持 JPG / PNG / GIF / WEBP。</small>
+                        </label>
+                    </div>
+                    <div class="pg-panel__foot">
+                        <div class="pg-actions">
+                            <button type="submit" class="pg-btn">
+                                <i data-lucide="check"></i>
+                                确认添加
+                            </button>
+                            <a href="/games" class="pg-btn pg-btn--ghost">取消</a>
+                        </div>
+                    </div>
+                </section>
+
+            </form>
         </div>
-        <input type="hidden" name="translations" id="translations-hidden-input">
 
-        <label for="aliases-input">常用别名 (选填, 输入后按回车或逗号分隔)</label>
-        <div id="aliases-container" class="tag-input-container">
-            <input type="text" id="aliases-input" placeholder="例如: DDP, EoSD">
-        </div>
-        <input type="hidden" name="aliases" id="aliases-hidden-input">
-        
-        <label for="description">游戏介绍 (选填)</label>
-        <textarea name="description" id="description" rows="4" placeholder="关于游戏背景、系统特色的简要介绍..."></textarea>
+        <aside class="pg-side">
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="clipboard-check"></i> 收录标准</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <ul class="pg-side-list">
+                        <li><i data-lucide="check"></i><span><b>一部作品一个条目</b>，不同版本（Arrange、Black Label 等模式页）并入别名，不要重复建条。</span></li>
+                        <li><i data-lucide="check"></i><span><b>标题用最通用的写法</b>，日文原名与中文译名放进「其他译名」。</span></li>
+                        <li><i data-lucide="check"></i><span><b>标签尽量复用已有词</b>，避免「纵版」和「纵向」这类同义重复。</span></li>
+                        <li><i data-lucide="check"></i><span><b>封面优先官方素材</b>，找不到就留空，不要用截图或二次创作图充数。</span></li>
+                    </ul>
+                </div>
+            </section>
 
-        <label for="image_file">游戏封面 (选填，不大于1MB)
-            <input type="file" name="image_file" id="image_file" accept="image/jpeg, image/png, image/gif, image/webp">
-        </label>
-        
-        <hr>
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="pencil-line"></i> 填写示例</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <dl class="pg-kv">
+                        <div>
+                            <dt>公司 / 社团</dt>
+                            <dd>CAVE</dd>
+                        </div>
+                        <div>
+                            <dt>作品名</dt>
+                            <dd>怒首领蜂 大往生</dd>
+                        </div>
+                        <div>
+                            <dt>标签</dt>
+                            <dd>纵版 · 弹幕 · 商业 · 街机</dd>
+                        </div>
+                        <div>
+                            <dt>难度分级</dt>
+                            <dd>A · B · C</dd>
+                        </div>
+                    </dl>
+                </div>
+            </section>
 
-        <label for="difficulty_levels-input">难度分级名称 (选填, 输入后按回车或逗号分隔)</label>
-        <div id="difficulty_levels-container" class="tag-input-container">
-            <input type="text" id="difficulty_levels-input" placeholder="例如: Easy, Normal, Hard, Lunatic">
-        </div>
-        <input type="hidden" name="difficulty_levels" id="difficulty_levels-hidden-input">
+            <p class="pg-note">
+                <i data-lucide="lightbulb"></i>
+                <span>建好条目后，可以在作品页直接打品质分与难度分，不必一次填全。</span>
+            </p>
+        </aside>
 
-        <label for="ship_types-input">机体/角色名称 (选填, 输入后按回车或逗号分隔)</label>
-        <div id="ship_types-container" class="tag-input-container">
-            <input type="text" id="ship_types-input" placeholder="例如: Type-A, Type-B, Reimu Hakurei, Marisa Kirisame">
-        </div>
-        <input type="hidden" name="ship_types" id="ship_types-hidden-input">
-
-        <button type="submit">确认添加</button>
-    </form>
+    </div>
     {% endif %}
-</article>
+
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     lucide.createIcons();
-    
-    // --- 新的标签输入框逻辑 ---
+
+    // --- 标签输入框：回车 / 逗号 / 失焦确认 ---
     function setupTagInput(containerId) {
         const container = document.getElementById(containerId);
         if (!container) return;
-        
+
         const textInput = container.querySelector('input[type="text"]');
         const hiddenInputId = containerId.replace('-container', '-hidden-input');
         const hiddenInput = document.getElementById(hiddenInputId);
-        
+
         let tags = [];
 
         function renderTags() {
             container.querySelectorAll('.tag-item').forEach(tagEl => tagEl.remove());
             tags.slice().reverse().forEach(tag => {
                 const tagElement = document.createElement('span');
-                tagElement.className = 'tag-item';
+                tagElement.className = 'pg-tag tag-item';
                 tagElement.textContent = tag;
-                
+
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'tag-remove-btn';
                 removeBtn.innerHTML = '&times;';
                 removeBtn.type = 'button';
+                removeBtn.setAttribute('aria-label', '移除 ' + tag);
                 removeBtn.onclick = () => {
                     tags = tags.filter(t => t !== tag);
                     updateHiddenInput();
                     renderTags();
                 };
-                
+
                 tagElement.appendChild(removeBtn);
                 container.insertBefore(tagElement, textInput);
             });
@@ -132,17 +298,22 @@
         textInput.addEventListener('blur', () => {
             addTag(textInput.value);
         });
+
+        // 点击盒子空白处聚焦输入
+        container.addEventListener('click', (e) => {
+            if (e.target === container) textInput.focus();
+        });
     }
 
-    // 初始化页面上所有的标签输入框
     setupTagInput('tags-container');
     setupTagInput('translations-container');
     setupTagInput('aliases-container');
     setupTagInput('difficulty_levels-container');
     setupTagInput('ship_types-container');
-    
-    // --- 表单提交JS (保持不变) ---
-    document.getElementById('add-game-form').addEventListener('submit', async (e) => {
+
+    // --- 提交 ---
+    const addGameForm = document.getElementById('add-game-form');
+    if (addGameForm) addGameForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target;
         const submitButton = form.querySelector('button[type="submit"]');
@@ -152,7 +323,7 @@
 
         try {
             const formData = new FormData(form);
-            
+
             const imageFile = formData.get('image_file');
             if (imageFile && imageFile.size > 1 * 1024 * 1024) {
                 alert('图片文件大小不能超过 1MB');
@@ -177,7 +348,6 @@
                         const result = await response.json();
                         errorMessage = result.detail || errorMessage;
                     } else {
-                        // 如果不是JSON响应，尝试读取文本
                         const text = await response.text();
                         errorMessage = `服务器错误 (${response.status}): ${text.substring(0, 100)}`;
                     }
@@ -186,7 +356,7 @@
                 }
                 throw new Error(errorMessage);
             }
-            
+
         } catch (error) {
             console.error('Error:', error);
             if (error.message !== 'File too large') {

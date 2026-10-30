@@ -29,83 +29,28 @@
 - **内存**: **512MB RAM 或更多**
 - **磁盘**: SSD 推荐，至少 **1GB 可用空间**（便于后续文章、封面等内容增长）
 
-### 实测资源占用示例（Vultr 512MB Debian 12）
-
-以下数据来自一台全新部署后的 Vultr 实例（约 512MB 内存，无 Swap），仅运行本项目和基础系统服务。
-
-- **整体内存情况**（`free -m`）：
-  - 总内存：约 **452MB**
-  - 已用：约 **289MB**
-  - buff/cache：约 **173MB**
-  - 可用（available）：约 **163MB**
-
-- **主要进程占用**（`top` / `htop`）：
-  - `stg_website.service`（Gunicorn + FastAPI 应用）：约 **80–90MB RES**（3 个 worker，总常驻约 160MB 左右）
-  - `caddy` 反向代理：约 **25–30MB RES**
-  - 其他系统服务（`systemd`、`sshd`、`postfix` 等）：合计几十 MB
-
-在 512MB 内存的机器上，站点可以稳定运行，并留有一定空间用于系统缓冲和轻度访问压力。如需更大的连接数或更高并发，建议：
-
-- 将内存提升到 **1GB**，或  
-- 在 `.env` / `gunicorn_config.py` 中适当调整 Gunicorn worker 数量。  
-
 ## 快速开始
 
-### 方式一：使用 Release 源码包（一行命令完成下载 + 安装，推荐）
+### 在线一键部署（推荐，从 GitHub 拉取）
 
-本项目提供了 GitHub Release 源码包 [`v0.1.1`](https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz)，适合大多数生产环境部署，服务器无需安装 `git`。
-
-#### 1. 以 root 登录，有域名（HTTPS 模式）
+本项目已托管在 GitHub 仓库 [`vihithr/FastAPI-Game-Rating-Lite`](https://github.com/vihithr/FastAPI-Game-Rating-Lite.git)，推荐直接在服务器上通过 `curl` 调用部署脚本完成安装。
 
 ```bash
-bash -c 'cd /tmp && \
-  curl -L -o stg_website_v0.1.1.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz && \
-  bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-    install --from-archive /tmp/stg_website_v0.1.1.tar.gz --domain example.com'
+# HTTPS 模式（有域名，自动申请 HTTPS 证书）
+curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
+  sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --domain example.com
+
+# IP 模式（无域名 / 内网环境，仅 HTTP）
+curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh | \
+  sudo bash -s -- install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --ip
 ```
 
-> 将 `example.com` 替换为你的实际域名。
-
-如果你是普通用户而非 root，可以在外层加 `sudo`：
-
-```bash
-sudo bash -c 'cd /tmp && \
-  curl -L -o stg_website_v0.1.1.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz && \
-  bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-    install --from-archive /tmp/stg_website_v0.1.1.tar.gz --domain example.com'
-```
-
-#### 2. 以 root 登录，无域名（IP 模式，仅 HTTP）
-
-```bash
-bash -c 'cd /tmp && \
-  curl -L -o stg_website_v0.1.1.tar.gz https://github.com/vihithr/FastAPI-Game-Rating-Lite/archive/refs/tags/v0.1.1.tar.gz && \
-  bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-    install --from-archive /tmp/stg_website_v0.1.1.tar.gz --ip'
-```
-
-### 方式二：始终使用最新 main 分支源码（需要服务器安装 git）
-
-如果希望每次部署都拉取 `main` 分支最新代码，可以使用 `--from-github` 模式（服务器必须安装 `git`）：
-
-```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --branch main --domain example.com
-```
-
-无域名 / 内网环境可以改用 IP 模式：
-
-```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Rating-Lite/main/deploy.sh) \
-  install --from-github https://github.com/vihithr/FastAPI-Game-Rating-Lite.git --branch main --ip
-```
-
-常用可选参数（可与上述命令组合使用）：
+常用可选参数：
 
 - `--branch <name>`：指定分支（默认 `main`）  
 - `--force`：卸载和静态清理时跳过二次确认（请谨慎使用）  
 
-### 方式三：离线 / 本地压缩包部署（无法访问 GitHub 时使用）
+### 离线 / 本地压缩包部署（无法访问 GitHub 时使用）
 
 如果你的服务器无法访问 GitHub，可以先在本地打包、上传到服务器，再在服务器上解压并运行脚本。
 
@@ -162,25 +107,6 @@ sudo bash <(curl -fsSL https://raw.githubusercontent.com/vihithr/FastAPI-Game-Ra
    ```bash
    sudo systemctl restart stg_website.service
    ```
-
-## 后续运维入口与快捷命令
-
-安装完成后，部署脚本会被复制到安装目录中，作为后续更新和运维的统一入口：
-
-- 部署脚本位置：`/opt/stg_website/deploy.sh`
-- 进入交互式管理菜单：
-  - 以 root 登录：`/opt/stg_website/deploy.sh menu`
-  - 普通用户：`sudo /opt/stg_website/deploy.sh menu`
-
-你也可以在自己的 shell 中添加一个简单的别名，方便日常维护（示例）：
-
-```bash
-echo "alias stgctl='/opt/stg_website/deploy.sh menu'" >> ~/.bashrc
-source ~/.bashrc
-
-# 之后只需运行：
-stgctl
-```
 
 ## 手动部署步骤
 
@@ -590,11 +516,20 @@ sudo systemctl start stg_website.service
 
 ## 更新部署
 
-1. **备份当前版本**
+1. **备份当前版本和数据库**
 
    ```bash
    sudo systemctl stop stg_website.service
    sudo cp -r /opt/stg_website /opt/stg_website.backup
+
+   # SQLite 使用 backup API，避免 WAL 模式下直接 cp 得到不一致副本
+   sudo -u stg_website /opt/stg_website/venv/bin/python - <<'PY'
+   import sqlite3
+   src = sqlite3.connect('/opt/stg_website/stg_website.db')
+   dst = sqlite3.connect('/opt/stg_website/stg_website_pre_upgrade.db')
+   src.backup(dst)
+   dst.close(); src.close()
+   PY
    ```
 
 2. **更新代码**
@@ -612,12 +547,27 @@ sudo systemctl start stg_website.service
    sudo -u www-data venv/bin/pip install -r requirements.txt --upgrade
    ```
 
-4. **运行数据库迁移（如果有）**
+4. **运行数据库迁移（必须）**
+
+   `app.main` 启动时只执行 `create_all`，它**不会给已存在的表加列**；`deploy.sh` 也不会调用 Alembic。  
+   当前版本包含 `0004_rating_overall`（为 `quality_ratings` 和 `difficulty_ratings` 增加可空的 `overall REAL`，用于快速评分），必须在启动新代码前执行：
 
    ```bash
-   cd /opt/stg_website
-   sudo -u www-data venv/bin/alembic upgrade head
+   sudo -u stg_website bash -c 'cd /opt/stg_website && set -a && . ./.env && set +a && venv/bin/alembic current && venv/bin/alembic upgrade head && venv/bin/alembic current'
    ```
+
+   预期输出最后为 `0004_rating_overall (head)`。迁移前可先确认两列尚不存在：
+
+   ```bash
+   sudo -u stg_website /opt/stg_website/venv/bin/python - <<'PY'
+   import sqlite3
+   c = sqlite3.connect('/opt/stg_website/stg_website.db')
+   for table in ('quality_ratings', 'difficulty_ratings'):
+       print(table, [row[1] for row in c.execute(f'PRAGMA table_info({table})')])
+   PY
+   ```
+
+   若两列已存在而 `alembic current` 仍是 `0003`（例如曾手动加列），不要重复执行 0004，先核对后再 `alembic stamp 0004_rating_overall`。
 
 5. **重启服务**
 

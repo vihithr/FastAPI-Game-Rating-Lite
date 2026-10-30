@@ -4,21 +4,20 @@
 
 {% block content %}
 <article>
-    <header class="grid">
-        <div class="two-thirds">
-             <hgroup>
-                <h2><i data-lucide="file-pen-line"></i> 编辑游戏资料</h2>
-                <h3>{{ game.title }}</h3>
-            </hgroup>
+    <header class="page-head">
+        <span class="page-icon"><i data-lucide="file-pen-line"></i></span>
+        <div>
+            <h1>编辑游戏资料</h1>
+            <p>{{ game.title }}</p>
         </div>
-        <div class="one-third" style="text-align: right;">
-            <a href="/game/{{ game.id }}" role="button" class="secondary outline">
-                <i data-lucide="x"></i> 取消编辑
-            </a>
-        </div>
+        <a href="/game/{{ game.id }}" role="button" class="page-action secondary outline">
+            <i data-lucide="x"></i> 取消编辑
+        </a>
     </header>
 
     <form action="/game/{{ game.id }}/update" method="post" id="edit-game-form" enctype="multipart/form-data">
+        <fieldset class="form-section">
+        <legend><i data-lucide="info"></i> 基本信息</legend>
         <div class="grid">
             <label for="company">
                 公司/社团 (必填)
@@ -51,18 +50,21 @@
         <label for="description">游戏介绍 (选填)</label>
         <textarea name="description" id="description" rows="4">{{ game.description or '' }}</textarea>
 
-        <hr>
-        
+        </fieldset>
+        <fieldset class="form-section">
+        <legend><i data-lucide="image"></i> 封面</legend>
         <label for="image_file">更换封面 (选填，不大于1MB，不选则不更换)</label>
         {% if game.image_url %}
             <p>当前封面:</p>
-            <img src="{{ game.image_url }}" alt="Current cover" style="max-width: 150px; display: block; margin-bottom: 1rem; border-radius: var(--pico-border-radius);">
+            <img src="{{ cover_thumb(game.image_url, 400) }}" alt="Current cover" style="max-width: 150px; display: block; margin-bottom: 1rem; border-radius: var(--pico-border-radius);" decoding="async">
         {% else %}
             <p>当前无封面。</p>
         {% endif %}
         <input type="file" name="image_file" id="image_file" accept="image/jpeg, image/png, image/gif, image/webp">
 
-        <hr>
+        </fieldset>
+        <fieldset class="form-section">
+        <legend><i data-lucide="sliders-horizontal"></i> 难度与机体设置</legend>
 
         <label for="difficulty_levels-input">难度分级名称 (输入后按回车或逗号分隔)</label>
         <div id="difficulty_levels-container" class="tag-input-container">
@@ -75,6 +77,7 @@
             <input type="text" id="ship_types-input" placeholder="例如: Type-A, Type-B, Reimu Hakurei, Marisa Kirisame">
         </div>
         <input type="hidden" name="ship_types" id="ship_types-hidden-input" data-initial-value="{{ game.ship_types | map(attribute='name') | join('|~|') }}">
+        </fieldset>
 
 
         <button type="submit">确认保存更改</button>

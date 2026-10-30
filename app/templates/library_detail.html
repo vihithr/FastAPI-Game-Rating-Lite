@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}{{ item.zh or item.title }} - STG 资料库{% endblock %}
+{% block description %}{{ item.desc[:120] if item.desc else (item.title ~ ' — STG 资料库条目') }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ asset_url('/static/css/pages.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="pg">
+
+    <nav class="pg-crumbs" aria-label="面包屑">
+        <a href="/">主页</a>
+        <i data-lucide="chevron-right"></i>
+        <a href="/library">资料库</a>
+        <i data-lucide="chevron-right"></i>
+        <span aria-current="page">{{ item.zh or item.title }}</span>
+    </nav>
+
+    <section class="pg-panel">
+        <div class="pg-lib-hero">
+            <div class="pg-lib-hero__art">
+                {% if item.cover %}
+                <span class="pg-lib-hero__bg"
+                    style="background-image:url('/static/library/covers/{{ item.cover }}')"></span>
+                <img src="/static/library/covers/{{ item.cover }}" alt="{{ item.title }}"
+                    class="{% if item.wide %}is-wide{% endif %}">
+                {% else %}
+                <span class="pg-lib-hero__noimg"><i data-lucide="image-off"></i></span>
+                {% endif %}
+            </div>
+            <div class="pg-lib-hero__info">
+                <p class="pg-hero__eyebrow" style="margin-bottom: .5rem;">
+                    <span>资料库条目</span>
+                    <span class="dot"></span>
+                    <span>{{ item.conf or 'unknown' }} confidence</span>
+                </p>
+                <h1>{{ item.zh or item.title }}</h1>
+                <p class="pg-lib-hero__alt">
+                    {{ item.title }}{% if item.orig and item.orig|lower != item.title|lower %} · {{ item.orig }}{% endif %}
+                </p>
+
+                {% if item.desc %}
+                <p class="pg-lib-hero__lead">{{ item.desc }}</p>
+                {% endif %}
+
+                <ul class="pg-chip-row" style="margin-top: .7rem;">
+                    {% if item.year %}
+                    <li><span class="pg-chip pg-chip--brand">{{ item.year }}</span></li>
+                    {% endif %}
+                    {% if item.company %}
+                    <li><span class="pg-chip">{{ item.company }}</span></li>
+                    {% endif %}
+                    {% for p in item.platforms %}
+                    <li><span class="pg-chip pg-chip--ok">{{ platform_label(p) }}</span></li>
+                    {% endfor %}
+                    {% for t in item.tags %}
+                    <li><a class="pg-chip" href="/library?tag={{ t|urlencode }}">{{ t }}</a></li>
+                    {% endfor %}
+                </ul>
+
+                <div class="pg-actions" style="margin-top: 1rem;">
+                    {% if item.steam %}
+                    <a class="pg-btn pg-btn--sm" href="https://store.steampowered.com/app/{{ item.steam }}/"
+                        target="_blank" rel="noopener">
+                        <i data-lucide="external-link"></i> Steam 商店页
+                    </a>
+                    {% endif %}
+                    {% if item.shmups %}
+                    <a class="pg-btn pg-btn--sm pg-btn--ghost" href="{{ item.shmups }}"
+                        target="_blank" rel="noopener">
+                        <i data-lucide="book-open"></i> shmups.wiki
+                    </a>
+                    {% endif %}
+                    {% if item.mame %}
+                    <a class="pg-btn pg-btn--sm pg-btn--ghost"
+                        href="https://adb.arcadeitalia.net/dettaglio_mame.php?game_name={{ item.mame }}"
+                        target="_blank" rel="noopener">
+                        <i data-lucide="joystick"></i> MAME / ADB
+                    </a>
+                    {% endif %}
+                    <a class="pg-btn pg-btn--sm pg-btn--ghost" href="/games?q={{ item.title|urlencode }}">
+                        <i data-lucide="search"></i> 在社区里找这部作品
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="pg-layout">
+
+        <div class="pg-main">
+
+            {% if item.desc %}
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="align-left"></i> 简介</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <div class="pg-prose">
+                        <p>{{ item.desc }}</p>
+                    </div>
+                </div>
+            </section>
+            {% else %}
+            <div class="pg-empty">
+                <i data-lucide="file-question"></i>
+                <p>这一条还没有简介。采集时该来源未提供描述文本。</p>
+            </div>
+            {% endif %}
+
+            {% if related_series or related_company %}
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="link"></i> 关联作品</h3>
+                    <small>同系列 / 同开发商</small>
+                </div>
+                <div class="pg-panel__body">
+                    {% if related_series %}
+                    <p class="pg-label" style="margin-bottom: .5rem;">同系列 · {{ item.series }}</p>
+                    <div class="pg-lib-mini">
+                        {% for r in related_series %}
+                        <a href="/library/{{ r.id }}">
+                            {% if r.cover %}
+                            <img src="/static/library/covers/{{ r.cover }}" alt="" loading="lazy" decoding="async">
+                            {% endif %}
+                            <span>{{ r.zh or r.title }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if related_company %}
+                    <p class="pg-label" style="margin: .9rem 0 .5rem;">同开发商 · {{ item.company }}</p>
+                    <div class="pg-lib-mini">
+                        {% for r in related_company %}
+                        <a href="/library/{{ r.id }}">
+                            {% if r.cover %}
+                            <img src="/static/library/covers/{{ r.cover }}" alt="" loading="lazy" decoding="async">
+                            {% endif %}
+                            <span>{{ r.zh or r.title }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+            {% endif %}
+
+        </div>
+
+        <aside class="pg-side">
+            <section class="pg-panel">
+                <div class="pg-panel__head">
+                    <h3><i data-lucide="info"></i> 作品信息</h3>
+                </div>
+                <div class="pg-panel__body">
+                    <dl class="pg-kv">
+                        <div>
+                            <dt>原名</dt>
+                            <dd>{{ item.orig or item.title }}</dd>
+                        </div>
+                        <div>
+                            <dt>年份</dt>
+                            <dd>{{ item.release or item.year or '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt>开发商</dt>
+                            <dd>{{ item.company or '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt>发行商</dt>
+                            <dd>{{ item.publisher or '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt>系列</dt>
+                            <dd>{{ item.series or '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt>平台</dt>
+                            <dd>
+                                {% if item.platforms %}
+                                {% for p in item.platforms %}{{ platform_label(p) }}{% if not loop.last %} / {% endif %}{% endfor %}
+                                {% else %}—{% endif %}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>地区</dt>
+                            <dd>{{ item.region or '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt>数据置信度</dt>
+                            <dd>{{ item.conf or '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt>来源 ID</dt>
+                            <dd style="font-family: var(--font-mono); font-size: .78rem;">{{ item.rid }}</dd>
+                        </div>
+                    </dl>
+                </div>
+            </section>
+
+            <p class="pg-note">
+                <i data-lucide="database"></i>
+                <span>
+                    本条来自采集归档（{{ stats.total }} 条之一）。资料库只读，不参与社区评分；
+                    想给它打分请到「浏览作品」。
+                </span>
+            </p>
+        </aside>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
