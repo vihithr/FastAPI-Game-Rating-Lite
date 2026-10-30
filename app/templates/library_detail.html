@@ -123,7 +123,7 @@
                         {% for r in related_series %}
                         <a href="/library/{{ r.id }}">
                             {% if r.cover %}
-                            <img src="/static/library/covers/{{ r.cover }}" alt="" loading="lazy" decoding="async">
+                            <img src="/static/library/covers/{{ r.thumb }}" alt="" loading="lazy" decoding="async">
                             {% endif %}
                             <span>{{ r.zh or r.title }}</span>
                         </a>
@@ -136,7 +136,7 @@
                         {% for r in related_company %}
                         <a href="/library/{{ r.id }}">
                             {% if r.cover %}
-                            <img src="/static/library/covers/{{ r.cover }}" alt="" loading="lazy" decoding="async">
+                            <img src="/static/library/covers/{{ r.thumb }}" alt="" loading="lazy" decoding="async">
                             {% endif %}
                             <span>{{ r.zh or r.title }}</span>
                         </a>

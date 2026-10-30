@@ -140,9 +140,9 @@
                     <div class="pg-lib-card__cover">
                         {% if item.cover %}
                         <span class="pg-lib-card__bg"
-                            style="background-image:url('/static/library/covers/{{ item.cover }}')"></span>
+                            style="background-image:url('/static/library/covers/{{ item.thumb }}')"></span>
                         <img class="pg-lib-card__img{% if item.wide %} is-wide{% endif %}"
-                            src="/static/library/covers/{{ item.cover }}"
+                            src="/static/library/covers/{{ item.thumb }}"
                             alt="{{ item.title }}" loading="lazy" decoding="async">
                         {% else %}
                         <span class="pg-lib-card__noimg">

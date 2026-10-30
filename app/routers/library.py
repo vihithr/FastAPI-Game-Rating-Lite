@@ -22,6 +22,7 @@ router = APIRouter(tags=["Library"])
 logger = logging.getLogger(__name__)
 
 _DATA_PATH = Path(BASE_DIR) / "app" / "data" / "library.json"
+_COVER_ROOT = Path(BASE_DIR) / "app" / "static" / "library" / "covers"
 _records: list[dict[str, Any]] | None = None
 _by_id: dict[str, dict[str, Any]] = {}
 
@@ -113,6 +114,15 @@ def _load() -> list[dict[str, Any]]:
             ).lower()
             rec["wide"] = bool(rec.get("cw") and rec.get("cw") > rec.get("ch"))
             rec["sub"] = subtitle(rec)
+            # 列表页用 400px webp 缩略图，详情页才用原图
+            cover = rec.get("cover") or ""
+            if cover:
+                thumb = f"thumbs/{Path(cover).stem}.webp"
+                rec["thumb"] = (
+                    thumb if (_COVER_ROOT / thumb).is_file() else cover
+                )
+            else:
+                rec["thumb"] = ""
         _records = data
         _by_id.clear()
         _by_id.update({r["id"]: r for r in data})

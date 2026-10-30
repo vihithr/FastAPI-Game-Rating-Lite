@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "app" / "static" / "vendor" / "lucide.min.js"
+SRC = ROOT / "tools" / "vendor" / "lucide.min.js"
 OUT = ROOT / "app" / "static" / "js" / "icons.js"
 
 NAMES = [

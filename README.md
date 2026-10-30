@@ -37,9 +37,12 @@
 | `import_library.py` | 把采集来的作品档案批量导入评分库；按标题去重，封面走站内 uploads 流程（自动生成 400/800 宽 webp 缩略图） |
 | `backfill_meta.py` | 按「标题 → 别名 → 译名」归一化匹配，回填 platform / release_year / series |
 | `dedup_games.py` | 合并重复条目（中英文异名、`∀`/`A`、间隔号、副标题差异等），评分与标签安全迁移 |
-| `build_icons.py` | 从 lucide 图标集裁剪出站点实际用到的图标子集 |
+| `build_library_thumbs.py` | 给资料库封面生成 400px webp 缩略图。列表页原图直出时第 1 页 45 张就有 1.9 MB，压完降到 0.75 MB |
+| `build_icons.py` | 从 `tools/vendor/lucide.min.js`（540 KB 全量包）裁剪出站点实际用到的 56 个图标，产出 13 KB 的 `app/static/js/icons.js` |
 
-> 三个数据脚本都支持 `--dry-run` / `--report`，建议先预览再执行。
+> 数据脚本都支持 `--dry-run` / `--report`，建议先预览再执行。
+>
+> `lucide.min.js` 是图标生成的**输入源**，不在 Web 根目录下，也不会被任何页面加载——线上只用裁剪后的 `icons.js`（13 KB / gzip 4 KB）。
 
 ---
 
@@ -47,7 +50,7 @@
 
 - `app/`：应用代码（FastAPI、模型、路由、模板、静态资源等）  
 - `app/data/library.json`：资料库的示例数据（898 部作品的元数据），可直接替换  
-- `tools/`：数据导入 / 回填 / 查重 / 图标生成脚本  
+- `tools/`：数据导入 / 回填 / 查重 / 缩略图 / 图标生成脚本  
 - `alembic/`：数据库迁移脚本  
 - `deploy.sh`：一键部署 / 更新 / 卸载脚本  
 - `env.example`：环境变量模板  
@@ -265,8 +268,8 @@ uvicorn app.main:app --reload
 **版权归原作者所有**，本项目仅作资料整理与检索用途。
 
 **封面图片不随仓库分发**（`app/static/library/covers/` 已在 `.gitignore` 中）。
-封面版权归各发行商所有，如需完整封面请自行整理并放入该目录，或运行
-`tools/build_library.py` 从你自己的收藏生成。
+封面版权归各发行商所有，如需完整封面请自行整理并放入该目录，再运行
+`tools/build_library_thumbs.py` 生成缩略图。
 
-如果你要替换示例数据，覆盖 `app/data/library.json` 即可，格式见 `tools/import_library.py` 顶部注释。
+如果你要替换示例数据，覆盖 `app/data/library.json` 即可，字段含义见 `tools/import_library.py` 顶部注释。
 
