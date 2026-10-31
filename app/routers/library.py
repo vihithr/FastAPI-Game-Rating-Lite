@@ -112,10 +112,13 @@ LATIN_RE = re.compile(r"[A-Za-z]")
 def lang_of(text: str | None) -> str:
     """粗判简介语种。
 
-    不能只看「有没有假名」——很多英文简介里夹着日文原名（如
-    "1941: カウンターアタック is a vertically scrolling shoot 'em up…"），
-    那样会被误判成日文。这里按字符占比判断：拉丁字母占七成以上算英文，
-    假名占比超过一成算日文，其余算中文。
+    两个坑都要避开：
+    1. 英文简介里夹日文原名（"1941: カウンターアタック is a vertically…"），
+       只看「有没有假名」会误判成日文；
+    2. 中文简介里夹英文专有名词（"Team Shanghai Alice 发布的同人射击作品"），
+       只看「拉丁字母占比」会误判成英文——这类文本拉丁字母能占到七成。
+
+    所以先看汉字/假名是否达到一定比例，再看拉丁字母。
     """
     if not text:
         return ""
@@ -125,10 +128,11 @@ def lang_of(text: str | None) -> str:
     total = kana + cjk + latin
     if not total:
         return ""
+    cjkish = kana + cjk
+    if cjkish >= 4 and cjkish / total >= 0.25:
+        return "ja" if kana and kana / cjkish > 0.1 else "zh"
     if latin / total > 0.7:
         return "en"
-    if kana and kana / (kana + cjk or 1) > 0.1:
-        return "ja"
     return "zh"
 
 
@@ -346,6 +350,44 @@ def library_index(
     )
 
 
+def negotiate_lang(header: str | None, rec: dict[str, Any]) -> str:
+    """按浏览器 Accept-Language 决定默认展示哪种简介。
+
+    返回 "zh"（中文译文）或 "orig"（原文）。没有译文的条目一律 "orig"。
+
+    中文用户看中文、英文/日文用户看原文，比让人每次手动点一下自然。
+    没有 Accept-Language 头时退回中文——站点本身是中文站。
+    """
+    if not rec.get("zh_desc"):
+        return "orig"
+    if not header:
+        return "zh"
+
+    prefs: list[tuple[float, str]] = []
+    for part in header.split(","):
+        seg = part.split(";")
+        tag = seg[0].strip().lower()
+        if not tag:
+            continue
+        q = 1.0
+        for s in seg[1:]:
+            s = s.strip()
+            if s.startswith("q="):
+                try:
+                    q = float(s[2:])
+                except ValueError:
+                    q = 0.0
+        prefs.append((q, tag))
+    prefs.sort(key=lambda x: -x[0])
+
+    for _, tag in prefs:
+        if tag.startswith("zh"):
+            return "zh"
+        if tag.startswith(("ja", "en")):
+            return "orig"
+    return "orig"
+
+
 @router.get("/library/{slug}", response_class=HTMLResponse)
 def library_detail(
     request: Request,
@@ -378,6 +420,7 @@ def library_detail(
             "request": request,
             "item": rec,
             "game_id": _find_game_id(db, rec),
+            "default_lang": negotiate_lang(request.headers.get("accept-language"), rec),
             "related_series": related_series,
             "related_company": related_company,
             "platform_label": platform_label,

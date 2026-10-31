@@ -8,6 +8,9 @@
 {% endblock %}
 
 {% block content %}
+{# 默认语言由路由按 Accept-Language 协商：中文浏览器看中文，英/日文浏览器看原文 #}
+{% set show_zh = (item.zh_desc and default_lang == 'zh') %}
+{% set orig_label = '日本語' if item.lang == 'ja' else ('English' if item.lang == 'en' else '原文') %}
 <div class="pg">
 
     <nav class="pg-crumbs" aria-label="面包屑">
@@ -42,8 +45,8 @@
                 </p>
 
                 {# 只有长到会被截断时才在 hero 里放摘要，否则和下面的「简介」面板完全重复 #}
-                {% set lead = item.zh_desc or item.desc %}
-                {% set lead_max = 150 if item.zh_desc else 240 %}
+                {% set lead = item.zh_desc if show_zh else item.desc %}
+                {% set lead_max = 150 if show_zh else 240 %}
                 {% if lead and lead|length > lead_max %}
                 <p class="pg-lib-hero__lead">{{ lead }}</p>
                 {% endif %}
@@ -110,8 +113,10 @@
                     <h3><i data-lucide="align-left"></i> 简介</h3>
                     {% if item.zh_desc %}
                     <div class="pg-lang-switch" role="group" aria-label="简介语言">
-                        <button type="button" class="is-active" data-lang-btn="zh">中文</button>
-                        <button type="button" data-lang-btn="orig">原文</button>
+                        <button type="button" class="{% if show_zh %}is-active{% endif %}"
+                            data-lang-btn="zh" aria-pressed="{{ 'true' if show_zh else 'false' }}">中文</button>
+                        <button type="button" class="{% if not show_zh %}is-active{% endif %}"
+                            data-lang-btn="orig" aria-pressed="{{ 'false' if show_zh else 'true' }}">{{ orig_label }}</button>
                     </div>
                     {% elif item.lang %}
                     <small class="pg-lang-tag">
@@ -121,10 +126,10 @@
                 </div>
                 <div class="pg-panel__body">
                     {% if item.zh_desc %}
-                    <div class="pg-prose" data-lang-panel="zh">
+                    <div class="pg-prose" data-lang-panel="zh" {% if not show_zh %}hidden{% endif %}>
                         <p>{{ item.zh_desc }}</p>
                     </div>
-                    <div class="pg-prose" data-lang-panel="orig" hidden
+                    <div class="pg-prose" data-lang-panel="orig" {% if show_zh %}hidden{% endif %}
                          lang="{% if item.lang == 'ja' %}ja{% else %}en{% endif %}">
                         <p>{{ item.desc }}</p>
                     </div>
