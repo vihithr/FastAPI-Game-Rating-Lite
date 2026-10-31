@@ -42,8 +42,10 @@
                 </p>
 
                 {# 只有长到会被截断时才在 hero 里放摘要，否则和下面的「简介」面板完全重复 #}
-                {% if item.desc and item.desc|length > 240 %}
-                <p class="pg-lib-hero__lead">{{ item.desc }}</p>
+                {% set lead = item.zh_desc or item.desc %}
+                {% set lead_max = 150 if item.zh_desc else 240 %}
+                {% if lead and lead|length > lead_max %}
+                <p class="pg-lib-hero__lead">{{ lead }}</p>
                 {% endif %}
 
                 <ul class="pg-chip-row" style="margin-top: .7rem;">
@@ -106,19 +108,35 @@
             <section class="pg-panel">
                 <div class="pg-panel__head">
                     <h3><i data-lucide="align-left"></i> 简介</h3>
-                    {% if item.lang %}
+                    {% if item.zh_desc %}
+                    <div class="pg-lang-switch" role="group" aria-label="简介语言">
+                        <button type="button" class="is-active" data-lang-btn="zh">中文</button>
+                        <button type="button" data-lang-btn="orig">原文</button>
+                    </div>
+                    {% elif item.lang %}
                     <small class="pg-lang-tag">
                         {% if item.lang == 'en' %}English{% elif item.lang == 'ja' %}日本語{% else %}中文{% endif %}
                     </small>
                     {% endif %}
                 </div>
                 <div class="pg-panel__body">
+                    {% if item.zh_desc %}
+                    <div class="pg-prose" data-lang-panel="zh">
+                        <p>{{ item.zh_desc }}</p>
+                    </div>
+                    <div class="pg-prose" data-lang-panel="orig" hidden
+                         lang="{% if item.lang == 'ja' %}ja{% else %}en{% endif %}">
+                        <p>{{ item.desc }}</p>
+                    </div>
+                    <p class="pg-hint">中文简介由机器翻译，仅供快速了解；准确内容请以原文为准。</p>
+                    {% else %}
                     {% if item.lang == 'en' %}
                     <p class="pg-hint">这一条采集自英文来源，暂无中文简介，以下为原文。</p>
                     {% endif %}
                     <div class="pg-prose"{% if item.lang == 'en' %} lang="en"{% elif item.lang == 'ja' %} lang="ja"{% endif %}>
                         <p>{{ item.desc }}</p>
                     </div>
+                    {% endif %}
                 </div>
             </section>
             {% else %}
@@ -242,5 +260,24 @@
 {% block scripts %}
 <script>
     lucide.createIcons();
+
+    // 简介中/原文切换。纯前端切显隐，不重新请求，URL 也不用带参数。
+    (function () {
+        var group = document.querySelector('.pg-lang-switch');
+        if (!group) return;
+        var panels = document.querySelectorAll('[data-lang-panel]');
+        group.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-lang-btn]');
+            if (!btn) return;
+            var want = btn.getAttribute('data-lang-btn');
+            group.querySelectorAll('[data-lang-btn]').forEach(function (b) {
+                b.classList.toggle('is-active', b === btn);
+                b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+            });
+            panels.forEach(function (p) {
+                p.hidden = p.getAttribute('data-lang-panel') !== want;
+            });
+        });
+    })();
 </script>
 {% endblock %}

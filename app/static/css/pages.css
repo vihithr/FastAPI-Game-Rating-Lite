@@ -2318,3 +2318,50 @@ a.pg-chip:hover {
 	outline: 2px solid var(--pg-brand);
 	outline-offset: 2px;
 }
+
+/* 简介语言切换（中文 / 原文）。放在面板头部右侧，与 .pg-lang-tag 占同一位置。 */
+.pg .pg-lang-switch {
+	display: inline-flex;
+	flex: 0 0 auto;
+	/* Pico 对 [role="group"] 有默认样式（会把容器撑成整行），必须显式压回去，
+	   否则 margin-left:auto 失效、同级的标题会被挤成竖排 */
+	width: auto;
+	gap: 0.15rem;
+	margin-left: auto;
+	padding: 0.15rem;
+	border: 1px solid var(--pg-line);
+	border-radius: var(--radius-pill);
+	background: color-mix(in srgb, var(--pg-muted) 8%, transparent);
+}
+
+.pg .pg-lang-switch button {
+	width: auto; /* 同上：Pico 的 button{width:100%} 优先级 (0,0,1) 会压过来 */
+	flex: 0 0 auto;
+	margin: 0;
+	padding: 0.15em 0.7em;
+	border: 0;
+	border-radius: var(--radius-pill);
+	background: transparent;
+	color: var(--pg-muted);
+	font-size: 0.72rem;
+	line-height: 1.6;
+	cursor: pointer;
+	transition: background-color var(--dur-1) var(--ease-out),
+		color var(--dur-1) var(--ease-out);
+}
+
+.pg .pg-lang-switch button:hover {
+	color: var(--pg-ink);
+}
+
+.pg .pg-lang-switch button.is-active {
+	background: var(--pg-card);
+	color: var(--pg-brand);
+	font-weight: 600;
+	box-shadow: var(--shadow-xs);
+}
+
+/* 切换后隐藏的那块不能占位 */
+.pg [data-lang-panel][hidden] {
+	display: none;
+}
