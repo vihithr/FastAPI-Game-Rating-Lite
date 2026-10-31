@@ -2,8 +2,9 @@ import hashlib
 import logging
 import random
 from datetime import date
+from xml.sax.saxutils import escape as xml_escape
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Form, status, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, Form, status, File, UploadFile, Response
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -61,6 +62,50 @@ def _library_entry_for(game):
 
 
 # --- 页面路由 ---
+
+@router.get("/sitemap.xml", response_class=Response)
+def sitemap_xml(request: Request, db: Session = Depends(database.get_db)):
+    """全站 sitemap：静态页 + 全部作品详情页 + 全部资料库条目页。
+
+    robots.txt 由 Cloudflare 托管，没法在本地文件里加 Sitemap: 行，
+    所以 base.html 里另外放了 <link rel="sitemap">，方便爬虫发现。
+    """
+    from . import library as library_module
+
+    base = f"{request.url.scheme}://{request.url.netloc}"
+    entries: list[tuple[str, str]] = [
+        (f"{base}/", "1.0"),
+        (f"{base}/games", "0.9"),
+        (f"{base}/library", "0.9"),
+        (f"{base}/stats", "0.7"),
+        (f"{base}/articles", "0.7"),
+        (f"{base}/resources", "0.6"),
+        (f"{base}/bounties", "0.5"),
+    ]
+    for (game_id,) in db.query(models.Game.id).all():
+        entries.append((f"{base}/game/{game_id}", "0.8"))
+    try:
+        for rec in library_module.all_records():
+            entries.append((f"{base}/library/{rec['id']}", "0.6"))
+    except Exception:
+        logger.exception("sitemap: 资料库记录读取失败，仅输出作品页")
+
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for loc, priority in entries:
+        parts.append(
+            f"<url><loc>{xml_escape(loc)}</loc><priority>{priority}</priority></url>"
+        )
+    parts.append("</urlset>")
+
+    return Response(
+        "\n".join(parts),
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
 
 @router.get("/", response_class=HTMLResponse)
 def read_root(request: Request, db: Session = Depends(database.get_db)):
@@ -223,7 +268,9 @@ def browse_games(
     if platform:
         query = query.filter(models.Game.platform.ilike(f"%{platform}%"))
 
-    # 关键词搜索：标题、公司、别名、标签
+    # 关键词搜索：标题、公司、别名、译名、标签
+    # 译名一定要查——玩家更习惯搜中文名（「审判银剑」），
+    # 只查 title/alias 的话这些译名等于白存。
     if search_query:
         like_term = f"%{search_query}%"
         query = query.filter(
@@ -231,6 +278,7 @@ def browse_games(
                 models.Game.title.ilike(like_term),
                 models.Game.company.ilike(like_term),
                 models.Game.aliases.any(models.Alias.name.ilike(like_term)),
+                models.Game.translations.any(models.Translation.name.ilike(like_term)),
                 models.Game.tags.any(models.Tag.name.ilike(like_term)),
             )
         )

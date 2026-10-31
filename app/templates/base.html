@@ -11,7 +11,12 @@
     <meta property="og:site_name" content="STG Ratings">
     <meta property="og:type" content="website">
     <meta property="og:title" content="{% block og_title %}STG 社区评价{% endblock %}">
-    <meta property="og:description" content="为每一款射击游戏留下可比较的品质与难度记录。">
+    <meta property="og:description" content="{% block og_description %}为每一款射击游戏留下可比较的品质与难度记录。{% endblock %}">
+    <meta property="og:url" content="{{ request.url.scheme }}://{{ request.url.netloc }}{{ request.url.path }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="{{ request.url.scheme }}://{{ request.url.netloc }}{{ request.url.path }}">
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+    {% block og_image %}{% endblock %}
     <link rel="icon" href="{{ asset_url('/static/favicon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ asset_url('/static/favicon.svg') }}">
 

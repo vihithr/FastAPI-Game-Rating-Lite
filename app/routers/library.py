@@ -184,6 +184,9 @@ def _load() -> list[dict[str, Any]]:
             rec["src_label"] = label
             rec["src_url"] = url
             rec["lang"] = lang_of(rec.get("desc"))
+            rec["platform_text"] = " / ".join(
+                platform_label(p) for p in (rec.get("platforms") or [])
+            )
             # 列表页用 400px webp 缩略图，详情页才用原图
             cover = rec.get("cover") or ""
             if cover:
@@ -204,6 +207,11 @@ def _load() -> list[dict[str, Any]]:
                     _by_norm.setdefault(n, r)
         logger.info("资料库已载入 %d 条记录", len(data))
     return _records
+
+
+def all_records() -> list[dict[str, Any]]:
+    """对外暴露只读记录列表（sitemap 等场景用）。"""
+    return _load()
 
 
 def find_entry_for_game(game: models.Game) -> dict[str, Any] | None:

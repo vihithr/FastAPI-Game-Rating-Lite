@@ -1,10 +1,31 @@
 {% extends "base.html" %}
 
 {% block title %}{{ item.zh or item.title }} - STG 资料库{% endblock %}
-{% block description %}{{ item.desc[:120] if item.desc else (item.title ~ ' — STG 资料库条目') }}{% endblock %}
+{% block description %}{{ (item.zh_desc or item.desc or (item.title ~ ' — STG 资料库条目')) | truncate(150, True, '…') }}{% endblock %}
+
+{% block og_title %}{{ item.zh or item.title }}{% if item.year %} ({{ item.year }}){% endif %} — STG 资料库{% endblock %}
+{% block og_description %}{{ (item.zh_desc or item.desc or item.title) | truncate(150, True, '…') }}{% endblock %}
+{% block og_image %}{% if item.cover %}<meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/library/covers/{{ item.cover }}">{% endif %}{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="{{ asset_url('/static/css/pages.css') }}">
+<script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": {{ (item.zh or item.title) | tojson }},
+        "alternateName": {{ item.title | tojson }},
+        "url": {{ (request.url.scheme ~ '://' ~ request.url.netloc ~ request.url.path) | tojson }},
+        {% if item.cover %}"image": {{ (request.url.scheme ~ '://' ~ request.url.netloc ~ '/static/library/covers/' ~ item.cover) | tojson }},{% endif %}
+        {% if item.desc %}"description": {{ (item.zh_desc or item.desc) | tojson }},{% endif %}
+        {% if item.company %}"publisher": { "@type": "Organization", "name": {{ item.company | tojson }} },{% endif %}
+        {% if item.year %}"datePublished": "{{ item.year }}",{% endif %}
+        {% if item.platform_text %}"gamePlatform": {{ item.platform_text | tojson }},{% endif %}
+        {% if item.series %}"isPartOf": { "@type": "VideoGameSeries", "name": {{ item.series | tojson }} },{% endif %}
+        "genre": "Shoot 'em up",
+        "inLanguage": "zh-CN"
+    }
+</script>
 {% endblock %}
 
 {% block content %}

@@ -60,6 +60,9 @@ app/static/articles/
 # 资料库封面：各发行商版权素材，体积也大；用 tools/build_library.py 自行生成
 app/static/library/covers/
 
+# Wikidata 抓取缓存（30MB，重跑 backfill_wikidata.py 会自动重建）
+app/data/wikidata_cache.json
+
 # 资料库数据可通过 tools/import_library.py 从自己的收藏重新生成
 # 仓库里保留一份 library.json 作为示例数据，如需替换请覆盖同名文件
 

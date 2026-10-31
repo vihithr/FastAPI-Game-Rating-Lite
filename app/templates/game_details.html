@@ -1,6 +1,34 @@
 {% extends "base.html" %}
 
 {% block body_class %}demo-body{% endblock %}
+
+{% block og_description %}{{ (game.description or ('《' ~ game.title ~ '》在 STG Ratings 的品质与难度记录')) | truncate(150, True, '…') }}{% endblock %}
+{% block og_image %}{% if game.image_url %}<meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}{{ game.image_url }}">{% endif %}{% endblock %}
+
+{% block head %}
+<script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": {{ game.title | tojson }},
+        "url": {{ (request.url.scheme ~ '://' ~ request.url.netloc ~ request.url.path) | tojson }},
+        {% if game.image_url %}"image": {{ (request.url.scheme ~ '://' ~ request.url.netloc ~ game.image_url) | tojson }},{% endif %}
+        {% if game.description %}"description": {{ game.description | tojson }},{% endif %}
+        {% if game.company %}"publisher": { "@type": "Organization", "name": {{ game.company | tojson }} },{% endif %}
+        {% if game.release_year %}"datePublished": "{{ game.release_year }}",{% endif %}
+        {% if game.platform %}"gamePlatform": {{ game.platform | tojson }},{% endif %}
+        {% if evaluation.quality_ratings_count and evaluation.overall_quality_score %}"aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": {{ "%.1f" | format(evaluation.overall_quality_score) }},
+            "bestRating": "10",
+            "ratingCount": {{ evaluation.quality_ratings_count }}
+        },{% endif %}
+        "genre": "Shoot 'em up",
+        "inLanguage": "zh-CN"
+    }
+</script>
+{% endblock %}
+
 {% set quality_avg = evaluation.overall_quality_score %}
 {% set quality_count = evaluation.quality_ratings_count %}
 {% set difficulty_avg = evaluation.overall_difficulty_score %}

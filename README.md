@@ -38,6 +38,7 @@
 | `backfill_meta.py` | 按「标题 → 别名 → 译名」归一化匹配，回填 platform / release_year / series |
 | `dedup_games.py` | 合并重复条目（中英文异名、`∀`/`A`、间隔号、副标题差异等），评分与标签安全迁移 |
 | `build_library_thumbs.py` | 给资料库封面生成 400px webp 缩略图。列表页原图直出时第 1 页 45 张就有 1.9 MB，压完降到 0.75 MB |
+| `backfill_wikidata.py` | 从 Wikidata 补全缺失的发行年份与平台。只填 NULL，要求条目类型是电子游戏且公司对得上 |
 | `build_icons.py` | 从 `tools/vendor/lucide.min.js`（540 KB 全量包）裁剪出站点实际用到的 56 个图标，产出 13 KB 的 `app/static/js/icons.js` |
 
 > 数据脚本都支持 `--dry-run` / `--report`，建议先预览再执行。
@@ -257,6 +258,19 @@ uvicorn app.main:app --reload
 2. 查看 Caddy 日志：`sudo journalctl -u caddy -n 50`  
 3. 参考 `DEPLOYMENT.md` 中更详细的故障排查章节  
 4. 提交 Issue 时，建议附上：系统发行版、Python 版本、部署命令、相关日志片段  
+
+---
+
+## SEO
+
+- `/sitemap.xml` 由 `pages.py` 动态生成，包含全部作品详情页与资料库条目页（约 1800 条），
+  带 `Cache-Control: public, max-age=3600`
+- 作品页与资料库页输出 **JSON-LD**（`schema.org/VideoGame`），有评分时附带 `aggregateRating`
+- 详情页带 `og:title` / `og:description` / `og:image`（用封面图）/ `og:url` 与 `canonical`
+- `base.html` 里放了 `<link rel="sitemap">`，方便爬虫发现
+
+> 如果你的站点在 Cloudflare 后面，`/robots.txt` 会被 Cloudflare 的托管版本接管，
+> 本地放文件不生效。需要在 Cloudflare 面板里补 `Sitemap:` 行，或直接向搜索引擎提交 sitemap。
 
 ---
 
